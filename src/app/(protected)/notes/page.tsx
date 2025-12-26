@@ -126,7 +126,7 @@ function CustomCaption(props: CaptionProps) {
          >
            <ChevronLeft className="h-4 w-4" />
          </Button>
-         <h2 className="text-xl font-headline">{format(props.displayMonth, 'MMMM yyyy')}</h2>
+         <h2 className="text-2xl font-headline">{format(props.displayMonth, 'MMMM yyyy')}</h2>
          <Button
           aria-label="Go to next month"
           variant="outline"
@@ -148,12 +148,12 @@ export default function NotesPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [notes, setNotes] = useState<AllNotes>(initialNotes);
 
-  const dateString = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+  const dateString = selectedDate ? format(selectedDate, 'yyyy-M-d') : '';
   const dailyNotes = notes[dateString] || {};
   
   const handleSaveNote = (userToSave: User) => (content: string) => {
     if (!selectedDate || !user) return;
-    const dateKey = format(selectedDate, 'yyyy-MM-dd');
+    const dateKey = format(selectedDate, 'yyyy-M-d');
     
     const newNote: Note = {
       content,
@@ -202,7 +202,7 @@ export default function NotesPage() {
                 'h-9 w-9 p-0 font-normal aria-selected:opacity-100 rounded-full',
                 '[&:not([aria-disabled])]:hover:bg-accent [&:not([aria-disabled])]:hover:text-accent-foreground'
               ),
-              day_today: 'bg-primary text-primary-foreground',
+              day_today: 'bg-primary text-primary-foreground rounded-full',
               day_selected:
                 'bg-transparent text-foreground ring-2 ring-primary ring-offset-background !rounded-md focus:ring-primary',
               day_disabled: 'text-muted-foreground opacity-50 cursor-default',
