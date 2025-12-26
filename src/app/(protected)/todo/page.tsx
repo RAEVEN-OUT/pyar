@@ -85,7 +85,7 @@ export default function TodoPage() {
                     'flex items-center gap-4 rounded-lg p-3 transition-colors',
                     task.createdBy === 'Him'
                       ? 'bg-card text-primary'
-                      : 'bg-card text-accent',
+                      : 'bg-accent text-accent-foreground',
                     task.completed ? 'opacity-60' : 'opacity-100'
                   )}
                 >
@@ -97,7 +97,7 @@ export default function TodoPage() {
                         "h-5 w-5",
                         task.createdBy === 'Him' 
                           ? 'border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
-                          : 'border-accent data-[state=checked]:bg-accent data-[state=checked]:text-accent-foreground'
+                          : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
                     )}
                   />
                   <label
