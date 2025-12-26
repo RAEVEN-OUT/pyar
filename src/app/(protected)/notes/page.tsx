@@ -75,11 +75,13 @@ const NoteEditor = ({
     if (isEditing && textareaRef.current) {
       autoResizeTextarea(textareaRef.current);
     }
-  }, [isEditing]);
+  }, [isEditing, text]);
   
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
-    autoResizeTextarea(e.target);
+    if(textareaRef.current) {
+      autoResizeTextarea(textareaRef.current);
+    }
   };
 
   const handleSave = () => {
@@ -95,7 +97,7 @@ const NoteEditor = ({
 
   return (
     <Card className={cn('flex flex-col', colorClass)}>
-      <CardHeader className="flex flex-row items-center justify-between pb-2 w-full">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-headline">
           {noteUser === 'Him' ? 'His Note' : 'Her Note'}
         </CardTitle>
@@ -111,7 +113,7 @@ const NoteEditor = ({
             )
         )}
       </CardHeader>
-      <CardContent className="flex flex-col flex-1 w-full gap-2">
+      <CardContent className="flex-1 flex flex-col gap-2">
         {isEditing ? (
           <Textarea
             ref={textareaRef}
@@ -122,7 +124,7 @@ const NoteEditor = ({
             rows={1}
           />
         ) : (
-          <div className="flex flex-col flex-1">
+          <div className="flex-1 flex flex-col">
             <div className="flex-1 p-2 text-sm whitespace-pre-wrap font-body">
               {note?.content || <p className="text-muted-foreground italic">No note yet.</p>}
             </div>
@@ -188,8 +190,8 @@ const NotesCalendar = ({
       </CardHeader>
       <CardContent className="p-3">
         <div className="grid grid-cols-7 gap-1">
-          {weekDays.map(day => (
-            <div key={day} className="text-center text-xs font-medium text-muted-foreground">
+          {weekDays.map((day, index) => (
+            <div key={`${day}-${index}`} className="text-center text-xs font-medium text-muted-foreground">
               {day}
             </div>
           ))}
@@ -274,7 +276,7 @@ export default function NotesPage() {
         <h2 className="text-xl font-headline text-primary">
           {format(selectedDate, 'MMMM d, yyyy')}
         </h2>
-        <div className="flex-1 grid md:grid-cols-2 gap-4 items-start">
+        <div className="grid md:grid-cols-2 gap-4 items-start flex-1">
           <NoteEditor
             noteUser={user}
             currentUser={user}
