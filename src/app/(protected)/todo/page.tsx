@@ -55,7 +55,7 @@ export default function TodoPage() {
 
   return (
     <div className="flex h-full items-start justify-center p-4 md:p-8">
-      <Card className="w-full max-w-2xl">
+      <Card className="w-full max-w-2xl bg-[#ffc4c4]">
         <CardHeader className="text-center">
           <CardTitle className="flex items-center justify-center gap-2 text-2xl font-headline">
             <ListChecks className="h-8 w-8 text-primary" />
