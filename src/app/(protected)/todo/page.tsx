@@ -15,14 +15,15 @@ export type Task = {
   text: string;
   completed: boolean;
   createdBy: User;
+  createdAt: string;
 };
 
 const initialTasks: Task[] = [
-  { id: 1, text: 'Book that restaurant for Friday night', completed: false, createdBy: 'Her' },
-  { id: 2, text: 'Pick up dry cleaning', completed: false, createdBy: 'Him' },
-  { id: 3, text: 'Plan our next weekend trip', completed: true, createdBy: 'Her' },
-  { id: 4, text: 'Get a gift for my mom\'s birthday', completed: false, createdBy: 'Him' },
-  { id: 5, text: 'muahh', completed: false, createdBy: 'Him' },
+  { id: 1, text: 'Book that restaurant for Friday night', completed: false, createdBy: 'Her', createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toLocaleDateString() },
+  { id: 2, text: 'Pick up dry cleaning', completed: false, createdBy: 'Him', createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toLocaleDateString() },
+  { id: 3, text: 'Plan our next weekend trip', completed: true, createdBy: 'Her', createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toLocaleDateString() },
+  { id: 4, text: 'Get a gift for my mom\'s birthday', completed: false, createdBy: 'Him', createdAt: new Date().toLocaleDateString() },
+  { id: 5, text: 'muahh', completed: false, createdBy: 'Him', createdAt: new Date().toLocaleDateString() },
 ];
 
 export default function TodoPage() {
@@ -39,6 +40,7 @@ export default function TodoPage() {
       text: newTaskText.trim(),
       completed: false,
       createdBy: user,
+      createdAt: new Date().toLocaleDateString(),
     };
 
     setTasks(prevTasks => [newTask, ...prevTasks]);
@@ -100,15 +102,24 @@ export default function TodoPage() {
                           : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
                     )}
                   />
-                  <label
-                    htmlFor={`task-${task.id}`}
-                    className={cn(
-                      'flex-1 text-sm font-medium cursor-pointer',
-                      task.completed && 'line-through'
-                    )}
-                  >
-                    {task.text}
-                  </label>
+                  <div className="flex-1">
+                    <label
+                      htmlFor={`task-${task.id}`}
+                      className={cn(
+                        'text-sm font-medium cursor-pointer',
+                        task.completed && 'line-through'
+                      )}
+                    >
+                      {task.text}
+                    </label>
+                     <p className={cn(
+                        'text-xs mt-1',
+                         task.createdBy === 'Him' ? 'text-primary/70' : 'text-accent-foreground/70',
+                         task.completed && 'line-through'
+                      )}>
+                      {task.createdAt}
+                    </p>
+                  </div>
                 </div>
               ))
             ) : (
