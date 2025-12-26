@@ -75,7 +75,7 @@ const NoteEditor = ({
     <Card className={cn('flex flex-col h-full', colorClass)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-headline">
-          {noteUser === 'Him' ? 'His Note' : 'Her Note'}
+          {noteUser === 'Him' ? 'His Note' : 'Hers Note'}
         </CardTitle>
         {showEditButton && (
             isEditing ? (
@@ -148,12 +148,12 @@ export default function NotesPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [notes, setNotes] = useState<AllNotes>(initialNotes);
 
-  const dateString = selectedDate ? format(selectedDate, 'yyyy-M-d') : '';
+  const dateString = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
   const dailyNotes = notes[dateString] || {};
   
   const handleSaveNote = (userToSave: User) => (content: string) => {
     if (!selectedDate || !user) return;
-    const dateKey = format(selectedDate, 'yyyy-M-d');
+    const dateKey = format(selectedDate, 'yyyy-MM-dd');
     
     const newNote: Note = {
       content,
