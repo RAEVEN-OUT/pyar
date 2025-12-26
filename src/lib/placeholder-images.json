@@ -1,3 +1,10 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "couple-1",
+      "description": "A romantic photo of a couple.",
+      "imageUrl": "https://images.unsplash.com/photo-1626945129155-f8a4ec08c022?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjb3VwbGUlMjBsb3ZlfGVufDB8fHx8MTc2NjY0MzQwM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "couple love"
+    }
+  ]
 }

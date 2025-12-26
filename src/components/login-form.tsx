@@ -1,0 +1,97 @@
+'use client';
+
+import { useState } from 'react';
+import { useAuth, type User } from '@/context/auth-context';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Logo } from '@/components/logo';
+import { cn } from '@/lib/utils';
+import { Heart } from 'lucide-react';
+
+export default function LoginForm() {
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [magicWord, setMagicWord] = useState('');
+  const [error, setError] = useState('');
+  const { login, loading } = useAuth();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) {
+      setError('Please select "Him" or "Her".');
+      return;
+    }
+    if (!magicWord) {
+      setError('Please enter the magic word.');
+      return;
+    }
+    setError('');
+    await login(selectedUser, magicWord);
+  };
+
+  return (
+    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-sm shadow-lg">
+        <CardHeader className="items-center text-center">
+          <Logo />
+          <CardDescription className="text-muted-foreground pt-2">
+            A private space, just for us.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2">
+              <Label>Who are you?</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <Button
+                  type="button"
+                  variant={selectedUser === 'Him' ? 'default' : 'outline'}
+                  onClick={() => setSelectedUser('Him')}
+                  className={cn(
+                    'h-12 text-lg',
+                    selectedUser === 'Him' && 'bg-primary text-primary-foreground'
+                  )}
+                >
+                  Him
+                </Button>
+                <Button
+                  type="button"
+                  variant={selectedUser === 'Her' ? 'default' : 'outline'}
+                  onClick={() => setSelectedUser('Her')}
+                  className={cn(
+                    'h-12 text-lg',
+                    selectedUser === 'Her' && 'bg-primary text-primary-foreground'
+                  )}
+                >
+                  Her
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="magic-word">Magic Word</Label>
+              <Input
+                id="magic-word"
+                type="password"
+                placeholder="••••••••••"
+                value={magicWord}
+                onChange={(e) => setMagicWord(e.target.value)}
+                className="h-12 text-center text-lg"
+              />
+            </div>
+            {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+            <Button type="submit" className="w-full h-12 text-lg" disabled={loading}>
+              {loading ? 'Entering...' : 'Enter'}
+              <Heart className="ml-2 h-5 w-5 fill-current" />
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="justify-center">
+          <p className="text-xs text-muted-foreground">
+            &copy; {new Date().getFullYear()} Amorem Duo
+          </p>
+        </CardFooter>
+      </Card>
+    </main>
+  );
+}
