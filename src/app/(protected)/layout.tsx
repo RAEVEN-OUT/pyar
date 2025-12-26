@@ -69,8 +69,7 @@ function CherryTrigger() {
   );
 }
 
-
-function MainAppLayout({ children }: { children: React.ReactNode }) {
+function AppWithSidebar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const { tasks } = useTasks();
@@ -78,66 +77,86 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
   const { toggleSidebar } = useSidebar();
 
   return (
-      <SidebarProvider>
-        <Sidebar collapsible="none">
-          <SidebarContent>
-            <SidebarHeader>
-              <Logo className="text-3xl" />
-              <SidebarTrigger onClick={toggleSidebar} className="data-[state=expanded]:hidden" />
-            </SidebarHeader>
-            <SidebarMenu className="flex-1">
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    as={Link}
-                    href={item.href}
-                    isActive={pathname.startsWith(item.href)}
-                    tooltip={{ children: item.label }}
-                  >
-                    <item.icon />
-                    <span>{item.label}</span>
-                    {item.href === '/todo' && incompleteTasks > 0 && (
-                      <Badge className="ml-auto group-data-[collapsible=icon]:hidden">{incompleteTasks}</Badge>
-                    )}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-            <SidebarFooter className="items-center">
-              <div className="flex w-full items-center justify-between p-2">
-                <div className="flex items-center gap-2">
-                  {user && (
-                    <>
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-accent text-accent-foreground">
-                          {user.slice(0, 1)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="font-semibold text-sm group-data-[collapsible=icon]:hidden">
-                        {user}
-                      </span>
-                    </>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={logout}
-                  className="group-data-[collapsible=icon]:w-full"
+    <>
+      <Sidebar collapsible="none">
+        <SidebarContent>
+          <SidebarHeader>
+            <Logo className="text-3xl" />
+            <Button
+              data-sidebar="trigger"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 data-[state=collapsed]:hidden md:flex"
+              data-state="expanded"
+              onClick={toggleSidebar}
+            >
+              <PanelLeft />
+              <span className="sr-only">Toggle Sidebar</span>
+            </Button>
+          </SidebarHeader>
+          <SidebarMenu className="flex-1">
+            {navItems.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  as={Link}
+                  href={item.href}
+                  isActive={pathname.startsWith(item.href)}
+                  tooltip={{ children: item.label }}
                 >
-                  <LogOut className="h-4 w-4" />
-                </Button>
+                  <item.icon />
+                  <span>{item.label}</span>
+                  {item.href === '/todo' && incompleteTasks > 0 && (
+                    <Badge className="ml-auto group-data-[collapsible=icon]:hidden">{incompleteTasks}</Badge>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+          <SidebarFooter className="items-center">
+            <div className="flex w-full items-center justify-between p-2">
+              <div className="flex items-center gap-2">
+                {user && (
+                  <>
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-accent text-accent-foreground">
+                        {user.slice(0, 1)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="font-semibold text-sm group-data-[collapsible=icon]:hidden">
+                      {user}
+                    </span>
+                  </>
+                )}
               </div>
-            </SidebarFooter>
-          </SidebarContent>
-        </Sidebar>
-        <div className="flex flex-col flex-1">
-          <CherryTrigger />
-          <SidebarInset>
-            {children}
-          </SidebarInset>
-        </div>
-      </SidebarProvider>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={logout}
+                className="group-data-[collapsible=icon]:w-full"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </SidebarFooter>
+        </SidebarContent>
+      </Sidebar>
+      <div className="flex flex-col flex-1">
+        <CherryTrigger />
+        <SidebarInset>
+          {children}
+        </SidebarInset>
+      </div>
+    </>
+  );
+}
+
+function MainAppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
+      <AppWithSidebar>
+        {children}
+      </AppWithSidebar>
+    </SidebarProvider>
   );
 }
 
