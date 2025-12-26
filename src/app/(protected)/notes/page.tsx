@@ -242,7 +242,7 @@ export default function NotesPage() {
         <h2 className="text-xl font-headline text-primary">
           {format(selectedDate, 'MMMM d, yyyy')}
         </h2>
-        <div className="grid flex-1 gap-4 grid-cols-1 md:grid-cols-2">
+        <div className="grid flex-1 gap-4 md:grid-cols-2">
           <NoteEditor
             noteUser={user}
             currentUser={user}
