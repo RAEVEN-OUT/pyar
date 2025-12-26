@@ -1,53 +1,19 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/auth-context';
+import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ListChecks, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { isBefore, startOfToday } from 'date-fns';
+import { useTasks } from '@/context/task-context';
 
-export type User = 'Him' | 'Her';
-
-export type Task = {
-  id: number;
-  text: string;
-  completedAt: string | null; // Date string (e.g., '2024-07-26') or null
-  createdBy: User;
-  createdAt: string;
-};
-
-interface TodoPageProps {
-  tasks: Task[];
-  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
-  handleAddTask: (text: string) => void;
-  handleToggleTask: (id: number) => void;
-}
-
-export default function TodoPage({ tasks, setTasks, handleAddTask, handleToggleTask }: TodoPageProps) {
+export default function TodoPage() {
   const { user } = useAuth();
   const [newTaskText, setNewTaskText] = useState('');
-  
-  useEffect(() => {
-    if (setTasks) {
-      const today = startOfToday();
-      setTasks(currentTasks => 
-        currentTasks.filter(task => {
-          if (!task.completedAt) {
-            return true; // Keep task if it's not completed
-          }
-          const completedDate = new Date(task.completedAt);
-          // Keep task if it was completed today, remove if completed before today
-          return !isBefore(completedDate, today);
-        })
-      );
-    }
-  }, [setTasks]);
-
+  const { tasks, handleAddTask, handleToggleTask } = useTasks();
 
   const onAddTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +56,7 @@ export default function TodoPage({ tasks, setTasks, handleAddTask, handleToggleT
                   key={task.id}
                   className={cn(
                     'flex items-center gap-4 rounded-lg p-3 transition-colors',
-                    task.createdBy === 'Him'
+                     task.createdBy === 'Him'
                       ? 'bg-card text-primary'
                       : 'bg-accent text-accent-foreground',
                     isCompleted ? 'opacity-60' : 'opacity-100'
