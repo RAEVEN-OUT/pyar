@@ -14,6 +14,7 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarFooter,
+  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
@@ -74,8 +75,9 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
         <CherryTrigger />
         <Sidebar>
           <SidebarContent>
-            <SidebarHeader>
+            <SidebarHeader className="justify-between">
               <Logo className="text-3xl" />
+              <SidebarTrigger />
             </SidebarHeader>
             <SidebarMenu className="flex-1">
               {navItems.map((item) => (
