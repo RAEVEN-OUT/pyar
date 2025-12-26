@@ -97,7 +97,7 @@ export default function ChatPage() {
     <div className="flex h-screen flex-col pt-16 md:pt-4 pb-4 px-4">
       <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-transparent rounded-lg shadow-md border-0">
         <MoodDisplay />
-        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 chat-bg-pattern">
+        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 chat-bg-pattern no-scrollbar">
           {messages.map((msg) => {
             const isSender = msg.sender === user;
             return (
