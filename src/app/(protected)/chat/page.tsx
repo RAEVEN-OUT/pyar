@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Send, Smile, Mic, Play, Pause } from 'lucide-react';
+import { Send, Smile, Mic, Play, Pause, MoreHorizontal, MessageSquarePlus } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import {
@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 type Mood = {
   mood: string;
@@ -39,16 +41,21 @@ type Message = {
   text?: string;
   audioUrl?: string;
   time: string;
+  reactions?: { [emoji: string]: User[] };
+  isEdited?: boolean;
 };
 
 const initialMessages: Message[] = [
-  { id: 1, sender: 'Her', text: 'Hey! How was your day? 🥰', time: '5:30 PM' },
+  { id: 1, sender: 'Her', text: 'Hey! How was your day? 🥰', time: '5:30 PM', reactions: { '❤️': ['Him'] } },
   { id: 2, sender: 'Him', text: 'It was good! Just got home. Was thinking about you.', time: '5:31 PM' },
   { id: 3, sender: 'Him', text: 'What are you up to?', time: '5:31 PM' },
   { id: 4, sender: 'Her', text: 'Aww, same! Just relaxing. Wanna watch a movie tonight?', time: '5:32 PM' },
-  { id: 5, sender: 'Him', text: 'Absolutely! Pick one. I am getting snacks ready 😝', time: '5:33 PM' },
+  { id: 5, sender: 'Him', text: 'Absolutely! Pick one. I am getting snacks ready 😝', time: '5:33 PM', reactions: { '🥰': ['Her'] } },
   { id: 6, sender: 'Her', text: 'Sounds perfect! ❤️', time: '5:34 PM' },
 ];
+
+const reactionEmojis = ['❤️', '😂', '🥰', '😍', '😢', '😮'];
+
 
 function MoodDisplay({
   user,
@@ -217,6 +224,9 @@ export default function ChatPage() {
     Her: { mood: 'Love u', emoji: '🥰' },
   });
 
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [editedText, setEditedText] = useState('');
+
   useEffect(() => {
     navigator.permissions.query({ name: 'microphone' as PermissionName }).then((result) => {
         if (result.state === 'granted') {
@@ -253,7 +263,7 @@ export default function ChatPage() {
   const addMessage = (message: Omit<Message, 'id' | 'time'>) => {
      if (!user) return;
      const newMessageData: Message = {
-      id: messages.length + 1,
+      id: Date.now(),
       sender: user,
       time: new Date().toLocaleTimeString('en-US', {
         hour: 'numeric',
@@ -272,6 +282,50 @@ export default function ChatPage() {
     setNewMessage('');
     setShowEmojiPicker(false);
   };
+
+  const handleReaction = (messageId: number, emoji: string) => {
+    if (!user) return;
+    setMessages(messages.map(msg => {
+      if (msg.id === messageId) {
+        const reactions = { ...msg.reactions };
+        
+        // Check if user already reacted with this emoji
+        if (reactions[emoji] && reactions[emoji].includes(user)) {
+          // Remove reaction
+          reactions[emoji] = reactions[emoji].filter(u => u !== user);
+          if (reactions[emoji].length === 0) {
+            delete reactions[emoji];
+          }
+        } else {
+          // Add or update reaction
+          reactions[emoji] = [...(reactions[emoji] || []), user];
+        }
+        return { ...msg, reactions };
+      }
+      return msg;
+    }));
+  };
+
+  const handleUnsend = (messageId: number) => {
+    setMessages(messages.filter(msg => msg.id !== messageId));
+  };
+  
+  const handleEdit = (message: Message) => {
+    setEditingMessage(message);
+    setEditedText(message.text || '');
+  };
+
+  const submitEdit = () => {
+    if (!editingMessage) return;
+    setMessages(messages.map(msg => 
+      msg.id === editingMessage.id 
+        ? { ...msg, text: editedText, isEdited: true } 
+        : msg
+    ));
+    setEditingMessage(null);
+    setEditedText('');
+  };
+
   
   const stopRecording = (send: boolean) => {
     if (mediaRecorderRef.current && isRecording) {
@@ -367,6 +421,23 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen flex-col pt-16 md:pt-4 pb-4 px-4">
+      <Dialog open={!!editingMessage} onOpenChange={() => setEditingMessage(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Message</DialogTitle>
+          </DialogHeader>
+          <Textarea 
+            value={editedText}
+            onChange={(e) => setEditedText(e.target.value)}
+            rows={4}
+            className="my-4"
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditingMessage(null)}>Cancel</Button>
+            <Button onClick={submitEdit}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-transparent rounded-lg shadow-md border-0">
         <MoodDisplay
           user={user}
@@ -385,42 +456,84 @@ export default function ChatPage() {
           )}
           {messages.map((msg) => {
             const isSender = msg.sender === user;
+            const messageReactions = msg.reactions ? Object.entries(msg.reactions) : [];
+
             return (
               <div
                 key={msg.id}
                 className={cn(
-                  'flex items-end gap-2',
+                  'flex items-end gap-2 group',
                   isSender ? 'justify-end' : 'justify-start'
                 )}
               >
-                <div
-                  className={cn(
-                    'max-w-xs md:max-w-md rounded-2xl p-3 shadow-sm',
-                    isSender
-                      ? 'bg-card rounded-br-none'
-                      : 'bg-accent rounded-bl-none'
-                  )}
-                >
-                  {msg.text && (
-                    <p className={cn(
-                      'text-sm',
-                      isSender ? 'text-card-foreground' : 'text-accent-foreground'
-                    )}>
-                      {msg.text}
-                    </p>
-                  )}
-                  {msg.audioUrl && (
-                     <WaveformPlayer src={msg.audioUrl} isSender={isSender} />
-                  )}
-                   <p className={cn(
-                      'text-xs mt-1',
-                       isSender
-                        ? 'text-primary/70'
-                        : 'text-accent-foreground/70',
-                      'text-right'
-                    )}>
-                      {msg.time}
-                    </p>
+                 <div className="relative">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                             <div
+                              className={cn(
+                                'max-w-xs md:max-w-md rounded-2xl p-3 shadow-sm cursor-pointer',
+                                isSender
+                                  ? 'bg-card rounded-br-none'
+                                  : 'bg-accent rounded-bl-none'
+                              )}
+                            >
+                              {msg.text && (
+                                <p className={cn(
+                                  'text-sm',
+                                  isSender ? 'text-primary' : 'text-accent-foreground'
+                                )}>
+                                  {msg.text}
+                                </p>
+                              )}
+                              {msg.audioUrl && (
+                                 <WaveformPlayer src={msg.audioUrl} isSender={isSender} />
+                              )}
+                               <div className="flex items-center justify-end gap-1.5 mt-1">
+                                {msg.isEdited && <p className="text-xs text-muted-foreground">Edited</p>}
+                                <p className={cn(
+                                  'text-xs',
+                                   isSender
+                                    ? 'text-primary/70'
+                                    : 'text-accent-foreground/70',
+                                  'text-right'
+                                )}>
+                                  {msg.time}
+                                </p>
+                               </div>
+                            </div>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-1 w-auto">
+                            <div className="flex items-center gap-1">
+                                {reactionEmojis.map(emoji => (
+                                    <Button key={emoji} variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleReaction(msg.id, emoji)}>
+                                        <span className="text-lg">{emoji}</span>
+                                    </Button>
+                                ))}
+                                {isSender && msg.text && (
+                                    <>
+                                        <Button variant="ghost" size="sm" onClick={() => handleEdit(msg)}>Edit</Button>
+                                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleUnsend(msg.id)}>Unsend</Button>
+                                    </>
+                                )}
+                                {!isSender && (
+                                   <Button variant="ghost" size="sm">Reply</Button> 
+                                )}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                    {messageReactions.length > 0 && (
+                        <div className={cn(
+                          "absolute -bottom-3 flex gap-1",
+                          isSender ? "right-2" : "left-2"
+                        )}>
+                            {messageReactions.map(([emoji, users]) => (
+                               <div key={emoji} className="flex items-center bg-card shadow-sm rounded-full px-1.5 py-0.5 text-xs">
+                                   <span>{emoji}</span>
+                                   {users.length > 1 && <span className="ml-1 font-semibold">{users.length}</span>}
+                               </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
               </div>
             );
