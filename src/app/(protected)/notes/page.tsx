@@ -200,7 +200,8 @@ export default function NotesPage() {
               cell: 'h-9 w-9 text-center text-sm p-0 relative',
               day: 'h-9 w-9 p-0 font-normal aria-selected:opacity-100',
               day_today: 'bg-primary text-primary-foreground rounded-full',
-              day_selected: 'bg-transparent text-primary-foreground rounded-full ring-2 ring-primary ring-offset-background focus:ring-primary',
+              day_selected:
+                'bg-transparent text-foreground rounded-md ring-2 ring-primary ring-offset-background focus:ring-primary',
               day_disabled: 'text-muted-foreground opacity-30 cursor-default hover:bg-transparent',
             }}
             modifiers={{
