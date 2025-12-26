@@ -84,8 +84,8 @@ export default function TodoPage() {
                   className={cn(
                     'flex items-center gap-4 rounded-lg p-3 transition-colors',
                     task.createdBy === 'Him'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-accent text-accent-foreground',
+                      ? 'bg-card text-primary'
+                      : 'bg-card text-accent',
                     task.completed ? 'opacity-60' : 'opacity-100'
                   )}
                 >
@@ -96,8 +96,8 @@ export default function TodoPage() {
                     className={cn(
                         "h-5 w-5",
                         task.createdBy === 'Him' 
-                          ? 'border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary'
-                          : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
+                          ? 'border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
+                          : 'border-accent data-[state=checked]:bg-accent data-[state=checked]:text-accent-foreground'
                     )}
                   />
                   <label
