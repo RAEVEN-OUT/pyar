@@ -9,19 +9,27 @@ import { cn } from '@/lib/utils';
 import { Send, Smile, Mic } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
-const moods: { [key in User]: { mood: string; emoji: string } } = {
-  Him: { mood: 'Happy', emoji: '😊' },
-  Her: { mood: 'Love u', emoji: '🥰' },
+type Mood = {
+  mood: string;
+  emoji: string;
 };
 
-const initialMessages = [
-  { id: 1, sender: 'Her' as User, text: 'Hey! How was your day? 🥰', time: '5:30 PM' },
-  { id: 2, sender: 'Him' as User, text: 'It was good! Just got home. Was thinking about you.', time: '5:31 PM' },
-  { id: 3, sender: 'Him' as User, text: 'What are you up to?', time: '5:31 PM' },
-  { id: 4, sender: 'Her' as User, text: 'Aww, same! Just relaxing. Wanna watch a movie tonight?', time: '5:32 PM' },
-  { id: 5, sender: 'Him' as User, text: 'Absolutely! Pick one. I am getting snacks ready 😝', time: '5:33 PM' },
-  { id: 6, sender: 'Her' as User, text: 'Sounds perfect! ❤️', time: '5:34 PM' },
+const moodOptions: Mood[] = [
+  { mood: 'Happy', emoji: '😊' },
+  { mood: 'Missing you', emoji: '🥺' },
+  { mood: 'Love u', emoji: '🥰' },
+  { mood: 'Freaky', emoji: '😝' },
+  { mood: 'Low', emoji: '😔' },
+  { mood: 'Ehhh', emoji: '😅' },
+  { mood: 'Angry', emoji: '😠' },
+  { mood: 'Tired', emoji: '😴' },
 ];
 
 type Message = {
@@ -31,23 +39,60 @@ type Message = {
   time: string;
 };
 
-function MoodDisplay() {
+const initialMessages: Message[] = [
+  { id: 1, sender: 'Her', text: 'Hey! How was your day? 🥰', time: '5:30 PM' },
+  { id: 2, sender: 'Him', text: 'It was good! Just got home. Was thinking about you.', time: '5:31 PM' },
+  { id: 3, sender: 'Him', text: 'What are you up to?', time: '5:31 PM' },
+  { id: 4, sender: 'Her', text: 'Aww, same! Just relaxing. Wanna watch a movie tonight?', time: '5:32 PM' },
+  { id: 5, sender: 'Him', text: 'Absolutely! Pick one. I am getting snacks ready 😝', time: '5:33 PM' },
+  { id: 6, sender: 'Her', text: 'Sounds perfect! ❤️', time: '5:34 PM' },
+];
+
+function MoodDisplay({
+  user,
+  otherUser,
+  moods,
+  onMoodChange,
+}: {
+  user: User;
+  otherUser: User;
+  moods: { [key in User]: Mood };
+  onMoodChange: (newMood: Mood) => void;
+}) {
+  const currentUserMood = moods[user];
+  const otherUserMood = moods[otherUser];
+
   return (
     <div className="flex justify-between items-center p-4 border-b bg-card rounded-t-lg">
+      {/* Other User's Mood (Left) */}
       <div className="flex items-center gap-3">
-        <span className="text-4xl">{moods.Him.emoji}</span>
+        <span className="text-4xl">{otherUserMood.emoji}</span>
         <div>
-          <p className="font-semibold text-sm">Him</p>
-          <p className="text-xs text-muted-foreground">{moods.Him.mood}</p>
+          <p className="font-semibold text-sm">{otherUser}</p>
+          <p className="text-xs text-muted-foreground">{otherUserMood.mood}</p>
         </div>
       </div>
-      <div className="flex items-center gap-3 text-right">
-        <div className="flex flex-col items-end">
-          <p className="font-semibold text-sm">Her</p>
-          <p className="text-xs text-muted-foreground">{moods.Her.mood}</p>
-        </div>
-        <span className="text-4xl">{moods.Her.emoji}</span>
-      </div>
+
+      {/* Current User's Mood (Right) - Interactive */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <div className="flex items-center gap-3 text-right cursor-pointer rounded-md p-2 hover:bg-muted transition-colors">
+            <div className="flex flex-col items-end">
+              <p className="font-semibold text-sm">{user}</p>
+              <p className="text-xs text-muted-foreground">{currentUserMood.mood}</p>
+            </div>
+            <span className="text-4xl">{currentUserMood.emoji}</span>
+          </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {moodOptions.map((mood) => (
+            <DropdownMenuItem key={mood.mood} onSelect={() => onMoodChange(mood)}>
+              <span className="mr-2 text-lg">{mood.emoji}</span>
+              <span>{mood.mood}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
@@ -58,6 +103,22 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  const [moods, setMoods] = useState<{ [key in User]: Mood }>({
+    Him: { mood: 'Happy', emoji: '😊' },
+    Her: { mood: 'Love u', emoji: '🥰' },
+  });
+
+  const handleMoodChange = (newMood: Mood) => {
+    if (user) {
+      setMoods((prevMoods) => ({
+        ...prevMoods,
+        [user]: newMood,
+      }));
+    }
+  };
+
+  const otherUser = user === 'Him' ? 'Her' : 'Him';
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
@@ -92,11 +153,20 @@ export default function ChatPage() {
   const onEmojiClick = (emojiData: EmojiClickData, event: MouseEvent) => {
     setNewMessage((prevMessage) => prevMessage + emojiData.emoji);
   };
+  
+  if (!user) {
+    return null; // Or a loading state
+  }
 
   return (
     <div className="flex h-screen flex-col pt-16 md:pt-4 pb-4 px-4">
       <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-transparent rounded-lg shadow-md border-0">
-        <MoodDisplay />
+        <MoodDisplay
+          user={user}
+          otherUser={otherUser}
+          moods={moods}
+          onMoodChange={handleMoodChange}
+        />
         <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 chat-bg-pattern no-scrollbar">
           {messages.map((msg) => {
             const isSender = msg.sender === user;
@@ -119,14 +189,22 @@ export default function ChatPage() {
                   className={cn(
                     'max-w-xs md:max-w-md rounded-2xl p-3 shadow-sm',
                     isSender
-                      ? 'bg-card text-primary rounded-br-none'
-                      : 'bg-accent text-accent-foreground rounded-bl-none'
+                      ? 'bg-card rounded-br-none'
+                      : 'bg-accent rounded-bl-none'
                   )}
                 >
-                  <p className="text-sm">{msg.text}</p>
+                  <p className={cn(
+                      'text-sm',
+                      isSender ? 'text-primary' : 'text-primary-foreground'
+                    )}
+                  >
+                    {msg.text}
+                  </p>
                    <p className={cn(
                       'text-xs mt-1',
-                      isSender ? 'text-primary/70' : 'text-accent-foreground/70',
+                       isSender
+                        ? 'text-primary/70'
+                        : 'text-primary-foreground/70',
                       'text-right'
                     )}>
                       {msg.time}
