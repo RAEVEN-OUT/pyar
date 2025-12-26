@@ -4,9 +4,11 @@ import { useAuth, type User } from '@/context/auth-context';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Send, Smile, Mic } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
+import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 
 const moods: { [key in User]: { mood: string; emoji: string } } = {
   Him: { mood: 'Happy', emoji: '😊' },
@@ -54,6 +56,7 @@ export default function ChatPage() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [newMessage, setNewMessage] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -83,6 +86,11 @@ export default function ChatPage() {
 
     setMessages((prev) => [...prev, message]);
     setNewMessage('');
+    setShowEmojiPicker(false);
+  };
+
+  const onEmojiClick = (emojiData: EmojiClickData, event: MouseEvent) => {
+    setNewMessage((prevMessage) => prevMessage + emojiData.emoji);
   };
 
   return (
@@ -144,9 +152,16 @@ export default function ChatPage() {
               onChange={(e) => setNewMessage(e.target.value)}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-               <Button type="button" variant="ghost" size="icon" className="rounded-full">
-                <Smile className="h-5 w-5 text-muted-foreground" />
-              </Button>
+               <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="ghost" size="icon" className="rounded-full">
+                    <Smile className="h-5 w-5 text-muted-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 border-0">
+                  <EmojiPicker onEmojiClick={onEmojiClick} />
+                </PopoverContent>
+              </Popover>
                <Button type="button" variant="ghost" size="icon" className="rounded-full">
                 <Mic className="h-5 w-5 text-muted-foreground" />
               </Button>
