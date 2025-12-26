@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Send, Smile, Mic } from 'lucide-react';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 
 const moods: { [key in User]: { mood: string; emoji: string } } = {
   Him: { mood: 'Happy', emoji: '😊' },
   Her: { mood: 'Love u', emoji: '🥰' },
 };
 
-const mockMessages = [
+const initialMessages = [
   { id: 1, sender: 'Her' as User, text: 'Hey! How was your day? 🥰', time: '5:30 PM' },
   { id: 2, sender: 'Him' as User, text: 'It was good! Just got home. Was thinking about you.', time: '5:31 PM' },
   { id: 3, sender: 'Him' as User, text: 'What are you up to?', time: '5:31 PM' },
@@ -21,6 +21,13 @@ const mockMessages = [
   { id: 5, sender: 'Him' as User, text: 'Absolutely! Pick one. I am getting snacks ready 😝', time: '5:33 PM' },
   { id: 6, sender: 'Her' as User, text: 'Sounds perfect! ❤️', time: '5:34 PM' },
 ];
+
+type Message = {
+  id: number;
+  sender: User;
+  text: string;
+  time: string;
+};
 
 function MoodDisplay() {
   return (
@@ -45,21 +52,45 @@ function MoodDisplay() {
 
 export default function ChatPage() {
   const { user } = useAuth();
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [newMessage, setNewMessage] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const scrollToBottom = () => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, []);
+  };
 
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newMessage.trim() === '' || !user) return;
+
+    const message: Message = {
+      id: messages.length + 1,
+      sender: user,
+      text: newMessage.trim(),
+      time: new Date().toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true,
+      }),
+    };
+
+    setMessages((prev) => [...prev, message]);
+    setNewMessage('');
+  };
 
   return (
     <div className="flex h-screen flex-col pt-16 md:pt-4 pb-4 px-4">
       <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-background rounded-lg shadow-md border">
         <MoodDisplay />
         <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 chat-bg-pattern">
-          {mockMessages.map((msg) => {
+          {messages.map((msg) => {
             const isSender = msg.sender === user;
             return (
               <div
@@ -104,25 +135,27 @@ export default function ChatPage() {
             );
           })}
         </div>
-        <div className="p-4 border-t bg-card rounded-b-lg">
+        <form onSubmit={handleSendMessage} className="p-4 border-t bg-card rounded-b-lg">
           <div className="relative">
             <Input
               placeholder="Type your message..."
               className="pr-24 h-12 rounded-full"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-               <Button variant="ghost" size="icon" className="rounded-full">
+               <Button type="button" variant="ghost" size="icon" className="rounded-full">
                 <Smile className="h-5 w-5 text-muted-foreground" />
               </Button>
-               <Button variant="ghost" size="icon" className="rounded-full">
+               <Button type="button" variant="ghost" size="icon" className="rounded-full">
                 <Mic className="h-5 w-5 text-muted-foreground" />
               </Button>
-              <Button size="icon" className="rounded-full w-9 h-9">
+              <Button type="submit" size="icon" className="rounded-full w-9 h-9">
                 <Send className="h-5 w-5" />
               </Button>
             </div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
