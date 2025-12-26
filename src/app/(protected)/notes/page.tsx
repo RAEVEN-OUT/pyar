@@ -186,7 +186,7 @@ export default function NotesPage() {
               head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
               day_today: 'bg-primary text-primary-foreground',
               day_selected: 'bg-primary/20 text-primary-foreground rounded-md',
-              day_disabled: 'text-muted-foreground opacity-50 cursor-default pointer-events-none',
+              day_disabled: 'text-muted-foreground opacity-50',
             }}
             modifiers={{
               hasNote: Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/'))),
