@@ -55,8 +55,8 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
   const { toggleSidebar, isMobile } = useSidebar();
 
   return (
-    <div className="h-full">
-      <Sidebar collapsible={isMobile ? "offcanvas" : "none"}>
+    <div className="flex h-full">
+      <Sidebar>
         <SidebarContent>
           <SidebarHeader>
             <Logo className="text-3xl" />
