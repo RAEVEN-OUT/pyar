@@ -196,6 +196,7 @@ export default function CalendarPage() {
             value={eventTitle}
             onChange={(e) => setEventTitle(e.target.value)}
             className="col-span-3"
+            maxLength={30}
           />
           <Textarea
             id="description"
