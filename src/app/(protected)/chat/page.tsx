@@ -119,14 +119,14 @@ export default function ChatPage() {
                   className={cn(
                     'max-w-xs md:max-w-md rounded-2xl p-3 shadow-sm',
                     isSender
-                      ? 'bg-card text-card-foreground rounded-br-none'
+                      ? 'bg-card text-primary rounded-br-none'
                       : 'bg-accent text-accent-foreground rounded-bl-none'
                   )}
                 >
                   <p className="text-sm">{msg.text}</p>
                    <p className={cn(
                       'text-xs mt-1',
-                      isSender ? 'text-muted-foreground' : 'text-accent-foreground/70',
+                      isSender ? 'text-primary/70' : 'text-accent-foreground/70',
                       'text-right'
                     )}>
                       {msg.time}
