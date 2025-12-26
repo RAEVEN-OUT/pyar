@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Send, Smile, Mic, Square, Play, Pause } from 'lucide-react';
+import { Send, Smile, Mic, Play, Pause } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import {
@@ -99,9 +99,11 @@ function MoodDisplay({
 
 const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const waveformRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -113,32 +115,44 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
     }
     setIsPlaying(!isPlaying);
   };
+  
+  const handleWaveformClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+    const waveform = waveformRef.current;
+    if (!audio || !waveform || !duration) return;
+
+    const rect = waveform.getBoundingClientRect();
+    const clickPosition = e.clientX - rect.left;
+    const clickRatio = clickPosition / rect.width;
+    const newTime = clickRatio * duration;
+    
+    audio.currentTime = newTime;
+    setProgress(newTime);
+  };
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleTimeUpdate = () => {
-      setProgress(audio.currentTime);
-    };
-    const handleDurationChange = () => {
-      setDuration(audio.duration);
-    };
+    const handleTimeUpdate = () => setProgress(audio.currentTime);
+    const handleDurationChange = () => setDuration(audio.duration);
     const handleEnded = () => {
       setIsPlaying(false);
       setProgress(0);
+      audio.currentTime = 0;
     };
-
+    
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('durationchange', handleDurationChange);
     audio.addEventListener('ended', handleEnded);
+    audio.playbackRate = playbackRate;
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('durationchange', handleDurationChange);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, []);
+  }, [playbackRate]);
 
   const formatTime = (seconds: number) => {
     if (isNaN(seconds) || seconds === 0) return '0:00';
@@ -147,6 +161,14 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
     const sec = floorSeconds % 60;
     return `${min}:${sec.toString().padStart(2, '0')}`;
   };
+  
+  const togglePlaybackRate = () => {
+    const rates = [1, 1.5, 2, 0.5];
+    const currentIndex = rates.indexOf(playbackRate);
+    const nextRate = rates[(currentIndex + 1) % rates.length];
+    setPlaybackRate(nextRate);
+  };
+
 
   const progressPercentage = duration ? (progress / duration) * 100 : 0;
   
@@ -154,17 +176,22 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
   const waveInactiveColor = isSender ? 'hsl(var(--primary) / 0.3)' : 'hsl(var(--accent-foreground) / 0.3)';
 
   return (
-    <div className="flex items-center gap-2 w-48">
+    <div className="flex items-center gap-2 w-56">
       <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
-      <Button onClick={togglePlay} variant="ghost" size="icon" className={cn("h-8 w-8 rounded-full", isSender ? "text-primary hover:text-primary" : "text-accent-foreground hover:text-accent-foreground")}>
+      <Button onClick={togglePlay} variant="ghost" size="icon" className={cn("h-8 w-8 rounded-full flex-shrink-0", isSender ? "text-primary hover:text-primary" : "text-accent-foreground hover:text-accent-foreground")}>
         {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
       </Button>
-      <div className="flex-1 h-8 flex items-center" style={{'--wave-color': waveColor, '--wave-inactive-color': waveInactiveColor, '--progress': `${progressPercentage}%`} as React.CSSProperties}>
+      <div ref={waveformRef} onClick={handleWaveformClick} className="flex-1 h-8 flex items-center cursor-pointer" style={{'--wave-color': waveColor, '--wave-inactive-color': waveInactiveColor, '--progress': `${progressPercentage}%`} as React.CSSProperties}>
          <div className="w-full h-full relative bg-gradient-to-r from-[var(--wave-color)] to-[var(--wave-color)] bg-no-repeat bg-left" style={{'backgroundSize': 'var(--progress) 100%'}}>
              <div className="w-full h-full absolute top-0 left-0 bg-gradient-to-r from-[var(--wave-inactive-color)] to-[var(--wave-inactive-color)] bg-no-repeat bg-left" style={{'mask': `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M2 9.5C2 9.5 2.5 4 4 4C5.5 4 6.5 15 8 15C9.5 15 10.5 4 12 4C13.5 4 14.5 15 16 15C17.5 15 18.5 4 20 4C21.5 4 22.5 15 24 15C25.5 15 26.5 4 28 4C29.5 4 30.5 15 32 15C33.5 15 34.5 4 36 4C37.5 4 38.5 15 40 15C41.5 15 42.5 4 44 4C45.5 4 46.5 15 48 15C49.5 15 50.5 4 52 4C53.5 4 54.5 15 56 15C57.5 15 58.5 4 60 4C61.5 4 62.5 15 64 15C65.5 15 66.5 4 68 4C69.5 4 70.5 15 72 15C73.5 15 74.5 4 76 4C77.5 4 78.5 15 80 15C81.5 15 82.5 4 84 4C85.5 4 86.5 15 88 15C89.5 15 90.5 4 92 4C93.5 4 94.5 15 96 15C97.5 15 98.5 4 100 4' fill='none' stroke='black' stroke-width='2'/%3e%3c/svg%3e")`, 'maskSize': '100% 100%'}}></div>
         </div>
       </div>
-      <span className={cn("text-xs w-10", isSender ? "text-primary/70" : "text-accent-foreground/70")}>{formatTime(duration)}</span>
+      <div className="flex flex-col items-center justify-center w-12 flex-shrink-0">
+          <Button variant="link" size="sm" onClick={togglePlaybackRate} className={cn("h-auto p-0 text-xs", isSender ? "text-primary/80" : "text-accent-foreground/80")}>
+             {playbackRate}x
+          </Button>
+          <span className={cn("text-xs", isSender ? "text-primary/70" : "text-accent-foreground/70")}>{formatTime(duration - progress)}</span>
+      </div>
     </div>
   );
 };
@@ -249,7 +276,6 @@ export default function ChatPage() {
   const stopRecording = (send: boolean) => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
-      // The onstop event will handle the rest if 'send' is true
       if (!send) {
          if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
          if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
@@ -376,7 +402,10 @@ export default function ChatPage() {
                   )}
                 >
                   {msg.text && (
-                    <p className="text-sm text-card-foreground">
+                    <p className={cn(
+                      'text-sm',
+                      isSender ? 'text-card-foreground' : 'text-accent-foreground'
+                    )}>
                       {msg.text}
                     </p>
                   )}
@@ -413,7 +442,7 @@ export default function ChatPage() {
               <>
                 <Input
                   placeholder="Type your message..."
-                  className="pr-12 h-12 rounded-full bg-input focus-visible:ring-offset-0 focus-visible:ring-1"
+                  className="pr-24 h-12 rounded-full bg-input focus-visible:ring-offset-0 focus-visible:ring-1"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                 />
