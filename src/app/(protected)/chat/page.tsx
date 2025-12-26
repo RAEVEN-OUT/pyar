@@ -97,6 +97,13 @@ function MoodDisplay({
   );
 }
 
+const AudioPlayer = ({ src }: { src: string }) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  return <audio ref={audioRef} src={src} controls className="w-full" />;
+};
+
+
 export default function ChatPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -106,9 +113,11 @@ export default function ChatPage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   const [isRecording, setIsRecording] = useState(false);
-  const [hasMicPermission, setHasMicPermission] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingIntervalRef = useRef<NodeJS.Timer | null>(null);
 
   const [moods, setMoods] = useState<{ [key in User]: Mood }>({
     Him: { mood: 'Happy', emoji: '😊' },
@@ -116,14 +125,16 @@ export default function ChatPage() {
   });
 
   useEffect(() => {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(stream => {
-        setHasMicPermission(true);
-      })
-      .catch(err => {
-        setHasMicPermission(false);
-        console.error("Mic permission denied", err);
-      });
+    // Check for permission on mount, but don't request it.
+    navigator.permissions.query({ name: 'microphone' as PermissionName }).then((result) => {
+        if (result.state === 'granted') {
+            setHasMicPermission(true);
+        } else if (result.state === 'denied') {
+            setHasMicPermission(false);
+        } else {
+            setHasMicPermission(null); // Prompt needed
+        }
+    });
   }, []);
 
   const handleMoodChange = (newMood: Mood) => {
@@ -170,58 +181,83 @@ export default function ChatPage() {
     setShowEmojiPicker(false);
   };
   
-  const handleVoiceMessage = async () => {
-    if (!hasMicPermission) {
-      toast({
-        variant: 'destructive',
-        title: 'Microphone Access Denied',
-        description: 'Please enable microphone permissions in your browser settings.',
-      });
-      return;
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
     }
-    
+  }
+
+  const handleVoiceMessage = async () => {
     if (isRecording) {
-      mediaRecorderRef.current?.stop();
-      if(recordingTimeoutRef.current) {
-        clearTimeout(recordingTimeoutRef.current);
-      }
-      setIsRecording(false);
-    } else {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      const audioChunks: Blob[] = [];
-      
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-      };
-      
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        addMessage({ audioUrl });
-        stream.getTracks().forEach(track => track.stop());
-      };
-      
-      mediaRecorder.start();
-      setIsRecording(true);
-      
-      recordingTimeoutRef.current = setTimeout(() => {
-        if(mediaRecorderRef.current?.state === 'recording') {
-            mediaRecorderRef.current.stop();
+        stopRecording();
+        return;
+    }
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        setHasMicPermission(true);
+
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        const audioChunks: Blob[] = [];
+
+        mediaRecorder.onstart = () => {
+            setIsRecording(true);
+            setRecordingTime(0);
+
+            recordingIntervalRef.current = setInterval(() => {
+                setRecordingTime(prevTime => prevTime + 1);
+            }, 1000);
+
+            recordingTimeoutRef.current = setTimeout(() => {
+                stopRecording();
+                toast({
+                    title: "Recording limit reached",
+                    description: "Voice notes are limited to 60 seconds.",
+                });
+            }, 60000);
+        };
+        
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+            if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+            if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
             setIsRecording(false);
-            toast({
-              title: "Recording limit reached",
-              description: "Voice notes are limited to 60 seconds.",
-            })
-        }
-      }, 60000);
+            setRecordingTime(0);
+
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            addMessage({ audioUrl });
+            
+            // Important: Stop all media tracks to turn off the microphone light
+            stream.getTracks().forEach(track => track.stop());
+        };
+        
+        mediaRecorder.start();
+
+    } catch (err) {
+        setHasMicPermission(false);
+        console.error("Mic permission denied", err);
+        toast({
+            variant: 'destructive',
+            title: 'Microphone Access Denied',
+            description: 'Please enable microphone permissions in your browser settings to send voice notes.',
+        });
     }
   };
 
   const onEmojiClick = (emojiData: EmojiClickData, event: MouseEvent) => {
     setNewMessage((prevMessage) => prevMessage + emojiData.emoji);
   };
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const secs = (seconds % 60).toString().padStart(2, '0');
+    return `${minutes}:${secs}`;
+  }
   
   if (!user) {
     return null; // Or a loading state
@@ -237,7 +273,7 @@ export default function ChatPage() {
           onMoodChange={handleMoodChange}
         />
         <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 chat-bg-pattern no-scrollbar">
-          {!hasMicPermission && (
+          {hasMicPermission === false && (
              <Alert variant="destructive">
               <AlertTitle>Microphone Access Required</AlertTitle>
               <AlertDescription>
@@ -264,16 +300,12 @@ export default function ChatPage() {
                   )}
                 >
                   {msg.text && (
-                    <p className={cn(
-                        'text-sm',
-                        isSender ? 'text-primary' : 'text-accent-foreground'
-                      )}
-                    >
+                    <p className="text-sm text-card-foreground">
                       {msg.text}
                     </p>
                   )}
                   {msg.audioUrl && (
-                     <audio controls src={msg.audioUrl} className="w-full" />
+                     <AudioPlayer src={msg.audioUrl} />
                   )}
                    <p className={cn(
                       'text-xs mt-1',
@@ -290,14 +322,23 @@ export default function ChatPage() {
           })}
         </div>
         <form onSubmit={handleSendMessage} className="p-4 border-t bg-card rounded-b-lg">
-          <div className="relative">
-            <Input
-              placeholder="Type your message..."
-              className="pr-24 h-12 rounded-full bg-input"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              disabled={isRecording}
-            />
+          <div className="relative flex items-center">
+            {isRecording ? (
+               <div className="flex items-center justify-between w-full h-12 rounded-full bg-input px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                    <p className="text-sm font-mono text-muted-foreground">{formatTime(recordingTime)}</p>
+                  </div>
+                   <p className="text-sm text-muted-foreground">Recording...</p>
+               </div>
+            ) : (
+                <Input
+                placeholder="Type your message..."
+                className="pr-24 h-12 rounded-full bg-input focus-visible:ring-offset-0 focus-visible:ring-1"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+              />
+            )}
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                 <PopoverTrigger asChild>
@@ -312,7 +353,7 @@ export default function ChatPage() {
                <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleVoiceMessage}>
                  {isRecording ? <Square className="h-5 w-5 text-red-500 fill-red-500" /> : <Mic className="h-5 w-5 text-muted-foreground" />}
               </Button>
-              <Button type="submit" size="icon" className="rounded-full w-9 h-9" disabled={isRecording}>
+              <Button type="submit" size="icon" className="rounded-full w-9 h-9" disabled={isRecording || !newMessage}>
                 <Send className="h-5 w-5" />
               </Button>
             </div>
@@ -322,5 +363,3 @@ export default function ChatPage() {
     </div>
   );
 }
-
-    
