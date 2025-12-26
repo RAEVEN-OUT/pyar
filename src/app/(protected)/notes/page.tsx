@@ -205,7 +205,7 @@ export default function NotesPage() {
               ),
               day_today: 'bg-primary text-primary-foreground rounded-full',
               day_selected:
-                'bg-transparent text-foreground ring-2 ring-primary ring-offset-background !rounded-md focus:ring-primary',
+                'bg-transparent text-foreground ring-2 ring-primary ring-offset-background !rounded-full focus:ring-primary',
               day_disabled: 'text-muted-foreground opacity-50 cursor-default',
             }}
             modifiers={{
