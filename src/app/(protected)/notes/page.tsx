@@ -65,6 +65,7 @@ const NoteEditor = ({
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
+      // Auto-resize textarea when entering edit mode
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
@@ -86,8 +87,8 @@ const NoteEditor = ({
   const showEditButton = canEdit && noteUser === currentUser;
 
   return (
-    <Card className={cn('flex flex-col', colorClass)}>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+    <Card className={cn('flex flex-col items-start', colorClass)}>
+      <CardHeader className="flex flex-row items-center justify-between pb-2 w-full">
         <CardTitle className="text-lg font-headline">
           {noteUser === 'Him' ? 'His Note' : 'Hers Note'}
         </CardTitle>
@@ -103,7 +104,7 @@ const NoteEditor = ({
             )
         )}
       </CardHeader>
-      <CardContent className="flex flex-col flex-1 gap-2">
+      <CardContent className="w-full flex flex-col gap-2">
         {isEditing ? (
           <Textarea
             ref={textareaRef}
