@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
 import { NotebookText, Edit, Save } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isFuture, isSameMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -105,6 +105,7 @@ export default function NotesPage() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [notes, setNotes] = useState<AllNotes>(initialNotes);
 
   const dateString = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
@@ -148,13 +149,43 @@ export default function NotesPage() {
             mode="single"
             selected={selectedDate}
             onSelect={setSelectedDate}
+            month={currentMonth}
+            onMonthChange={setCurrentMonth}
             className="rounded-md"
             modifiers={{
-              hasNote: Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/')))
+              hasNote: Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/'))),
+              disabled: isFuture
             }}
             modifiersClassNames={{
               hasNote: 'font-bold text-primary',
             }}
+            components={{
+                Caption: ({ ...props }) => {
+                  const isCurrentMonth = isSameMonth(new Date(), props.displayMonth);
+                  return (
+                    <div className="flex justify-between items-center px-2">
+                       <Button
+                        aria-label="Go to previous month"
+                        variant="outline"
+                        className="h-7 w-7 p-0"
+                        onClick={() => setCurrentMonth(new Date(props.displayMonth.setMonth(props.displayMonth.getMonth() - 1)))}
+                       >
+                         <NotebookText className="h-4 w-4" />
+                       </Button>
+                       <span className="text-sm font-medium">{format(props.displayMonth, 'MMMM yyyy')}</span>
+                       <Button
+                        aria-label="Go to next month"
+                        variant="outline"
+                        className={cn("h-7 w-7 p-0", isCurrentMonth && "invisible")}
+                        onClick={() => setCurrentMonth(new Date(props.displayMonth.setMonth(props.displayMonth.getMonth() + 1)))}
+                        disabled={isCurrentMonth}
+                       >
+                         <NotebookText className="h-4 w-4" />
+                       </Button>
+                    </div>
+                  );
+                },
+              }}
           />
         </Card>
       </div>
