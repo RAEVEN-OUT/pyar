@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -126,7 +127,7 @@ function CustomCaption(props: CaptionProps) {
          >
            <ChevronLeft className="h-4 w-4" />
          </Button>
-         <h2 className="text-2xl font-headline">{format(props.displayMonth, 'MMMM yyyy')}</h2>
+         <h2 className="text-3xl font-headline">{format(props.displayMonth, 'MMMM yyyy')}</h2>
          <Button
           aria-label="Go to next month"
           variant="outline"
