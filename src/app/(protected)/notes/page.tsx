@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -61,6 +61,22 @@ const NoteEditor = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [text, setText] = useState(note?.content || '');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [isEditing]);
+  
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setText(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${e.target.scrollHeight}px`;
+    }
+  };
 
   const handleSave = () => {
     onSave(text);
@@ -90,11 +106,12 @@ const NoteEditor = ({
       <CardContent className="flex flex-col flex-1 gap-2">
         {isEditing ? (
           <Textarea
+            ref={textareaRef}
             value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none flex-1"
+            onChange={handleTextChange}
+            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-hidden"
             placeholder="Write your thoughts..."
-            rows={5}
+            rows={1}
           />
         ) : (
           <div className="flex-1 p-2 text-sm whitespace-pre-wrap font-body">
