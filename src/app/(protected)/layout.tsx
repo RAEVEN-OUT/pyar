@@ -75,7 +75,7 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
 
   return (
       <SidebarProvider>
-        <Sidebar>
+        <Sidebar collapsible="none">
           <SidebarContent>
             <SidebarHeader>
               <Logo className="text-3xl" />
@@ -126,7 +126,7 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
             </SidebarFooter>
           </SidebarContent>
         </Sidebar>
-        <SidebarInset>
+        <SidebarInset className="pt-16 md:pt-0">
           <CherryTrigger />
           {children}
         </SidebarInset>
