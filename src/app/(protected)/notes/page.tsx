@@ -8,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { NotebookText, Edit, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import { isFuture, isSameMonth, isToday, format, add, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 
 type Note = {
@@ -67,34 +66,38 @@ const NoteEditor = ({
     setText(note?.content || '');
   }, [note]);
 
+  const autoResizeTextarea = (el: HTMLTextAreaElement) => {
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
   useEffect(() => {
     if (isEditing && textareaRef.current) {
-      // Auto-resize textarea when entering edit mode or when text changes
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      autoResizeTextarea(textareaRef.current);
     }
-  }, [isEditing, text]);
+  }, [isEditing]);
   
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${e.target.scrollHeight}px`;
-    }
+    autoResizeTextarea(e.target);
   };
 
   const handleSave = () => {
     onSave(text);
     setIsEditing(false);
   };
+  
+  const handleEdit = () => {
+    setIsEditing(true);
+  }
 
   const showEditButton = canEdit && noteUser === currentUser;
 
   return (
-    <Card className={cn('flex flex-col items-start', colorClass)}>
+    <Card className={cn('flex flex-col', colorClass)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2 w-full">
         <CardTitle className="text-lg font-headline">
-          {noteUser === 'Him' ? 'His Note' : 'Hers Note'}
+          {noteUser === 'Him' ? 'His Note' : 'Her Note'}
         </CardTitle>
         {showEditButton && (
             isEditing ? (
@@ -102,29 +105,29 @@ const NoteEditor = ({
                 <Save className="h-4 w-4" />
             </Button>
             ) : (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsEditing(true)}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleEdit}>
                 <Edit className="h-4 w-4" />
             </Button>
             )
         )}
       </CardHeader>
-      <CardContent className="w-full flex-1 flex flex-col gap-2">
+      <CardContent className="flex flex-col flex-1 w-full gap-2">
         {isEditing ? (
           <Textarea
             ref={textareaRef}
             value={text}
             onChange={handleTextChange}
-            className="w-full bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-hidden flex-1"
+            className="w-full bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-hidden flex-1 p-2 text-sm whitespace-pre-wrap font-body"
             placeholder="Write your thoughts..."
             rows={1}
           />
         ) : (
-          <div className="flex-1 flex flex-col">
+          <div className="flex flex-col flex-1">
             <div className="flex-1 p-2 text-sm whitespace-pre-wrap font-body">
               {note?.content || <p className="text-muted-foreground italic">No note yet.</p>}
             </div>
             {note && (
-                <p className="text-xs text-muted-foreground self-end px-2 pb-2">
+                <p className="text-xs text-muted-foreground self-end px-2">
                     Last updated: {note.lastUpdated}
                 </p>
             )}
@@ -255,7 +258,7 @@ export default function NotesPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-full p-4 gap-4 md:p-8">
-      <div className="flex flex-col items-center gap-4 md:w-72">
+      <div className="flex flex-col items-center gap-4 md:w-72 flex-shrink-0">
         <div className="flex items-center gap-2 text-2xl font-headline text-primary self-start">
            <NotebookText className="h-8 w-8 text-primary" />
            Our Shared Notes
@@ -267,7 +270,7 @@ export default function NotesPage() {
         />
       </div>
 
-      <div className="flex-1 flex flex-col gap-4">
+      <div className="flex-1 flex flex-col gap-4 min-h-0">
         <h2 className="text-xl font-headline text-primary">
           {format(selectedDate, 'MMMM d, yyyy')}
         </h2>
