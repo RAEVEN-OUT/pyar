@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Send, Smile, Mic } from 'lucide-react';
+import { Send, Smile, Mic, Square } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import {
@@ -14,6 +14,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 type Mood = {
   mood: string;
@@ -34,7 +36,8 @@ const moodOptions: Mood[] = [
 type Message = {
   id: number;
   sender: User;
-  text: string;
+  text?: string;
+  audioUrl?: string;
   time: string;
 };
 
@@ -63,7 +66,6 @@ function MoodDisplay({
 
   return (
     <div className="flex justify-between items-center p-4 border-b bg-card rounded-t-lg">
-      {/* Other User's Mood (Left) */}
       <div className="flex items-center gap-3">
         <span className="text-4xl">{otherUserMood.emoji}</span>
         <div>
@@ -72,7 +74,6 @@ function MoodDisplay({
         </div>
       </div>
 
-      {/* Current User's Mood (Right) - Interactive */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <div className="flex items-center gap-3 text-right cursor-pointer rounded-md p-2 hover:bg-muted transition-colors">
@@ -98,15 +99,32 @@ function MoodDisplay({
 
 export default function ChatPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [newMessage, setNewMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  
+  const [isRecording, setIsRecording] = useState(false);
+  const [hasMicPermission, setHasMicPermission] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [moods, setMoods] = useState<{ [key in User]: Mood }>({
     Him: { mood: 'Happy', emoji: '😊' },
     Her: { mood: 'Love u', emoji: '🥰' },
   });
+
+  useEffect(() => {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        setHasMicPermission(true);
+      })
+      .catch(err => {
+        setHasMicPermission(false);
+        console.error("Mic permission denied", err);
+      });
+  }, []);
 
   const handleMoodChange = (newMood: Mood) => {
     if (user) {
@@ -129,24 +147,76 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newMessage.trim() === '' || !user) return;
-
-    const message: Message = {
+  const addMessage = (message: Omit<Message, 'id' | 'time'>) => {
+     if (!user) return;
+     const newMessage: Message = {
       id: messages.length + 1,
       sender: user,
-      text: newMessage.trim(),
       time: new Date().toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: 'numeric',
         hour12: true,
       }),
+      ...message,
     };
+    setMessages((prev) => [...prev, newMessage]);
+  }
 
-    setMessages((prev) => [...prev, message]);
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newMessage.trim() === '' || !user) return;
+    addMessage({ text: newMessage.trim() });
     setNewMessage('');
     setShowEmojiPicker(false);
+  };
+  
+  const handleVoiceMessage = async () => {
+    if (!hasMicPermission) {
+      toast({
+        variant: 'destructive',
+        title: 'Microphone Access Denied',
+        description: 'Please enable microphone permissions in your browser settings.',
+      });
+      return;
+    }
+    
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      if(recordingTimeoutRef.current) {
+        clearTimeout(recordingTimeoutRef.current);
+      }
+      setIsRecording(false);
+    } else {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      const audioChunks: Blob[] = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
+      
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        addMessage({ audioUrl });
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      
+      recordingTimeoutRef.current = setTimeout(() => {
+        if(mediaRecorderRef.current?.state === 'recording') {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            toast({
+              title: "Recording limit reached",
+              description: "Voice notes are limited to 60 seconds.",
+            })
+        }
+      }, 60000);
+    }
   };
 
   const onEmojiClick = (emojiData: EmojiClickData, event: MouseEvent) => {
@@ -167,6 +237,14 @@ export default function ChatPage() {
           onMoodChange={handleMoodChange}
         />
         <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 chat-bg-pattern no-scrollbar">
+          {!hasMicPermission && (
+             <Alert variant="destructive">
+              <AlertTitle>Microphone Access Required</AlertTitle>
+              <AlertDescription>
+                To send voice notes, please enable microphone permissions in your browser settings.
+              </AlertDescription>
+            </Alert>
+          )}
           {messages.map((msg) => {
             const isSender = msg.sender === user;
             return (
@@ -185,13 +263,18 @@ export default function ChatPage() {
                       : 'bg-accent rounded-bl-none'
                   )}
                 >
-                  <p className={cn(
-                      'text-sm',
-                      isSender ? 'text-primary' : 'text-accent-foreground'
-                    )}
-                  >
-                    {msg.text}
-                  </p>
+                  {msg.text && (
+                    <p className={cn(
+                        'text-sm',
+                        isSender ? 'text-primary' : 'text-accent-foreground'
+                      )}
+                    >
+                      {msg.text}
+                    </p>
+                  )}
+                  {msg.audioUrl && (
+                     <audio controls src={msg.audioUrl} className="w-full" />
+                  )}
                    <p className={cn(
                       'text-xs mt-1',
                        isSender
@@ -213,11 +296,12 @@ export default function ChatPage() {
               className="pr-24 h-12 rounded-full bg-input"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
+              disabled={isRecording}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                 <PopoverTrigger asChild>
-                  <Button type="button" variant="ghost" size="icon" className="rounded-full">
+                  <Button type="button" variant="ghost" size="icon" className="rounded-full" disabled={isRecording}>
                     <Smile className="h-5 w-5 text-muted-foreground" />
                   </Button>
                 </PopoverTrigger>
@@ -225,10 +309,10 @@ export default function ChatPage() {
                   <EmojiPicker onEmojiClick={onEmojiClick} />
                 </PopoverContent>
               </Popover>
-               <Button type="button" variant="ghost" size="icon" className="rounded-full">
-                <Mic className="h-5 w-5 text-muted-foreground" />
+               <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleVoiceMessage}>
+                 {isRecording ? <Square className="h-5 w-5 text-red-500 fill-red-500" /> : <Mic className="h-5 w-5 text-muted-foreground" />}
               </Button>
-              <Button type="submit" size="icon" className="rounded-full w-9 h-9">
+              <Button type="submit" size="icon" className="rounded-full w-9 h-9" disabled={isRecording}>
                 <Send className="h-5 w-5" />
               </Button>
             </div>
@@ -238,3 +322,5 @@ export default function ChatPage() {
     </div>
   );
 }
+
+    
