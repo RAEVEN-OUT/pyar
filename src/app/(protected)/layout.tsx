@@ -1,8 +1,8 @@
 'use client';
 
+import React from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import React, { Children, cloneElement } from 'react';
 import {
   Sidebar,
   SidebarProvider,
@@ -47,7 +47,7 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const { tasks } = useTasks();
-  const totalTasks = tasks.length;
+  const incompleteTasks = tasks.filter(task => !task.completedAt).length;
 
   return (
       <SidebarProvider>
@@ -67,8 +67,8 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
                   >
                     <item.icon />
                     <span>{item.label}</span>
-                    {item.href === '/todo' && (
-                      <Badge className="ml-auto group-data-[collapsible=icon]:hidden">{totalTasks}</Badge>
+                    {item.href === '/todo' && incompleteTasks > 0 && (
+                      <Badge className="ml-auto group-data-[collapsible=icon]:hidden">{incompleteTasks}</Badge>
                     )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
