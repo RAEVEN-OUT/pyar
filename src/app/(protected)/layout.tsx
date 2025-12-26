@@ -47,10 +47,10 @@ const navItems = [
 
 // Mock data for todo count - in a real app this would come from a data store
 const initialTasks: Task[] = [
-  { id: 1, text: 'Book that restaurant for Friday night', completed: false, createdBy: 'Her' },
-  { id: 2, text: 'Pick up dry cleaning', completed: false, createdBy: 'Him' },
-  { id: 3, text: 'Plan our next weekend trip', completed: true, createdBy: 'Her' },
-  { id: 4, text: 'Get a gift for my mom\'s birthday', completed: false, createdBy: 'Him' },
+  { id: 1, text: 'Book that restaurant for Friday night', completedAt: null, createdBy: 'Her', createdAt: '24/07/2024' },
+  { id: 2, text: 'Pick up dry cleaning', completedAt: null, createdBy: 'Him', createdAt: '25/07/2024' },
+  { id: 3, text: 'Plan our next weekend trip', completedAt: '2024-07-24', createdBy: 'Her', createdAt: '23/07/2024' },
+  { id: 4, text: 'Get a gift for my mom\'s birthday', completedAt: null, createdBy: 'Him', createdAt: '26/07/2024' },
 ];
 
 
@@ -66,7 +66,7 @@ export default function ProtectedLayout({
   // In a real app, you'd fetch this from a shared state/context.
   // For now, we are just mocking it to demonstrate the badge.
   const [tasks, setTasks] = useState(initialTasks);
-  const incompleteTasks = tasks.filter(t => !t.completed).length;
+  const totalTasks = tasks.length;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -100,8 +100,8 @@ export default function ProtectedLayout({
                 >
                   <item.icon />
                   <span>{item.label}</span>
-                   {item.href === '/todo' && incompleteTasks > 0 && (
-                    <Badge className="ml-auto group-data-[collapsible=icon]:hidden">{incompleteTasks}</Badge>
+                   {item.href === '/todo' && (
+                    <Badge className="ml-auto group-data-[collapsible=icon]:hidden">{totalTasks}</Badge>
                   )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
