@@ -55,7 +55,7 @@ function CherryTrigger() {
     <Button
       variant="ghost"
       size="icon"
-      className="absolute top-4 left-4 z-50 text-primary hover:text-primary/90 data-[state=expanded]:hidden"
+      className="fixed top-4 left-4 z-50 text-primary hover:text-primary/90 md:absolute"
       onClick={toggleSidebar}
     >
       <CherryIcon className="h-8 w-8" />
@@ -72,7 +72,6 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
 
   return (
       <SidebarProvider>
-        <CherryTrigger />
         <Sidebar>
           <SidebarContent>
             <SidebarHeader className="justify-between">
@@ -125,9 +124,12 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
             </SidebarFooter>
           </SidebarContent>
         </Sidebar>
-        <SidebarInset>
-          {children}
-        </SidebarInset>
+        <div className="relative flex min-h-svh flex-1 flex-col">
+          <CherryTrigger />
+          <SidebarInset>
+            {children}
+          </SidebarInset>
+        </div>
       </SidebarProvider>
   );
 }
