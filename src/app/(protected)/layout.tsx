@@ -27,6 +27,7 @@ import {
   Settings,
   LogOut,
   Heart,
+  PanelLeft,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -55,14 +56,16 @@ function CherryTrigger() {
   }
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="fixed top-4 left-4 z-50 text-primary hover:text-primary/90"
-      onClick={toggleSidebar}
-    >
-      <CherryIcon className="h-8 w-8" />
-    </Button>
+    <div className="p-4 md:hidden">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-primary hover:text-primary/90"
+        onClick={toggleSidebar}
+      >
+        <CherryIcon className="h-8 w-8" />
+      </Button>
+    </div>
   );
 }
 
@@ -72,6 +75,7 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { tasks } = useTasks();
   const incompleteTasks = tasks.filter(task => !task.completedAt).length;
+  const { toggleSidebar } = useSidebar();
 
   return (
       <SidebarProvider>
@@ -79,6 +83,7 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
           <SidebarContent>
             <SidebarHeader>
               <Logo className="text-3xl" />
+              <SidebarTrigger onClick={toggleSidebar} className="data-[state=expanded]:hidden" />
             </SidebarHeader>
             <SidebarMenu className="flex-1">
               {navItems.map((item) => (
@@ -126,10 +131,12 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
             </SidebarFooter>
           </SidebarContent>
         </Sidebar>
-        <SidebarInset className="pt-16 md:pt-0">
+        <div className="flex flex-col flex-1">
           <CherryTrigger />
-          {children}
-        </SidebarInset>
+          <SidebarInset>
+            {children}
+          </SidebarInset>
+        </div>
       </SidebarProvider>
   );
 }
