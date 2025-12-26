@@ -37,17 +37,20 @@ type CalendarEvent = {
   date: Date;
   title: string;
   description?: string;
-  emoji?: string;
+};
+
+type CalendarSticker = {
+  [date: string]: string; // date format: 'yyyy-MM-dd'
 };
 
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [stickers, setStickers] = useState<CalendarSticker>({});
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [eventTitle, setEventTitle] = useState('');
   const [eventDesc, setEventDesc] = useState('');
-  const [eventEmoji, setEventEmoji] = useState('');
 
   const firstDayOfMonth = startOfMonth(currentDate);
   const lastDayOfMonth = endOfMonth(currentDate);
@@ -74,12 +77,14 @@ export default function CalendarPage() {
     setSelectedDate(day);
     setEventTitle('');
     setEventDesc('');
-    setEventEmoji('');
     setPopoverOpen(true);
   };
 
   const onEmojiClick = (emojiData: EmojiClickData) => {
-    setEventEmoji(emojiData.emoji);
+    if (selectedDate) {
+      const dateKey = format(selectedDate, 'yyyy-MM-dd');
+      setStickers((prev) => ({ ...prev, [dateKey]: emojiData.emoji }));
+    }
   };
 
   const handleAddEvent = () => {
@@ -89,7 +94,6 @@ export default function CalendarPage() {
         date: selectedDate,
         title: eventTitle,
         description: eventDesc,
-        emoji: eventEmoji,
       };
       setEvents([...events, newEvent]);
       setPopoverOpen(false);
@@ -129,8 +133,10 @@ export default function CalendarPage() {
             ))}
 
             {days.map((day) => {
+              const dateKey = format(day, 'yyyy-MM-dd');
               const dayEvents = events.filter((e) => isSameDay(e.date, day));
-              const stickerEmoji = dayEvents.length > 0 ? dayEvents[0].emoji : null;
+              const stickerEmoji = stickers[dateKey];
+              const selectedSticker = selectedDate ? stickers[format(selectedDate, 'yyyy-MM-dd')] : undefined;
 
               return (
                 <Popover
@@ -183,30 +189,17 @@ export default function CalendarPage() {
                   <PopoverContent className="w-80">
                     <div className="grid gap-4">
                       <div className="space-y-2">
-                        <h4 className="font-medium leading-none">Add event</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Set details for your event on{' '}
-                          {format(day, 'MMMM d')}.
-                        </p>
-                      </div>
-                      <div className="grid gap-2">
-                        <div className="flex items-center gap-2">
-                          <Input
-                            id="title"
-                            placeholder="Event title"
-                            value={eventTitle}
-                            onChange={(e) => setEventTitle(e.target.value)}
-                            className="col-span-3"
-                          />
-                          <Popover>
+                        <div className="flex justify-between items-center">
+                           <h4 className="font-medium leading-none">Add details</h4>
+                           <Popover>
                             <PopoverTrigger asChild>
                               <Button
                                 variant="outline"
                                 size="icon"
                                 className="h-10 w-10"
                               >
-                                {eventEmoji ? (
-                                  <span>{eventEmoji}</span>
+                                {selectedSticker ? (
+                                  <span>{selectedSticker}</span>
                                 ) : (
                                   <Smile className="h-5 w-5" />
                                 )}
@@ -217,6 +210,19 @@ export default function CalendarPage() {
                             </PopoverContent>
                           </Popover>
                         </div>
+                        <p className="text-sm text-muted-foreground">
+                          Add an event or a sticker for{' '}
+                          {format(day, 'MMMM d')}.
+                        </p>
+                      </div>
+                      <div className="grid gap-2">
+                        <Input
+                          id="title"
+                          placeholder="Event title"
+                          value={eventTitle}
+                          onChange={(e) => setEventTitle(e.target.value)}
+                          className="col-span-3"
+                        />
                         <Textarea
                           id="description"
                           placeholder="Event description (optional)"
@@ -224,7 +230,7 @@ export default function CalendarPage() {
                           onChange={(e) => setEventDesc(e.target.value)}
                         />
                       </div>
-                      <Button onClick={handleAddEvent}>Add Event</Button>
+                      <Button onClick={handleAddEvent} disabled={!eventTitle}>Add Event</Button>
                     </div>
                   </PopoverContent>
                 </Popover>
