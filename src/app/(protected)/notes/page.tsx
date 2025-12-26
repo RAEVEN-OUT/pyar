@@ -239,7 +239,7 @@ export default function NotesPage() {
         />
       </div>
 
-      <div className="flex-1 flex flex-col gap-4">
+      <div className="flex-1 flex flex-col gap-4 min-h-0">
         <h2 className="text-xl font-headline text-primary">
           {format(selectedDate, 'MMMM d, yyyy')}
         </h2>
