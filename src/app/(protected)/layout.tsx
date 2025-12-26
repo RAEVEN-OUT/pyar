@@ -16,6 +16,7 @@ import {
   SidebarFooter,
   SidebarTrigger,
   SidebarRail,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
@@ -35,7 +36,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { TaskProvider, useTasks } from '@/context/task-context';
 import { CherryIcon } from '@/components/icons/cherry-icon';
-import { useSidebar } from '@/components/ui/sidebar';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 
 const navItems = [
@@ -48,15 +49,18 @@ const navItems = [
 ];
 
 function CherryTrigger() {
-  const { toggleSidebar, state } = useSidebar();
-  if (state === 'expanded') {
+  const { toggleSidebar } = useSidebar();
+  const isMobile = useIsMobile();
+
+  if (!isMobile) {
     return null;
   }
+
   return (
     <Button
       variant="ghost"
       size="icon"
-      className="fixed top-4 left-4 z-50 text-primary hover:text-primary/90 md:absolute"
+      className="fixed top-4 left-4 z-50 text-primary hover:text-primary/90"
       onClick={toggleSidebar}
     >
       <CherryIcon className="h-8 w-8" />
