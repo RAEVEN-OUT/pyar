@@ -271,7 +271,14 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-7 w-7", className)}
+      className={cn(
+        'h-7 w-7 transition-transform duration-200 ease-in-out',
+        'group-data-[state=expanded]/sidebar-wrapper:rotate-180',
+        'group-data-[collapsible=icon]/sidebar-wrapper:absolute',
+        'group-data-[collapsible=icon]/sidebar-wrapper:left-2 group-data-[collapsible=icon]/sidebar-wrapper:top-2',
+        'group-data-[state=collapsed]/sidebar-wrapper:group-data-[collapsible=icon]/sidebar-wrapper:left-[3.5rem]',
+        className
+      )}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
@@ -358,7 +365,7 @@ const SidebarHeader = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn("flex items-center justify-between p-2", className)}
       {...props}
     />
   )
@@ -492,7 +499,7 @@ const SidebarMenu = React.forwardRef<
   <ul
     ref={ref}
     data-sidebar="menu"
-    className={cn("flex w-full min-w-0 flex-col gap-1", className)}
+    className={cn("flex w-full min-w-0 flex-col gap-1 p-2 pt-0", className)}
     {...props}
   />
 ))

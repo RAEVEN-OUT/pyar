@@ -55,6 +55,7 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
           <SidebarContent>
             <SidebarHeader>
               <Logo className="text-3xl" />
+              <SidebarTrigger />
             </SidebarHeader>
             <SidebarMenu className="flex-1">
               {navItems.map((item) => (
@@ -103,9 +104,6 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
           </SidebarContent>
         </Sidebar>
         <SidebarInset>
-          <div className="absolute left-4 top-4">
-            <SidebarTrigger />
-          </div>
           {children}
         </SidebarInset>
       </SidebarProvider>
