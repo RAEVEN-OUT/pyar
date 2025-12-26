@@ -64,12 +64,16 @@ const NoteEditor = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    setText(note?.content || '');
+  }, [note]);
+
+  useEffect(() => {
     if (isEditing && textareaRef.current) {
-      // Auto-resize textarea when entering edit mode
+      // Auto-resize textarea when entering edit mode or when text changes
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
-  }, [isEditing]);
+  }, [isEditing, text]);
   
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
@@ -104,25 +108,27 @@ const NoteEditor = ({
             )
         )}
       </CardHeader>
-      <CardContent className="w-full flex flex-col gap-2">
+      <CardContent className="w-full flex-1 flex flex-col gap-2">
         {isEditing ? (
           <Textarea
             ref={textareaRef}
             value={text}
             onChange={handleTextChange}
-            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-hidden"
+            className="w-full bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-hidden flex-1"
             placeholder="Write your thoughts..."
             rows={1}
           />
         ) : (
-          <div className="flex-1 p-2 text-sm whitespace-pre-wrap font-body">
-            {note?.content || <p className="text-muted-foreground italic">No note yet.</p>}
+          <div className="flex-1 flex flex-col">
+            <div className="flex-1 p-2 text-sm whitespace-pre-wrap font-body">
+              {note?.content || <p className="text-muted-foreground italic">No note yet.</p>}
+            </div>
+            {note && (
+                <p className="text-xs text-muted-foreground self-end px-2 pb-2">
+                    Last updated: {note.lastUpdated}
+                </p>
+            )}
           </div>
-        )}
-         {note && !isEditing && (
-            <p className="text-xs text-muted-foreground self-end">
-                Last updated: {note.lastUpdated}
-            </p>
         )}
       </CardContent>
     </Card>
@@ -139,6 +145,10 @@ const NotesCalendar = ({
   notes: AllNotes;
 }) => {
   const [currentDate, setCurrentDate] = useState(selectedDate);
+
+  useEffect(() => {
+    setCurrentDate(selectedDate);
+  }, [selectedDate]);
 
   const firstDayOfMonth = startOfMonth(currentDate);
   const lastDayOfMonth = endOfMonth(currentDate);
