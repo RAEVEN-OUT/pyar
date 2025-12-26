@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
 import { NotebookText, Edit, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, isFuture, isSameMonth, isToday } from 'date-fns';
@@ -11,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { DayPicker, CaptionProps } from 'react-day-picker';
+import { Calendar } from '@/components/ui/calendar';
 
 type Note = {
   content: string;
@@ -183,7 +183,7 @@ export default function NotesPage() {
             showOutsideDays={false}
             className="rounded-md"
             classNames={{
-              head_cell: 'w-9 text-muted-foreground rounded-md font-normal text-[0.8rem]',
+              head_cell: "text-muted-foreground rounded-md font-normal text-[0.8rem]",
             }}
             modifiers={{
               hasNote: Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/'))),
