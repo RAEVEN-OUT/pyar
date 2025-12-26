@@ -123,7 +123,7 @@ function CustomCaption(props: CaptionProps) {
          >
            <ChevronLeft className="h-4 w-4" />
          </Button>
-         <h2 className="text-sm font-medium">{format(props.displayMonth, 'MMMM yyyy')}</h2>
+         <h2 className="text-xl font-medium">{format(props.displayMonth, 'MMMM yyyy')}</h2>
          <Button
           aria-label="Go to next month"
           variant="outline"
@@ -192,11 +192,11 @@ export default function NotesPage() {
             className="rounded-md"
             classNames={{
               head_cell: 'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
-              cell: 'h-9 w-9 text-center text-sm p-0 relative first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md',
+              cell: 'h-9 w-9 text-center text-sm p-0 relative',
               day: 'h-9 w-9 p-0 font-normal aria-selected:opacity-100',
               day_today: 'bg-primary text-primary-foreground rounded-full',
-              day_selected: 'bg-primary/20 text-primary-foreground rounded-md',
-              day_disabled: 'text-muted-foreground opacity-50 cursor-not-allowed [&:not(.day-today)]:hover:bg-transparent',
+              day_selected: 'bg-transparent text-primary-foreground rounded-md ring-2 ring-primary ring-offset-background focus:ring-primary',
+              day_disabled: 'text-muted-foreground opacity-30 cursor-default hover:bg-transparent',
             }}
             modifiers={{
               hasNote: Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/'))),
