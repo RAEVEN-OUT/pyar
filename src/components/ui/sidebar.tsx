@@ -216,11 +216,12 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={ref}
-        className="group peer hidden md:block text-sidebar-foreground"
+        className={cn("group peer hidden md:block text-sidebar-foreground", className)}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
+        {...props}
       >
         {/* This is what handles the sidebar gap on desktop */}
         <div
@@ -242,10 +243,9 @@ const Sidebar = React.forwardRef<
             // Adjust the padding for floating and inset variants.
             variant === "floating" || variant === "inset"
               ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
-            className
+              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l"
+           
           )}
-          {...props}
         >
           <div
             data-sidebar="sidebar"
@@ -264,7 +264,7 @@ const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar, state } = useSidebar()
 
   return (
     <Button
@@ -274,10 +274,12 @@ const SidebarTrigger = React.forwardRef<
       size="icon"
       className={cn(
         'h-7 w-7 transition-transform duration-200 ease-in-out',
-        'group-data-[state=expanded]/sidebar-wrapper:rotate-180',
-        'group-data-[collapsible=icon]/sidebar-wrapper:absolute',
-        'group-data-[collapsible=icon]/sidebar-wrapper:left-2 group-data-[collapsible=icon]/sidebar-wrapper:top-2',
-        'group-data-[state=collapsed]/sidebar-wrapper:group-data-[collapsible=icon]/sidebar-wrapper:left-[3.5rem]',
+        state === "expanded" && 'rotate-180',
+         'absolute top-3 z-50',
+         'group-data-[side=left]/sidebar-wrapper:left-[calc(var(--sidebar-width)_-_2.25rem)]',
+         'group-data-[side=right]/sidebar-wrapper:right-[calc(var(--sidebar-width)_-_2.25rem)]',
+         'group-data-[state=collapsed]/sidebar-wrapper:group-data-[side=left]/sidebar-wrapper:left-[calc(var(--sidebar-width-icon)_-_2.25rem)]',
+         'group-data-[state=collapsed]/sidebar-wrapper:group-data-[side=right]/sidebar-wrapper:right-[calc(var(--sidebar-width-icon)_-_2.25rem)]',
         className
       )}
       onClick={(event) => {

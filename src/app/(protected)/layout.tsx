@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -14,6 +15,7 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarFooter,
+  SidebarRail,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
@@ -52,6 +54,7 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
   return (
       <SidebarProvider>
         <Sidebar>
+          <SidebarRail />
           <SidebarContent>
             <SidebarHeader>
               <Logo className="text-3xl" />
