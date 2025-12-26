@@ -87,7 +87,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen flex-col pt-16 md:pt-4 pb-4 px-4">
-      <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-background rounded-lg shadow-md border">
+      <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-transparent rounded-lg shadow-md border-0">
         <MoodDisplay />
         <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 chat-bg-pattern">
           {messages.map((msg) => {
@@ -112,13 +112,13 @@ export default function ChatPage() {
                     'max-w-xs md:max-w-md rounded-2xl p-3 shadow-sm',
                     isSender
                       ? 'bg-card text-primary rounded-br-none'
-                      : 'bg-accent text-[hsl(var(--background))] rounded-bl-none filter drop-shadow-sm'
+                      : 'bg-accent text-accent-foreground rounded-bl-none'
                   )}
                 >
                   <p className="text-sm">{msg.text}</p>
                    <p className={cn(
                       'text-xs mt-1',
-                      isSender ? 'text-muted-foreground' : 'text-[hsl(var(--background))] opacity-70',
+                      isSender ? 'text-muted-foreground' : 'text-accent-foreground/70',
                       'text-right'
                     )}>
                       {msg.time}
@@ -139,7 +139,7 @@ export default function ChatPage() {
           <div className="relative">
             <Input
               placeholder="Type your message..."
-              className="pr-24 h-12 rounded-full"
+              className="pr-24 h-12 rounded-full bg-input"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
             />

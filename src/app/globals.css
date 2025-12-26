@@ -4,32 +4,32 @@
 
 @layer base {
   :root {
-    --background: 0 100% 88%; /* #FFC4C4 light rose */
+    --background: 0 100% 88%; /* #FFC4C4 */
     --foreground: 20 15% 25%; /* Soft charcoal */
 
-    --card: 39 100% 95%; /* #FFF5E4 light beige */
+    --card: 39 100% 95%; /* #FFF5E4 */
     --card-foreground: 20 15% 25%;
 
     --popover: 39 100% 95%;
     --popover-foreground: 20 15% 25%;
 
-    --primary: 339 79% 29%; /* #850E33 deep rose */
-    --primary-foreground: 39 100% 95%; /* #FFF5E4 light beige */
+    --primary: 339 79% 29%; /* #850E33 */
+    --primary-foreground: 39 100% 95%; /* #FFF5E4 */
 
-    --secondary: 348 81% 80%; /* Lighter version of accent */
+    --secondary: 348 81% 80%;
     --secondary-foreground: 339 79% 29%;
 
     --muted: 0 100% 92%;
     --muted-foreground: 20 10% 50%;
 
-    --accent: 348 81% 67%; /* #EE6983 moderate rose */
-    --accent-foreground: 39 100% 95%;
+    --accent: 348 81% 67%; /* #EE6983 */
+    --accent-foreground: 0 100% 88%; /* #FFC4C4 */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 33% 82%; /* A muted rose for borders */
-    --input: 0 0% 100%; /* White inputs */
+    --border: 0 33% 82%;
+    --input: 39 100% 95%; /* #FFF5E4 */
     --ring: 339 79% 29%;
 
     --radius: 0.75rem;
@@ -87,12 +87,7 @@
 
 @layer utilities {
   .chat-bg-pattern {
-    /* As we don't have the image, use the sending bubble color as a soft background */
-    background-color: hsl(var(--card));
-    /* When you have the heart-pattern.png in /public: */
-    /* background-image: url('/heart-pattern.png');
-    background-repeat: repeat;
-    background-size: 100px;
-    opacity: 0.1; */
+    /* TODO: Replace with the heart-pattern.png once available in /public */
+    background-color: hsl(var(--background) / 0.5);
   }
 }
