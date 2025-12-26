@@ -46,14 +46,24 @@ type Message = {
   replyTo?: Message;
 };
 
-const initialMessages: Message[] = [
+const initialMessagesData: Omit<Message, 'replyTo'>[] = [
   { id: 1, sender: 'Her', text: 'Hey! How was your day? 🥰', time: '5:30 PM', reactions: { '❤️': ['Him'] } },
   { id: 2, sender: 'Him', text: 'It was good! Just got home. Was thinking about you.', time: '5:31 PM' },
   { id: 3, sender: 'Him', text: 'What are you up to?', time: '5:31 PM' },
   { id: 4, sender: 'Her', text: 'Aww, same! Just relaxing. Wanna watch a movie tonight?', time: '5:32 PM' },
-  { id: 5, sender: 'Him', text: 'Absolutely! Pick one. I am getting snacks ready 😝', time: '5:33 PM', reactions: { '🥰': ['Her'] }, replyTo: initialMessages[3] },
+  { id: 5, sender: 'Him', text: 'Absolutely! Pick one. I am getting snacks ready 😝', time: '5:33 PM', reactions: { '🥰': ['Her'] } },
   { id: 6, sender: 'Her', text: 'Sounds perfect! ❤️', time: '5:34 PM' },
 ];
+
+const initialMessages: Message[] = initialMessagesData.map(m => ({...m}));
+const messageToReplyTo = initialMessages.find(m => m.id === 4);
+if (messageToReplyTo) {
+  const messageWithReply = initialMessages.find(m => m.id === 5);
+  if (messageWithReply) {
+    messageWithReply.replyTo = messageToReplyTo;
+  }
+}
+
 
 const reactionEmojis = ['❤️', '😂', '🥰', '😍', '😢', '😮'];
 
@@ -507,7 +517,7 @@ export default function ChatPage() {
                               )}
                             >
                               {msg.replyTo && (
-                                <a
+                                <div
                                   onClick={() => handleScrollToMessage(msg.replyTo!.id)}
                                   className="block cursor-pointer"
                                 >
@@ -515,13 +525,13 @@ export default function ChatPage() {
                                     <p className={cn("font-semibold text-xs", isSender ? 'text-primary' : 'text-accent-foreground')}>{msg.replyTo.sender}</p>
                                     <p className={cn("truncate text-xs", isSender ? 'text-primary/80' : 'text-accent-foreground/80')}>{msg.replyTo.text || 'Voice Note'}</p>
                                   </div>
-                                </a>
+                                </div>
                               )}
                               <div className="p-3">
                                 {msg.text && (
                                   <p className={cn(
                                     'text-sm',
-                                    isSender ? 'text-primary' : 'text-accent-foreground'
+                                    isSender ? 'text-card-foreground' : 'text-accent-foreground'
                                   )}>
                                     {msg.text}
                                   </p>
@@ -638,5 +648,3 @@ export default function ChatPage() {
     </div>
   );
 }
-
-    
