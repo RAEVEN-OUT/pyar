@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import {
   Sidebar,
   SidebarProvider,
-  SidebarTrigger,
   SidebarContent,
   SidebarHeader,
   SidebarMenu,
@@ -15,7 +14,6 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarFooter,
-  SidebarRail,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
@@ -34,6 +32,8 @@ import { usePathname } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { TaskProvider, useTasks } from '@/context/task-context';
+import { CherryIcon } from '@/components/icons/cherry-icon';
+import { useSidebar } from '@/components/ui/sidebar';
 
 
 const navItems = [
@@ -45,6 +45,24 @@ const navItems = [
   { href: '/settings', icon: Settings, label: 'Settings' },
 ];
 
+function CherryTrigger() {
+  const { toggleSidebar, state } = useSidebar();
+  if (state === 'expanded') {
+    return null;
+  }
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="absolute top-4 left-4 z-50 text-primary hover:text-primary/90 data-[state=expanded]:hidden"
+      onClick={toggleSidebar}
+    >
+      <CherryIcon className="h-8 w-8" />
+    </Button>
+  );
+}
+
+
 function MainAppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
@@ -53,12 +71,11 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
 
   return (
       <SidebarProvider>
+        <CherryTrigger />
         <Sidebar>
-          <SidebarRail />
           <SidebarContent>
             <SidebarHeader>
               <Logo className="text-3xl" />
-              <SidebarTrigger />
             </SidebarHeader>
             <SidebarMenu className="flex-1">
               {navItems.map((item) => (
