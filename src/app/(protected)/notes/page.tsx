@@ -87,22 +87,22 @@ const NoteEditor = ({
             )
         )}
       </CardHeader>
-      <CardContent className="flex flex-col gap-2">
+      <CardContent className="flex flex-col flex-1 gap-2">
         {isEditing ? (
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none"
+            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none flex-1"
             placeholder="Write your thoughts..."
             rows={5}
           />
         ) : (
-          <div className="p-2 text-sm whitespace-pre-wrap font-body min-h-[120px]">
+          <div className="flex-1 p-2 text-sm whitespace-pre-wrap font-body">
             {note?.content || <p className="text-muted-foreground italic">No note yet.</p>}
           </div>
         )}
          {note && !isEditing && (
-            <p className="text-xs text-muted-foreground self-end mt-auto">
+            <p className="text-xs text-muted-foreground self-end">
                 Last updated: {note.lastUpdated}
             </p>
         )}
@@ -243,7 +243,7 @@ export default function NotesPage() {
         <h2 className="text-xl font-headline text-primary">
           {format(selectedDate, 'MMMM d, yyyy')}
         </h2>
-        <div className="grid flex-1 gap-4 md:grid-cols-2 md:items-start">
+        <div className="flex-1 grid md:grid-cols-2 gap-4 items-start">
           <NoteEditor
             noteUser={user}
             currentUser={user}
