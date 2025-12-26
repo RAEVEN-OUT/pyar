@@ -92,24 +92,28 @@ export default function TodoPage() {
                     task.completed ? 'opacity-60' : 'opacity-100'
                   )}
                 >
-                  <Checkbox
-                    id={`task-${task.id}`}
-                    checked={task.completed}
-                    onCheckedChange={() => handleToggleTask(task.id)}
-                    disabled={task.createdBy !== user}
-                    className={cn(
-                        "h-5 w-5",
-                        task.createdBy === 'Him' 
-                          ? 'border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
-                          : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
-                    )}
-                  />
+                  {task.createdBy === user ? (
+                    <Checkbox
+                      id={`task-${task.id}`}
+                      checked={task.completed}
+                      onCheckedChange={() => handleToggleTask(task.id)}
+                      className={cn(
+                          "h-5 w-5",
+                          task.createdBy === 'Him' 
+                            ? 'border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
+                            : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
+                      )}
+                    />
+                  ) : (
+                    <div className="h-5 w-5 flex-shrink-0"></div>
+                  )}
                   <div className="flex-1 overflow-hidden">
                     <label
                       htmlFor={`task-${task.id}`}
                       className={cn(
-                        'text-sm font-medium cursor-pointer break-words',
-                        task.completed && 'line-through'
+                        'text-sm font-medium break-words',
+                        task.completed && 'line-through',
+                        task.createdBy === user && 'cursor-pointer'
                       )}
                     >
                       {task.text}
