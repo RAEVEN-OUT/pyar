@@ -198,11 +198,14 @@ export default function NotesPage() {
             classNames={{
               head_cell: 'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
               cell: 'h-9 w-9 text-center text-sm p-0 relative',
-              day: 'h-9 w-9 p-0 font-normal aria-selected:opacity-100',
+              day: cn(
+                'h-9 w-9 p-0 font-normal aria-selected:opacity-100',
+                '[&:not([aria-disabled])]:hover:bg-accent [&:not([aria-disabled])]:hover:text-accent-foreground'
+              ),
               day_today: 'bg-primary text-primary-foreground rounded-full',
               day_selected:
                 'bg-transparent text-foreground rounded-md ring-2 ring-primary ring-offset-background focus:ring-primary',
-              day_disabled: 'text-muted-foreground opacity-30 cursor-default hover:bg-transparent',
+              day_disabled: 'text-muted-foreground opacity-50 cursor-default',
             }}
             modifiers={{
               hasNote: Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/'))),
