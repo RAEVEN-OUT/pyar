@@ -55,11 +55,20 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
   const { toggleSidebar, isMobile } = useSidebar();
 
   return (
-    <>
+    <div className="h-full">
       <Sidebar collapsible={isMobile ? "offcanvas" : "none"}>
         <SidebarContent>
           <SidebarHeader>
             <Logo className="text-3xl" />
+             <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 data-[state=collapsed]:hidden md:hidden"
+                onClick={toggleSidebar}
+              >
+                <PanelLeft />
+                <span className="sr-only">Toggle Sidebar</span>
+              </Button>
           </SidebarHeader>
           <SidebarMenu className="flex-1">
             {navItems.map((item) => (
@@ -122,7 +131,7 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
         )}
         {children}
       </SidebarInset>
-    </>
+    </div>
   );
 }
 
