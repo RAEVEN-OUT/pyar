@@ -22,6 +22,7 @@ const initialTasks: Task[] = [
   { id: 2, text: 'Pick up dry cleaning', completed: false, createdBy: 'Him' },
   { id: 3, text: 'Plan our next weekend trip', completed: true, createdBy: 'Her' },
   { id: 4, text: 'Get a gift for my mom\'s birthday', completed: false, createdBy: 'Him' },
+  { id: 5, text: 'muahh', completed: false, createdBy: 'Him' },
 ];
 
 export default function TodoPage() {
@@ -81,8 +82,10 @@ export default function TodoPage() {
                 <div
                   key={task.id}
                   className={cn(
-                    'flex items-center gap-4 rounded-lg p-3 border-l-[6px] transition-colors',
-                    task.createdBy === 'Him' ? 'border-primary bg-card' : 'border-pink-500 bg-accent',
+                    'flex items-center gap-4 rounded-lg p-3 transition-colors',
+                    task.createdBy === 'Him' 
+                      ? 'border-l-[6px] border-primary bg-card' 
+                      : 'bg-[#FFC4C4]',
                     task.completed ? 'opacity-60' : 'opacity-100'
                   )}
                 >
@@ -97,7 +100,7 @@ export default function TodoPage() {
                     className={cn(
                       'flex-1 text-sm font-medium cursor-pointer',
                       task.completed && 'line-through',
-                      task.createdBy === 'Him' ? 'text-card-foreground' : 'text-accent-foreground'
+                      task.createdBy === 'Him' ? 'text-card-foreground' : 'text-primary'
                     )}
                   >
                     {task.text}
