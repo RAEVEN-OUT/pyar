@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Sidebar,
   SidebarProvider,
@@ -31,6 +32,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { type Task } from './todo/page';
+
 
 const navItems = [
   { href: '/chat', icon: MessagesSquare, label: 'Chat' },
@@ -41,6 +45,15 @@ const navItems = [
   { href: '/settings', icon: Settings, label: 'Settings' },
 ];
 
+// Mock data for todo count - in a real app this would come from a data store
+const initialTasks: Task[] = [
+  { id: 1, text: 'Book that restaurant for Friday night', completed: false, createdBy: 'Her' },
+  { id: 2, text: 'Pick up dry cleaning', completed: false, createdBy: 'Him' },
+  { id: 3, text: 'Plan our next weekend trip', completed: true, createdBy: 'Her' },
+  { id: 4, text: 'Get a gift for my mom\'s birthday', completed: false, createdBy: 'Him' },
+];
+
+
 export default function ProtectedLayout({
   children,
 }: {
@@ -49,6 +62,11 @@ export default function ProtectedLayout({
   const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  
+  // In a real app, you'd fetch this from a shared state/context.
+  // For now, we are just mocking it to demonstrate the badge.
+  const [tasks, setTasks] = useState(initialTasks);
+  const incompleteTasks = tasks.filter(t => !t.completed).length;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -82,6 +100,9 @@ export default function ProtectedLayout({
                 >
                   <item.icon />
                   <span>{item.label}</span>
+                   {item.href === '/todo' && incompleteTasks > 0 && (
+                    <Badge className="ml-auto group-data-[collapsible=icon]:hidden">{incompleteTasks}</Badge>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
