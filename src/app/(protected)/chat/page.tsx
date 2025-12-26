@@ -119,7 +119,7 @@ export default function ChatPage() {
                   className={cn(
                     'max-w-xs md:max-w-md rounded-2xl p-3 shadow-sm',
                     isSender
-                      ? 'bg-card text-primary rounded-br-none'
+                      ? 'bg-card text-card-foreground rounded-br-none'
                       : 'bg-accent text-accent-foreground rounded-bl-none'
                   )}
                 >
