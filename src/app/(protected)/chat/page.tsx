@@ -51,7 +51,7 @@ const initialMessages: Message[] = [
   { id: 2, sender: 'Him', text: 'It was good! Just got home. Was thinking about you.', time: '5:31 PM' },
   { id: 3, sender: 'Him', text: 'What are you up to?', time: '5:31 PM' },
   { id: 4, sender: 'Her', text: 'Aww, same! Just relaxing. Wanna watch a movie tonight?', time: '5:32 PM' },
-  { id: 5, sender: 'Him', text: 'Absolutely! Pick one. I am getting snacks ready 😝', time: '5:33 PM', reactions: { '🥰': ['Her'] } },
+  { id: 5, sender: 'Him', text: 'Absolutely! Pick one. I am getting snacks ready 😝', time: '5:33 PM', reactions: { '🥰': ['Her'] }, replyTo: initialMessages[3] },
   { id: 6, sender: 'Her', text: 'Sounds perfect! ❤️', time: '5:34 PM' },
 ];
 
@@ -429,6 +429,17 @@ export default function ChatPage() {
     const secs = (seconds % 60).toString().padStart(2, '0');
     return `${minutes}:${secs}`;
   }
+
+  const handleScrollToMessage = (messageId: number) => {
+    const messageElement = document.getElementById(`message-${messageId}`);
+    if (messageElement) {
+      messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      messageElement.classList.add('highlight-message');
+      setTimeout(() => {
+        messageElement.classList.remove('highlight-message');
+      }, 1000);
+    }
+  };
   
   if (!user) {
     return null;
@@ -462,7 +473,7 @@ export default function ChatPage() {
           moods={moods}
           onMoodChange={handleMoodChange}
         />
-        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 chat-bg-pattern no-scrollbar">
+        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 chat-bg-pattern no-scrollbar" style={{scrollBehavior: 'smooth'}}>
           {hasMicPermission === false && (
              <Alert variant="destructive">
               <AlertTitle>Microphone Access Required</AlertTitle>
@@ -478,8 +489,9 @@ export default function ChatPage() {
             return (
               <div
                 key={msg.id}
+                id={`message-${msg.id}`}
                 className={cn(
-                  'flex items-end gap-2 group',
+                  'flex items-end gap-2 group transition-colors duration-500 rounded-lg',
                   isSender ? 'justify-end' : 'justify-start'
                 )}
               >
@@ -495,10 +507,15 @@ export default function ChatPage() {
                               )}
                             >
                               {msg.replyTo && (
-                                <div className={cn("p-2 text-sm rounded-t-2xl", isSender ? 'bg-black/5' : 'bg-white/10')}>
-                                  <p className={cn("font-semibold text-xs", isSender ? 'text-primary' : 'text-accent-foreground')}>{msg.replyTo.sender}</p>
-                                  <p className={cn("truncate text-xs", isSender ? 'text-primary/80' : 'text-accent-foreground/80')}>{msg.replyTo.text || 'Voice Note'}</p>
-                                </div>
+                                <a
+                                  onClick={() => handleScrollToMessage(msg.replyTo!.id)}
+                                  className="block cursor-pointer"
+                                >
+                                  <div className={cn("p-2 text-sm rounded-t-2xl", isSender ? 'bg-black/5' : 'bg-white/10')}>
+                                    <p className={cn("font-semibold text-xs", isSender ? 'text-primary' : 'text-accent-foreground')}>{msg.replyTo.sender}</p>
+                                    <p className={cn("truncate text-xs", isSender ? 'text-primary/80' : 'text-accent-foreground/80')}>{msg.replyTo.text || 'Voice Note'}</p>
+                                  </div>
+                                </a>
                               )}
                               <div className="p-3">
                                 {msg.text && (
@@ -621,3 +638,5 @@ export default function ChatPage() {
     </div>
   );
 }
+
+    

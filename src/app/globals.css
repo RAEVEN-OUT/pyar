@@ -83,6 +83,9 @@
   body {
     @apply bg-background text-foreground font-body;
   }
+  .highlight-message {
+    @apply bg-primary/10;
+  }
 }
 
 @layer utilities {
@@ -102,3 +105,5 @@
     scrollbar-width: none; /* Firefox */
   }
 }
+
+    
