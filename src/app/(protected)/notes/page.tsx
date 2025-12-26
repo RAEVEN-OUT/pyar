@@ -5,7 +5,8 @@ import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { NotebookText, Edit, Save, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, isFuture, isSameMonth, isToday } from 'date-fns';
+import { isFuture, isSameMonth, isToday } from 'date-fns';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -46,18 +47,21 @@ const initialNotes: AllNotes = {
 
 
 const NoteEditor = ({
-  user,
+  noteUser,
+  currentUser,
   note,
   onSave,
   colorClass,
 }: {
-  user: User;
+  noteUser: User;
+  currentUser: User;
   note: Note | undefined;
   onSave: (content: string) => void;
   colorClass: string;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [text, setText] = useState(note?.content || '');
+  const canEdit = noteUser === currentUser;
 
   const handleSave = () => {
     onSave(text);
@@ -67,15 +71,19 @@ const NoteEditor = ({
   return (
     <Card className={cn('flex flex-col h-full', colorClass)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-lg font-headline">{user}'s Note</CardTitle>
-        {isEditing ? (
-           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave}>
-            <Save className="h-4 w-4" />
-          </Button>
-        ) : (
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsEditing(true)}>
-            <Edit className="h-4 w-4" />
-          </Button>
+        <CardTitle className="text-lg font-headline">
+          {noteUser === 'Him' ? 'His Note' : 'Hers Note'}
+        </CardTitle>
+        {canEdit && (
+            isEditing ? (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave}>
+                <Save className="h-4 w-4" />
+            </Button>
+            ) : (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsEditing(true)}>
+                <Edit className="h-4 w-4" />
+            </Button>
+            )
         )}
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-2">
@@ -183,10 +191,12 @@ export default function NotesPage() {
             showOutsideDays={false}
             className="rounded-md"
             classNames={{
-              head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-              day_today: 'bg-primary text-primary-foreground',
+              head_cell: 'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
+              cell: 'h-9 w-9 text-center text-sm p-0 relative first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md',
+              day: 'h-9 w-9 p-0 font-normal aria-selected:opacity-100',
+              day_today: 'bg-primary text-primary-foreground rounded-full',
               day_selected: 'bg-primary/20 text-primary-foreground rounded-md',
-              day_disabled: 'text-muted-foreground opacity-50',
+              day_disabled: 'text-muted-foreground opacity-50 cursor-not-allowed [&:not(.day-today)]:hover:bg-transparent',
             }}
             modifiers={{
               hasNote: Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/'))),
@@ -211,13 +221,15 @@ export default function NotesPage() {
           isMobile ? "grid-rows-2" : "grid-cols-2"
         )}>
           <NoteEditor
-            user={user}
+            noteUser={user}
+            currentUser={user}
             note={dailyNotes[user]}
             onSave={handleSaveNote(user)}
             colorClass="bg-card text-card-foreground"
           />
           <NoteEditor
-            user={otherUser}
+            noteUser={otherUser}
+            currentUser={user}
             note={dailyNotes[otherUser]}
             onSave={handleSaveNote(otherUser)}
             colorClass="bg-accent text-accent-foreground"
