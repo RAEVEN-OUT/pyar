@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,28 +9,43 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ListChecks, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, isBefore, startOfToday } from 'date-fns';
 
 export type Task = {
   id: number;
   text: string;
-  completed: boolean;
+  completedAt: string | null; // Date string (e.g., '2024-07-26') or null
   createdBy: User;
   createdAt: string;
 };
 
 const initialTasks: Task[] = [
-  { id: 1, text: 'Book that restaurant for Friday night', completed: false, createdBy: 'Her', createdAt: format(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
-  { id: 2, text: 'Pick up dry cleaning', completed: false, createdBy: 'Him', createdAt: format(new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
-  { id: 3, text: 'Plan our next weekend trip', completed: true, createdBy: 'Her', createdAt: format(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
-  { id: 4, text: 'Get a gift for my mom\'s birthday', completed: false, createdBy: 'Him', createdAt: format(new Date(), 'dd/MM/yyyy') },
-  { id: 5, text: 'muahh', completed: false, createdBy: 'Him', createdAt: format(new Date(), 'dd/MM/yyyy') },
+  { id: 1, text: 'Book that restaurant for Friday night', completedAt: null, createdBy: 'Her', createdAt: format(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
+  { id: 2, text: 'Pick up dry cleaning', completedAt: null, createdBy: 'Him', createdAt: format(new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
+  { id: 3, text: 'Plan our next weekend trip', completedAt: '2024-07-24', createdBy: 'Her', createdAt: format(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
+  { id: 4, text: 'Get a gift for my mom\'s birthday', completedAt: null, createdBy: 'Him', createdAt: format(new Date(), 'dd/MM/yyyy') },
+  { id: 5, text: 'muahh', completedAt: null, createdBy: 'Him', createdAt: format(new Date(), 'dd/MM/yyyy') },
 ];
 
 export default function TodoPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [newTaskText, setNewTaskText] = useState('');
+  
+  useEffect(() => {
+    const today = startOfToday();
+    setTasks(currentTasks => 
+      currentTasks.filter(task => {
+        if (!task.completedAt) {
+          return true; // Keep task if it's not completed
+        }
+        const completedDate = new Date(task.completedAt);
+        // Keep task if it was completed today, remove if completed before today
+        return !isBefore(completedDate, today);
+      })
+    );
+  }, []);
+
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +54,7 @@ export default function TodoPage() {
     const newTask: Task = {
       id: Date.now(),
       text: newTaskText.trim(),
-      completed: false,
+      completedAt: null,
       createdBy: user,
       createdAt: format(new Date(), 'dd/MM/yyyy'),
     };
@@ -49,9 +64,15 @@ export default function TodoPage() {
   };
 
   const handleToggleTask = (taskId: number) => {
-    setTasks(tasks.map(task =>
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    ));
+    setTasks(tasks.map(task => {
+      if (task.id === taskId) {
+        return {
+          ...task,
+          completedAt: task.completedAt ? null : new Date().toISOString().split('T')[0], // YYYY-MM-DD
+        };
+      }
+      return task;
+    }));
   };
   
   if (!user) return null;
@@ -81,7 +102,9 @@ export default function TodoPage() {
 
           <div className="space-y-3">
             {tasks.length > 0 ? (
-              tasks.map(task => (
+              tasks.map(task => {
+                const isCompleted = !!task.completedAt;
+                return (
                 <div
                   key={task.id}
                   className={cn(
@@ -89,13 +112,13 @@ export default function TodoPage() {
                     task.createdBy === 'Him'
                       ? 'bg-card text-primary'
                       : 'bg-accent text-accent-foreground',
-                    task.completed ? 'opacity-60' : 'opacity-100'
+                    isCompleted ? 'opacity-60' : 'opacity-100'
                   )}
                 >
                   {task.createdBy === user ? (
                     <Checkbox
                       id={`task-${task.id}`}
-                      checked={task.completed}
+                      checked={isCompleted}
                       onCheckedChange={() => handleToggleTask(task.id)}
                       className={cn(
                           "h-5 w-5",
@@ -112,7 +135,7 @@ export default function TodoPage() {
                       htmlFor={`task-${task.id}`}
                       className={cn(
                         'text-sm font-medium break-words',
-                        task.completed && 'line-through',
+                        isCompleted && 'line-through',
                         task.createdBy === user && 'cursor-pointer'
                       )}
                     >
@@ -121,13 +144,13 @@ export default function TodoPage() {
                      <p className={cn(
                         'text-xs mt-1',
                          task.createdBy === 'Him' ? 'text-primary/70' : 'text-accent-foreground/70',
-                         task.completed && 'line-through'
+                         isCompleted && 'line-through'
                       )}>
                       {task.createdAt}
                     </p>
                   </div>
                 </div>
-              ))
+              )})
             ) : (
               <p className="text-center text-muted-foreground pt-4">
                 Nothing to do! Add a task to get started.
