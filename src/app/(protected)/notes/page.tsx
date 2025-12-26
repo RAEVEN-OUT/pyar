@@ -183,18 +183,17 @@ export default function NotesPage() {
             showOutsideDays={false}
             className="rounded-md"
             classNames={{
-              head_cell: "text-muted-foreground rounded-md font-normal text-[0.8rem]",
+              head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
+              day_today: 'bg-primary text-primary-foreground',
+              day_selected: 'bg-primary/20 text-primary-foreground rounded-md',
+              day_disabled: 'text-muted-foreground opacity-50 cursor-default pointer-events-none',
             }}
             modifiers={{
               hasNote: Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/'))),
               disabled: isFuture,
-              today: isToday,
             }}
             modifiersClassNames={{
               hasNote: 'font-bold text-primary',
-              today: 'bg-primary text-primary-foreground rounded-full',
-              selected: 'bg-primary/20 text-primary !rounded-md',
-              disabled: 'text-muted-foreground opacity-50 cursor-not-allowed',
             }}
             components={{
                 Caption: CustomCaption,
