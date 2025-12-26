@@ -6,13 +6,10 @@ import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { NotebookText, Edit, Save, ChevronLeft, ChevronRight } from 'lucide-react';
-import { isFuture, isSameMonth, isToday } from 'date-fns';
-import { format } from 'date-fns';
+import { isFuture, isSameMonth, isToday, format, add, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
-import { type CaptionProps } from 'react-day-picker';
-import { Calendar } from '@/components/ui/calendar';
 
 type Note = {
   content: string;
@@ -113,47 +110,95 @@ const NoteEditor = ({
   );
 };
 
+const NotesCalendar = ({
+  selectedDate,
+  onDateSelect,
+  notes,
+}: {
+  selectedDate: Date;
+  onDateSelect: (date: Date) => void;
+  notes: AllNotes;
+}) => {
+  const [currentDate, setCurrentDate] = useState(selectedDate);
 
-function CustomCaption(props: CaptionProps) {
-    const isCurrentMonth = isSameMonth(new Date(), props.displayMonth);
+  const firstDayOfMonth = startOfMonth(currentDate);
+  const lastDayOfMonth = endOfMonth(currentDate);
 
-    return (
-      <div className="flex justify-between items-center px-2 mb-4">
-         <Button
-          aria-label="Go to previous month"
-          variant="outline"
-          className="h-7 w-7 p-0"
-          onClick={() => props.onMonthChange && props.onMonthChange(new Date(props.displayMonth.getFullYear(), props.displayMonth.getMonth() - 1))}
-         >
-           <ChevronLeft className="h-4 w-4" />
-         </Button>
-         <h2 className="text-2xl font-headline">{format(props.displayMonth, 'MMMM yyyy')}</h2>
-         <Button
-          aria-label="Go to next month"
-          variant="outline"
-          className={cn("h-7 w-7 p-0", isCurrentMonth && "invisible")}
-          onClick={() => props.onMonthChange && props.onMonthChange(new Date(props.displayMonth.getFullYear(), props.displayMonth.getMonth() + 1))}
-          disabled={isCurrentMonth}
-         >
-           <ChevronRight className="h-4 w-4" />
-         </Button>
-      </div>
-    );
-}
+  const startOfCalendar = startOfWeek(firstDayOfMonth);
+  const endOfCalendar = endOfWeek(lastDayOfMonth);
+
+  const days = eachDayOfInterval({
+    start: startOfCalendar,
+    end: endOfCalendar,
+  });
+
+  const nextMonth = () => setCurrentDate(add(currentDate, { months: 1 }));
+  const prevMonth = () => setCurrentDate(add(currentDate, { months: -1 }));
+
+  const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  const noteDates = Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/')));
+
+  return (
+    <Card className="w-full">
+      <CardHeader className="flex flex-row items-center justify-between p-3 border-b">
+        <h2 className="text-lg font-semibold sm:text-xl font-headline">
+          {format(currentDate, 'MMMM yyyy')}
+        </h2>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" className="h-7 w-7" onClick={prevMonth}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-7 w-7" onClick={nextMonth} disabled={isFuture(firstDayOfMonth)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="p-3">
+        <div className="grid grid-cols-7 gap-1">
+          {weekDays.map(day => (
+            <div key={day} className="text-center text-xs font-medium text-muted-foreground">
+              {day}
+            </div>
+          ))}
+          {days.map(day => {
+            const hasNote = noteDates.some(noteDate => isSameDay(noteDate, day));
+            return (
+              <div
+                key={day.toString()}
+                onClick={() => onDateSelect(day)}
+                className={cn(
+                  'relative flex items-center justify-center h-9 w-full rounded-full cursor-pointer transition-colors',
+                  !isSameMonth(day, currentDate) && 'text-muted-foreground/50',
+                  isSameDay(day, selectedDate) && !isToday(day) && 'bg-accent/50 text-accent-foreground',
+                  isToday(day) && 'bg-primary text-primary-foreground',
+                  !isSameDay(day, selectedDate) && !isToday(day) && '[&:not([aria-disabled])]:hover:bg-accent/30',
+                  isFuture(day) && 'text-muted-foreground/30 cursor-default pointer-events-none'
+                )}
+              >
+                <span className="text-sm">{format(day, 'd')}</span>
+                {hasNote && <div className="absolute bottom-1.5 h-1 w-1 rounded-full bg-primary" />}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 
 export default function NotesPage() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [notes, setNotes] = useState<AllNotes>(initialNotes);
 
-  const dateString = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+  const dateString = format(selectedDate, 'yyyy-MM-dd');
   const dailyNotes = notes[dateString] || {};
   
   const handleSaveNote = (userToSave: User) => (content: string) => {
-    if (!selectedDate || !user) return;
+    if (!user) return;
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
     
     const newNote: Note = {
@@ -178,53 +223,25 @@ export default function NotesPage() {
 
   const otherUser = user === 'Him' ? 'Her' : 'Him';
   
-  const canEditSelectedDate = selectedDate ? isToday(selectedDate) : false;
+  const canEditSelectedDate = isToday(selectedDate);
 
   return (
     <div className="flex flex-col md:flex-row h-full p-4 gap-4 md:p-8">
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-4 md:w-80 lg:w-96">
         <div className="flex items-center gap-2 text-2xl font-headline text-primary self-start">
            <NotebookText className="h-8 w-8 text-primary" />
            Our Shared Notes
         </div>
-        <Card className="p-0">
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={setSelectedDate}
-            month={currentMonth}
-            onMonthChange={setCurrentMonth}
-            showOutsideDays={false}
-            className="rounded-md"
-            classNames={{
-              head_cell: 'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
-              cell: 'h-9 w-9 text-center text-sm p-0 relative',
-              day: cn(
-                'h-9 w-9 p-0 font-normal aria-selected:opacity-100 rounded-full',
-                '[&:not([aria-disabled])]:hover:bg-accent [&:not([aria-disabled])]:hover:text-accent-foreground'
-              ),
-              day_today: 'bg-primary text-primary-foreground rounded-full',
-              day_selected:
-                'bg-transparent text-foreground ring-2 ring-primary ring-offset-background !rounded-full focus:ring-primary',
-              day_disabled: 'text-muted-foreground opacity-50 cursor-default',
-            }}
-            modifiers={{
-              hasNote: Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/'))),
-              disabled: isFuture,
-            }}
-            modifiersClassNames={{
-              hasNote: 'font-bold text-primary',
-            }}
-            components={{
-                Caption: CustomCaption,
-            }}
-          />
-        </Card>
+        <NotesCalendar
+          selectedDate={selectedDate}
+          onDateSelect={setSelectedDate}
+          notes={notes}
+        />
       </div>
 
       <div className="flex-1 flex flex-col gap-4">
         <h2 className="text-xl font-headline text-primary">
-          {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Select a date'}
+          {format(selectedDate, 'MMMM d, yyyy')}
         </h2>
         <div className={cn(
           "grid flex-1 gap-4",
