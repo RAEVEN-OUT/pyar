@@ -1,22 +1,186 @@
+'use client';
+
+import { useState } from 'react';
+import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { NotebookText } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Textarea } from '@/components/ui/textarea';
+import { NotebookText, Edit, Save } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
+
+type Note = {
+  content: string;
+  lastUpdated: string;
+};
+
+type DailyNotes = {
+  [key in User]?: Note;
+};
+
+type AllNotes = {
+  [date: string]: DailyNotes;
+};
+
+const initialNotes: AllNotes = {
+  [format(new Date(), 'yyyy-MM-dd')]: {
+    Her: {
+      content: 'Started our shared journal today! So excited to fill this with memories. 💕',
+      lastUpdated: '10:15 AM',
+    },
+    Him: {
+      content: 'What a great idea! Can\'t wait to write here with you.',
+      lastUpdated: '10:20 AM',
+    },
+  },
+  [format(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')]: {
+    Him: {
+      content: 'Remember that little coffee shop we found? We should go back this weekend.',
+      lastUpdated: 'Yesterday 3:30 PM',
+    }
+  }
+};
+
+
+const NoteEditor = ({
+  user,
+  note,
+  onSave,
+  colorClass,
+}: {
+  user: User;
+  note: Note | undefined;
+  onSave: (content: string) => void;
+  colorClass: string;
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [text, setText] = useState(note?.content || '');
+
+  const handleSave = () => {
+    onSave(text);
+    setIsEditing(false);
+  };
+
+  return (
+    <Card className={cn('flex flex-col h-full', colorClass)}>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-lg font-headline">{user}'s Note</CardTitle>
+        {isEditing ? (
+           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave}>
+            <Save className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsEditing(true)}>
+            <Edit className="h-4 w-4" />
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent className="flex-1 flex flex-col gap-2">
+        {isEditing ? (
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="flex-1 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none"
+            placeholder="Write your thoughts..."
+          />
+        ) : (
+          <div className="flex-1 p-2 text-sm whitespace-pre-wrap font-body">
+            {note?.content || <p className="text-muted-foreground italic">No note yet.</p>}
+          </div>
+        )}
+         {note && !isEditing && (
+            <p className="text-xs text-muted-foreground self-end">
+                Last updated: {note.lastUpdated}
+            </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 
 export default function NotesPage() {
+  const { user } = useAuth();
+  const isMobile = useIsMobile();
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [notes, setNotes] = useState<AllNotes>(initialNotes);
+
+  const dateString = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
+  const dailyNotes = notes[dateString] || {};
+  
+  const handleSaveNote = (userToSave: User) => (content: string) => {
+    if (!selectedDate || !user) return;
+    const dateKey = format(selectedDate, 'yyyy-MM-dd');
+    
+    const newNote: Note = {
+      content,
+      lastUpdated: new Date().toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true,
+      }),
+    };
+
+    setNotes(prev => ({
+      ...prev,
+      [dateKey]: {
+        ...prev[dateKey],
+        [userToSave]: newNote,
+      },
+    }));
+  };
+
+  if (!user) return null;
+
+  const otherUser = user === 'Him' ? 'Her' : 'Him';
+
   return (
-    <div className="flex h-full items-center justify-center p-4 md:p-8">
-      <Card className="w-full max-w-2xl text-center">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-center gap-2 text-2xl font-headline">
-            <NotebookText className="h-8 w-8 text-primary" />
-            Our Shared Notes
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            This is where our shared thoughts and memories will live. Coming soon!
-          </p>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col md:flex-row h-full p-4 gap-4 md:p-8">
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex items-center gap-2 text-2xl font-headline text-primary self-start">
+           <NotebookText className="h-8 w-8 text-primary" />
+           Our Shared Notes
+        </div>
+        <Card className="p-0">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={setSelectedDate}
+            className="rounded-md"
+            modifiers={{
+              hasNote: Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/')))
+            }}
+            modifiersClassNames={{
+              hasNote: 'font-bold text-primary',
+            }}
+          />
+        </Card>
+      </div>
+
+      <div className="flex-1 flex flex-col gap-4">
+        <h2 className="text-xl font-headline text-primary">
+          {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Select a date'}
+        </h2>
+        <div className={cn(
+          "grid flex-1 gap-4",
+          isMobile ? "grid-rows-2" : "grid-cols-2"
+        )}>
+          <NoteEditor
+            user={user}
+            note={dailyNotes[user]}
+            onSave={handleSaveNote(user)}
+            colorClass="bg-card text-card-foreground"
+          />
+          <NoteEditor
+            user={otherUser}
+            note={dailyNotes[otherUser]}
+            onSave={handleSaveNote(otherUser)}
+            colorClass="bg-accent text-accent-foreground"
+          />
+        </div>
+      </div>
     </div>
   );
 }
