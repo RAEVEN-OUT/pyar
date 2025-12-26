@@ -146,7 +146,7 @@ export default function CalendarPage() {
             <Accordion type="single" collapsible className="w-full">
               {dayEvents.map(event => (
                 <AccordionItem key={event.id} value={event.id}>
-                  <AccordionTrigger>{event.title}</AccordionTrigger>
+                  <AccordionTrigger className="truncate">{event.title}</AccordionTrigger>
                   <AccordionContent>
                     {event.description || <p className="text-sm text-muted-foreground italic">No description provided.</p>}
                   </AccordionContent>
