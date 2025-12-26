@@ -15,6 +15,7 @@ import {
   SidebarInset,
   SidebarFooter,
   SidebarTrigger,
+  SidebarRail,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,7 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
   return (
       <SidebarProvider>
         <Sidebar>
+          <SidebarRail />
           <SidebarContent>
             <SidebarHeader className="justify-between">
               <Logo className="text-3xl" />
@@ -124,12 +126,10 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
             </SidebarFooter>
           </SidebarContent>
         </Sidebar>
-        <div className="relative flex min-h-svh flex-1 flex-col">
+        <SidebarInset>
           <CherryTrigger />
-          <SidebarInset>
-            {children}
-          </SidebarInset>
-        </div>
+          {children}
+        </SidebarInset>
       </SidebarProvider>
   );
 }
