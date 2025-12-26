@@ -82,10 +82,10 @@ export default function TodoPage() {
                 <div
                   key={task.id}
                   className={cn(
-                    'flex items-center gap-4 rounded-lg p-3 transition-colors',
+                    'flex items-center gap-4 rounded-lg p-3 transition-colors bg-card',
                     task.createdBy === 'Him' 
-                      ? 'border-l-[6px] border-primary bg-card' 
-                      : 'bg-[#FFC4C4]',
+                      ? 'border-l-[6px] border-primary' 
+                      : 'border-r-[6px] border-accent',
                     task.completed ? 'opacity-60' : 'opacity-100'
                   )}
                 >
@@ -100,17 +100,11 @@ export default function TodoPage() {
                     className={cn(
                       'flex-1 text-sm font-medium cursor-pointer',
                       task.completed && 'line-through',
-                      task.createdBy === 'Him' ? 'text-card-foreground' : 'text-primary'
+                      'text-card-foreground'
                     )}
                   >
                     {task.text}
                   </label>
-                  <div className={cn(
-                    'text-xs font-semibold px-2 py-1 rounded-full',
-                     task.createdBy === 'Him' ? 'bg-primary/20 text-primary' : 'bg-pink-500/20 text-pink-800'
-                  )}>
-                    {task.createdBy}
-                  </div>
                 </div>
               ))
             ) : (
