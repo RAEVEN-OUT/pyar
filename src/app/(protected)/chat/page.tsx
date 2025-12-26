@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Send, Smile, Mic, Square } from 'lucide-react';
+import { Send, Smile, Mic, Square, Play, Pause } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import {
@@ -97,10 +97,76 @@ function MoodDisplay({
   );
 }
 
-const AudioPlayer = ({ src }: { src: string }) => {
+const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
 
-  return <audio ref={audioRef} src={src} controls className="w-full" />;
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      setProgress(audio.currentTime);
+    };
+    const handleDurationChange = () => {
+      setDuration(audio.duration);
+    };
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setProgress(0);
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('durationchange', handleDurationChange);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('durationchange', handleDurationChange);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, []);
+
+  const formatTime = (seconds: number) => {
+    if (isNaN(seconds) || seconds === 0) return '0:00';
+    const floorSeconds = Math.floor(seconds);
+    const min = Math.floor(floorSeconds / 60);
+    const sec = floorSeconds % 60;
+    return `${min}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  const progressPercentage = duration ? (progress / duration) * 100 : 0;
+  
+  const waveColor = isSender ? 'hsl(var(--primary))' : 'hsl(var(--accent-foreground))';
+  const waveInactiveColor = isSender ? 'hsl(var(--primary) / 0.3)' : 'hsl(var(--accent-foreground) / 0.3)';
+
+  return (
+    <div className="flex items-center gap-2 w-48">
+      <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
+      <Button onClick={togglePlay} variant="ghost" size="icon" className={cn("h-8 w-8 rounded-full", isSender ? "text-primary hover:text-primary" : "text-accent-foreground hover:text-accent-foreground")}>
+        {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
+      </Button>
+      <div className="flex-1 h-8 flex items-center" style={{'--wave-color': waveColor, '--wave-inactive-color': waveInactiveColor, '--progress': `${progressPercentage}%`} as React.CSSProperties}>
+         <div className="w-full h-full relative bg-gradient-to-r from-[var(--wave-color)] to-[var(--wave-color)] bg-no-repeat bg-left" style={{'backgroundSize': 'var(--progress) 100%'}}>
+             <div className="w-full h-full absolute top-0 left-0 bg-gradient-to-r from-[var(--wave-inactive-color)] to-[var(--wave-inactive-color)] bg-no-repeat bg-left" style={{'mask': `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M2 9.5C2 9.5 2.5 4 4 4C5.5 4 6.5 15 8 15C9.5 15 10.5 4 12 4C13.5 4 14.5 15 16 15C17.5 15 18.5 4 20 4C21.5 4 22.5 15 24 15C25.5 15 26.5 4 28 4C29.5 4 30.5 15 32 15C33.5 15 34.5 4 36 4C37.5 4 38.5 15 40 15C41.5 15 42.5 4 44 4C45.5 4 46.5 15 48 15C49.5 15 50.5 4 52 4C53.5 4 54.5 15 56 15C57.5 15 58.5 4 60 4C61.5 4 62.5 15 64 15C65.5 15 66.5 4 68 4C69.5 4 70.5 15 72 15C73.5 15 74.5 4 76 4C77.5 4 78.5 15 80 15C81.5 15 82.5 4 84 4C85.5 4 86.5 15 88 15C89.5 15 90.5 4 92 4C93.5 4 94.5 15 96 15C97.5 15 98.5 4 100 4' fill='none' stroke='black' stroke-width='2'/%3e%3c/svg%3e")`, 'maskSize': '100% 100%'}}></div>
+        </div>
+      </div>
+      <span className={cn("text-xs w-10", isSender ? "text-primary/70" : "text-accent-foreground/70")}>{formatTime(duration)}</span>
+    </div>
+  );
 };
 
 
@@ -125,14 +191,13 @@ export default function ChatPage() {
   });
 
   useEffect(() => {
-    // Check for permission on mount, but don't request it.
     navigator.permissions.query({ name: 'microphone' as PermissionName }).then((result) => {
         if (result.state === 'granted') {
             setHasMicPermission(true);
         } else if (result.state === 'denied') {
             setHasMicPermission(false);
         } else {
-            setHasMicPermission(null); // Prompt needed
+            setHasMicPermission(null); 
         }
     });
   }, []);
@@ -160,7 +225,7 @@ export default function ChatPage() {
 
   const addMessage = (message: Omit<Message, 'id' | 'time'>) => {
      if (!user) return;
-     const newMessage: Message = {
+     const newMessageData: Message = {
       id: messages.length + 1,
       sender: user,
       time: new Date().toLocaleTimeString('en-US', {
@@ -170,7 +235,7 @@ export default function ChatPage() {
       }),
       ...message,
     };
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages((prev) => [...prev, newMessageData]);
   }
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -181,15 +246,23 @@ export default function ChatPage() {
     setShowEmojiPicker(false);
   };
   
-  const stopRecording = () => {
+  const stopRecording = (send: boolean) => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
+      // The onstop event will handle the rest if 'send' is true
+      if (!send) {
+         if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+         if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
+         setIsRecording(false);
+         setRecordingTime(0);
+         mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+      }
     }
   }
 
   const handleVoiceMessage = async () => {
     if (isRecording) {
-        stopRecording();
+        stopRecording(true);
         return;
     }
 
@@ -210,7 +283,7 @@ export default function ChatPage() {
             }, 1000);
 
             recordingTimeoutRef.current = setTimeout(() => {
-                stopRecording();
+                stopRecording(true);
                 toast({
                     title: "Recording limit reached",
                     description: "Voice notes are limited to 60 seconds.",
@@ -228,11 +301,12 @@ export default function ChatPage() {
             setIsRecording(false);
             setRecordingTime(0);
 
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            const audioUrl = URL.createObjectURL(audioBlob);
-            addMessage({ audioUrl });
+            if (audioChunks.length > 0) {
+              const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+              const audioUrl = URL.createObjectURL(audioBlob);
+              addMessage({ audioUrl });
+            }
             
-            // Important: Stop all media tracks to turn off the microphone light
             stream.getTracks().forEach(track => track.stop());
         };
         
@@ -260,8 +334,10 @@ export default function ChatPage() {
   }
   
   if (!user) {
-    return null; // Or a loading state
+    return null;
   }
+
+  const showSendButton = newMessage.trim() !== '';
 
   return (
     <div className="flex h-screen flex-col pt-16 md:pt-4 pb-4 px-4">
@@ -305,7 +381,7 @@ export default function ChatPage() {
                     </p>
                   )}
                   {msg.audioUrl && (
-                     <AudioPlayer src={msg.audioUrl} />
+                     <WaveformPlayer src={msg.audioUrl} isSender={isSender} />
                   )}
                    <p className={cn(
                       'text-xs mt-1',
@@ -322,41 +398,49 @@ export default function ChatPage() {
           })}
         </div>
         <form onSubmit={handleSendMessage} className="p-4 border-t bg-card rounded-b-lg">
-          <div className="relative flex items-center">
+          <div className="relative flex items-center h-12">
             {isRecording ? (
-               <div className="flex items-center justify-between w-full h-12 rounded-full bg-input px-4">
+               <div className="flex items-center justify-between w-full h-full rounded-full bg-input px-4">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
                     <p className="text-sm font-mono text-muted-foreground">{formatTime(recordingTime)}</p>
                   </div>
-                   <p className="text-sm text-muted-foreground">Recording...</p>
+                   <Button type="button" size="icon" className="rounded-full w-9 h-9" onClick={() => stopRecording(true)}>
+                     <Send className="h-5 w-5" />
+                   </Button>
                </div>
             ) : (
+              <>
                 <Input
-                placeholder="Type your message..."
-                className="pr-24 h-12 rounded-full bg-input focus-visible:ring-offset-0 focus-visible:ring-1"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-              />
+                  placeholder="Type your message..."
+                  className="pr-12 h-12 rounded-full bg-input focus-visible:ring-offset-0 focus-visible:ring-1"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
+                   <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="ghost" size="icon" className="rounded-full">
+                        <Smile className="h-5 w-5 text-muted-foreground" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-0 border-0">
+                      <EmojiPicker onEmojiClick={onEmojiClick} />
+                    </PopoverContent>
+                  </Popover>
+
+                  {showSendButton ? (
+                     <Button type="submit" size="icon" className="rounded-full w-9 h-9">
+                        <Send className="h-5 w-5" />
+                     </Button>
+                  ) : (
+                     <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleVoiceMessage}>
+                       <Mic className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                  )}
+                </div>
+              </>
             )}
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-               <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
-                <PopoverTrigger asChild>
-                  <Button type="button" variant="ghost" size="icon" className="rounded-full" disabled={isRecording}>
-                    <Smile className="h-5 w-5 text-muted-foreground" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0 border-0">
-                  <EmojiPicker onEmojiClick={onEmojiClick} />
-                </PopoverContent>
-              </Popover>
-               <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleVoiceMessage}>
-                 {isRecording ? <Square className="h-5 w-5 text-red-500 fill-red-500" /> : <Mic className="h-5 w-5 text-muted-foreground" />}
-              </Button>
-              <Button type="submit" size="icon" className="rounded-full w-9 h-9" disabled={isRecording || !newMessage}>
-                <Send className="h-5 w-5" />
-              </Button>
-            </div>
           </div>
         </form>
       </div>
