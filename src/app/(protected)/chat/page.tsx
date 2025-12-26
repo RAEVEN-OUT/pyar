@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth, type User } from '@/context/auth-context';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -178,13 +177,6 @@ export default function ChatPage() {
                   isSender ? 'justify-end' : 'justify-start'
                 )}
               >
-                {!isSender && (
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-accent text-accent-foreground">
-                      {msg.sender.slice(0, 1)}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
                 <div
                   className={cn(
                     'max-w-xs md:max-w-md rounded-2xl p-3 shadow-sm',
@@ -195,7 +187,7 @@ export default function ChatPage() {
                 >
                   <p className={cn(
                       'text-sm',
-                      isSender ? 'text-primary' : 'text-primary-foreground'
+                      isSender ? 'text-primary' : 'text-accent-foreground'
                     )}
                   >
                     {msg.text}
@@ -204,19 +196,12 @@ export default function ChatPage() {
                       'text-xs mt-1',
                        isSender
                         ? 'text-primary/70'
-                        : 'text-primary-foreground/70',
+                        : 'text-accent-foreground/70',
                       'text-right'
                     )}>
                       {msg.time}
                     </p>
                 </div>
-                {isSender && (
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {msg.sender.slice(0, 1)}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
               </div>
             );
           })}
