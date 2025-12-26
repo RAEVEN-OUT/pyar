@@ -96,6 +96,7 @@ export default function TodoPage() {
                     id={`task-${task.id}`}
                     checked={task.completed}
                     onCheckedChange={() => handleToggleTask(task.id)}
+                    disabled={task.createdBy === user}
                     className={cn(
                         "h-5 w-5",
                         task.createdBy === 'Him' 
