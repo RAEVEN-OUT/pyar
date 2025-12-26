@@ -3,7 +3,7 @@
 
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Children, cloneElement } from 'react';
 import {
   Sidebar,
   SidebarProvider,
@@ -33,7 +33,8 @@ import { usePathname } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { type Task } from './todo/page';
+import { type Task, type User } from './todo/page';
+import { format } from 'date-fns';
 
 
 const navItems = [
@@ -45,12 +46,12 @@ const navItems = [
   { href: '/settings', icon: Settings, label: 'Settings' },
 ];
 
-// Mock data for todo count - in a real app this would come from a data store
 const initialTasks: Task[] = [
-  { id: 1, text: 'Book that restaurant for Friday night', completedAt: null, createdBy: 'Her', createdAt: '24/07/2024' },
-  { id: 2, text: 'Pick up dry cleaning', completedAt: null, createdBy: 'Him', createdAt: '25/07/2024' },
-  { id: 3, text: 'Plan our next weekend trip', completedAt: '2024-07-24', createdBy: 'Her', createdAt: '23/07/2024' },
-  { id: 4, text: 'Get a gift for my mom\'s birthday', completedAt: null, createdBy: 'Him', createdAt: '26/07/2024' },
+  { id: 1, text: 'Book that restaurant for Friday night', completedAt: null, createdBy: 'Her', createdAt: format(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
+  { id: 2, text: 'Pick up dry cleaning', completedAt: null, createdBy: 'Him', createdAt: format(new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
+  { id: 3, text: 'Plan our next weekend trip', completedAt: '2024-07-24', createdBy: 'Her', createdAt: format(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
+  { id: 4, text: 'Get a gift for my mom\'s birthday', completedAt: null, createdBy: 'Him', createdAt: format(new Date(), 'dd/MM/yyyy') },
+  { id: 5, text: 'muahh', completedAt: null, createdBy: 'Him', createdAt: format(new Date(), 'dd/MM/yyyy') },
 ];
 
 
@@ -63,10 +64,34 @@ export default function ProtectedLayout({
   const router = useRouter();
   const pathname = usePathname();
   
-  // In a real app, you'd fetch this from a shared state/context.
-  // For now, we are just mocking it to demonstrate the badge.
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const totalTasks = tasks.length;
+
+  const handleAddTask = (newTaskText: string) => {
+    if (!newTaskText.trim() || !user) return;
+
+    const newTask: Task = {
+      id: Date.now(),
+      text: newTaskText.trim(),
+      completedAt: null,
+      createdBy: user,
+      createdAt: format(new Date(), 'dd/MM/yyyy'),
+    };
+
+    setTasks(prevTasks => [newTask, ...prevTasks]);
+  };
+
+  const handleToggleTask = (taskId: number) => {
+    setTasks(tasks.map(task => {
+      if (task.id === taskId) {
+        return {
+          ...task,
+          completedAt: task.completedAt ? null : new Date().toISOString().split('T')[0],
+        };
+      }
+      return task;
+    }));
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -81,6 +106,18 @@ export default function ProtectedLayout({
       </div>
     );
   }
+
+  const childrenWithProps = Children.map(children, child => {
+    if (React.isValidElement(child)) {
+      return cloneElement(child, { 
+          tasks, 
+          setTasks, 
+          handleAddTask, 
+          handleToggleTask 
+        } as any);
+    }
+    return child;
+  });
 
   return (
     <SidebarProvider>
@@ -135,7 +172,7 @@ export default function ProtectedLayout({
         <div className="absolute left-4 top-4">
           <SidebarTrigger />
         </div>
-        {children}
+        {childrenWithProps}
       </SidebarInset>
     </SidebarProvider>
   );

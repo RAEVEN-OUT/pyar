@@ -2,14 +2,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth, type User } from '@/context/auth-context';
+import { useAuth } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ListChecks, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, isBefore, startOfToday } from 'date-fns';
+import { isBefore, startOfToday } from 'date-fns';
+
+export type User = 'Him' | 'Her';
 
 export type Task = {
   id: number;
@@ -19,63 +21,42 @@ export type Task = {
   createdAt: string;
 };
 
-const initialTasks: Task[] = [
-  { id: 1, text: 'Book that restaurant for Friday night', completedAt: null, createdBy: 'Her', createdAt: format(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
-  { id: 2, text: 'Pick up dry cleaning', completedAt: null, createdBy: 'Him', createdAt: format(new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
-  { id: 3, text: 'Plan our next weekend trip', completedAt: '2024-07-24', createdBy: 'Her', createdAt: format(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
-  { id: 4, text: 'Get a gift for my mom\'s birthday', completedAt: null, createdBy: 'Him', createdAt: format(new Date(), 'dd/MM/yyyy') },
-  { id: 5, text: 'muahh', completedAt: null, createdBy: 'Him', createdAt: format(new Date(), 'dd/MM/yyyy') },
-];
+interface TodoPageProps {
+  tasks: Task[];
+  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  handleAddTask: (text: string) => void;
+  handleToggleTask: (id: number) => void;
+}
 
-export default function TodoPage() {
+export default function TodoPage({ tasks, setTasks, handleAddTask, handleToggleTask }: TodoPageProps) {
   const { user } = useAuth();
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [newTaskText, setNewTaskText] = useState('');
   
   useEffect(() => {
-    const today = startOfToday();
-    setTasks(currentTasks => 
-      currentTasks.filter(task => {
-        if (!task.completedAt) {
-          return true; // Keep task if it's not completed
-        }
-        const completedDate = new Date(task.completedAt);
-        // Keep task if it was completed today, remove if completed before today
-        return !isBefore(completedDate, today);
-      })
-    );
-  }, []);
+    if (setTasks) {
+      const today = startOfToday();
+      setTasks(currentTasks => 
+        currentTasks.filter(task => {
+          if (!task.completedAt) {
+            return true; // Keep task if it's not completed
+          }
+          const completedDate = new Date(task.completedAt);
+          // Keep task if it was completed today, remove if completed before today
+          return !isBefore(completedDate, today);
+        })
+      );
+    }
+  }, [setTasks]);
 
 
-  const handleAddTask = (e: React.FormEvent) => {
+  const onAddTask = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTaskText.trim() || !user) return;
-
-    const newTask: Task = {
-      id: Date.now(),
-      text: newTaskText.trim(),
-      completedAt: null,
-      createdBy: user,
-      createdAt: format(new Date(), 'dd/MM/yyyy'),
-    };
-
-    setTasks(prevTasks => [newTask, ...prevTasks]);
+    if (!handleAddTask) return;
+    handleAddTask(newTaskText);
     setNewTaskText('');
   };
-
-  const handleToggleTask = (taskId: number) => {
-    setTasks(tasks.map(task => {
-      if (task.id === taskId) {
-        return {
-          ...task,
-          completedAt: task.completedAt ? null : new Date().toISOString().split('T')[0], // YYYY-MM-DD
-        };
-      }
-      return task;
-    }));
-  };
   
-  if (!user) return null;
+  if (!user || !tasks) return null;
 
   return (
     <div className="flex h-full items-start justify-center p-4 md:p-8">
@@ -87,7 +68,7 @@ export default function TodoPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleAddTask} className="flex gap-2 mb-6">
+          <form onSubmit={onAddTask} className="flex gap-2 mb-6">
             <Input
               type="text"
               placeholder="What needs to be done?"
@@ -119,7 +100,7 @@ export default function TodoPage() {
                     <Checkbox
                       id={`task-${task.id}`}
                       checked={isCompleted}
-                      onCheckedChange={() => handleToggleTask(task.id)}
+                      onCheckedChange={() => handleToggleTask && handleToggleTask(task.id)}
                       className={cn(
                           "h-5 w-5",
                           task.createdBy === 'Him' 
@@ -135,8 +116,7 @@ export default function TodoPage() {
                       htmlFor={`task-${task.id}`}
                       className={cn(
                         'text-sm font-medium break-words',
-                        isCompleted && 'line-through',
-                        task.createdBy === user && 'cursor-pointer'
+                        isCompleted && 'line-through'
                       )}
                     >
                       {task.text}
