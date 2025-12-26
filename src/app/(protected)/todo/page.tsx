@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ListChecks, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 export type Task = {
   id: number;
@@ -19,11 +20,11 @@ export type Task = {
 };
 
 const initialTasks: Task[] = [
-  { id: 1, text: 'Book that restaurant for Friday night', completed: false, createdBy: 'Her', createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toLocaleDateString() },
-  { id: 2, text: 'Pick up dry cleaning', completed: false, createdBy: 'Him', createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toLocaleDateString() },
-  { id: 3, text: 'Plan our next weekend trip', completed: true, createdBy: 'Her', createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toLocaleDateString() },
-  { id: 4, text: 'Get a gift for my mom\'s birthday', completed: false, createdBy: 'Him', createdAt: new Date().toLocaleDateString() },
-  { id: 5, text: 'muahh', completed: false, createdBy: 'Him', createdAt: new Date().toLocaleDateString() },
+  { id: 1, text: 'Book that restaurant for Friday night', completed: false, createdBy: 'Her', createdAt: format(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
+  { id: 2, text: 'Pick up dry cleaning', completed: false, createdBy: 'Him', createdAt: format(new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
+  { id: 3, text: 'Plan our next weekend trip', completed: true, createdBy: 'Her', createdAt: format(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), 'dd/MM/yyyy') },
+  { id: 4, text: 'Get a gift for my mom\'s birthday', completed: false, createdBy: 'Him', createdAt: format(new Date(), 'dd/MM/yyyy') },
+  { id: 5, text: 'muahh', completed: false, createdBy: 'Him', createdAt: format(new Date(), 'dd/MM/yyyy') },
 ];
 
 export default function TodoPage() {
@@ -40,7 +41,7 @@ export default function TodoPage() {
       text: newTaskText.trim(),
       completed: false,
       createdBy: user,
-      createdAt: new Date().toLocaleDateString(),
+      createdAt: format(new Date(), 'dd/MM/yyyy'),
     };
 
     setTasks(prevTasks => [newTask, ...prevTasks]);
@@ -102,11 +103,11 @@ export default function TodoPage() {
                           : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
                     )}
                   />
-                  <div className="flex-1">
+                  <div className="flex-1 overflow-hidden">
                     <label
                       htmlFor={`task-${task.id}`}
                       className={cn(
-                        'text-sm font-medium cursor-pointer',
+                        'text-sm font-medium cursor-pointer break-words',
                         task.completed && 'line-through'
                       )}
                     >
