@@ -3,7 +3,13 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Smile,
+} from 'lucide-react';
 import {
   startOfMonth,
   endOfMonth,
@@ -14,12 +20,35 @@ import {
   isSameMonth,
   isToday,
   add,
+  isSameDay,
 } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
+
+type CalendarEvent = {
+  id: string;
+  date: Date;
+  title: string;
+  description?: string;
+  emoji?: string;
+};
 
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [eventTitle, setEventTitle] = useState('');
+  const [eventDesc, setEventDesc] = useState('');
+  const [eventEmoji, setEventEmoji] = useState('');
 
   const firstDayOfMonth = startOfMonth(currentDate);
   const lastDayOfMonth = endOfMonth(currentDate);
@@ -41,6 +70,33 @@ export default function CalendarPage() {
   };
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const handleDayClick = (day: Date) => {
+    setSelectedDate(day);
+    setEventTitle('');
+    setEventDesc('');
+    setEventEmoji('');
+    setPopoverOpen(true);
+  };
+
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    setEventEmoji(emojiData.emoji);
+  };
+
+  const handleAddEvent = () => {
+    if (selectedDate && eventTitle) {
+      const newEvent: CalendarEvent = {
+        id: crypto.randomUUID(),
+        date: selectedDate,
+        title: eventTitle,
+        description: eventDesc,
+        emoji: eventEmoji,
+      };
+      setEvents([...events, newEvent]);
+      setPopoverOpen(false);
+      setSelectedDate(null);
+    }
+  };
 
   return (
     <div className="flex h-full flex-col p-4 md:p-8">
@@ -66,34 +122,109 @@ export default function CalendarPage() {
             {weekDays.map((day) => (
               <div
                 key={day}
-                className="border-b border-r text-center text-sm font-medium text-muted-foreground p-2"
+                className="border-b border-r p-2 text-center text-sm font-medium text-muted-foreground"
               >
                 <span className="hidden sm:inline">{day}</span>
                 <span className="sm:hidden">{day.charAt(0)}</span>
               </div>
             ))}
 
-            {days.map((day) => (
-              <div
-                key={day.toString()}
-                className={cn(
-                  'relative flex flex-col border-b border-r p-2 transition-colors hover:bg-accent/50',
-                  !isSameMonth(day, currentDate) &&
-                    'bg-muted/50 text-muted-foreground'
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-full text-sm',
-                    isToday(day) &&
-                      'bg-primary text-primary-foreground font-semibold'
-                  )}
+            {days.map((day) => {
+              const dayEvents = events.filter((e) => isSameDay(e.date, day));
+              return (
+                <Popover
+                  key={day.toString()}
+                  open={isSameDay(day, selectedDate || new Date(0))}
+                  onOpenChange={(isOpen) => {
+                    if (!isOpen) {
+                      setSelectedDate(null);
+                      setPopoverOpen(false);
+                    }
+                  }}
                 >
-                  {format(day, 'd')}
-                </span>
-                {/* Events would go here */}
-              </div>
-            ))}
+                  <PopoverTrigger asChild>
+                    <div
+                      onClick={() => handleDayClick(day)}
+                      className={cn(
+                        'relative flex h-28 flex-col border-b border-r p-2 transition-colors hover:bg-accent/50',
+                        !isSameMonth(day, currentDate) &&
+                          'bg-muted/50 text-muted-foreground'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'flex h-8 w-8 items-center justify-center rounded-full text-sm self-start',
+                          isToday(day) &&
+                            'bg-primary text-primary-foreground font-semibold'
+                        )}
+                      >
+                        {format(day, 'd')}
+                      </span>
+                      <div className="mt-1 flex flex-col gap-1 overflow-y-auto no-scrollbar">
+                        {dayEvents.map((event) => (
+                          <div
+                            key={event.id}
+                            className="flex items-center gap-1 rounded-sm bg-primary/20 px-1 py-0.5 text-xs"
+                          >
+                            <span>{event.emoji}</span>
+                            <span className="truncate font-semibold text-primary">
+                              {event.title}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80">
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <h4 className="font-medium leading-none">Add event</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Set details for your event on{' '}
+                          {format(day, 'MMMM d')}.
+                        </p>
+                      </div>
+                      <div className="grid gap-2">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="title"
+                            placeholder="Event title"
+                            value={eventTitle}
+                            onChange={(e) => setEventTitle(e.target.value)}
+                            className="col-span-3"
+                          />
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-10 w-10"
+                              >
+                                {eventEmoji ? (
+                                  <span>{eventEmoji}</span>
+                                ) : (
+                                  <Smile className="h-5 w-5" />
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <EmojiPicker onEmojiClick={onEmojiClick} />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <Textarea
+                          id="description"
+                          placeholder="Event description (optional)"
+                          value={eventDesc}
+                          onChange={(e) => setEventDesc(e.target.value)}
+                        />
+                      </div>
+                      <Button onClick={handleAddEvent}>Add Event</Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
