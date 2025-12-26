@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Send, Smile, Mic, Play, Pause, MoreHorizontal, MessageSquarePlus } from 'lucide-react';
+import { Send, Smile, Mic, Play, Pause, X } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import {
@@ -43,6 +43,7 @@ type Message = {
   time: string;
   reactions?: { [emoji: string]: User[] };
   isEdited?: boolean;
+  replyTo?: Message;
 };
 
 const initialMessages: Message[] = [
@@ -227,6 +228,8 @@ export default function ChatPage() {
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [editedText, setEditedText] = useState('');
 
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+
   useEffect(() => {
     navigator.permissions.query({ name: 'microphone' as PermissionName }).then((result) => {
         if (result.state === 'granted') {
@@ -278,8 +281,16 @@ export default function ChatPage() {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim() === '' || !user) return;
-    addMessage({ text: newMessage.trim() });
+
+    let message: Omit<Message, 'id' | 'time'> = { text: newMessage.trim() };
+    if (replyingTo) {
+      message = { ...message, replyTo: replyingTo };
+    }
+    
+    addMessage(message);
+
     setNewMessage('');
+    setReplyingTo(null);
     setShowEmojiPicker(false);
   };
 
@@ -289,15 +300,12 @@ export default function ChatPage() {
       if (msg.id === messageId) {
         const reactions = { ...msg.reactions };
         
-        // Check if user already reacted with this emoji
         if (reactions[emoji] && reactions[emoji].includes(user)) {
-          // Remove reaction
           reactions[emoji] = reactions[emoji].filter(u => u !== user);
           if (reactions[emoji].length === 0) {
             delete reactions[emoji];
           }
         } else {
-          // Add or update reaction
           reactions[emoji] = [...(reactions[emoji] || []), user];
         }
         return { ...msg, reactions };
@@ -314,6 +322,10 @@ export default function ChatPage() {
     setEditingMessage(message);
     setEditedText(message.text || '');
   };
+
+  const handleReply = (message: Message) => {
+    setReplyingTo(message);
+  }
 
   const submitEdit = () => {
     if (!editingMessage) return;
@@ -384,7 +396,12 @@ export default function ChatPage() {
             if (audioChunks.length > 0) {
               const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
               const audioUrl = URL.createObjectURL(audioBlob);
-              addMessage({ audioUrl });
+              let message: Omit<Message, 'id' | 'time'> = { audioUrl };
+              if (replyingTo) {
+                message = { ...message, replyTo: replyingTo };
+              }
+              addMessage(message);
+              setReplyingTo(null);
             }
             
             stream.getTracks().forEach(track => track.stop());
@@ -471,34 +488,42 @@ export default function ChatPage() {
                         <PopoverTrigger asChild>
                              <div
                               className={cn(
-                                'max-w-xs md:max-w-md rounded-2xl p-3 shadow-sm cursor-pointer',
+                                'max-w-xs md:max-w-md rounded-2xl p-0.5 shadow-sm cursor-pointer',
                                 isSender
-                                  ? 'bg-card rounded-br-none'
-                                  : 'bg-accent rounded-bl-none'
+                                  ? 'bg-card'
+                                  : 'bg-accent'
                               )}
                             >
-                              {msg.text && (
-                                <p className={cn(
-                                  'text-sm',
-                                  isSender ? 'text-primary' : 'text-accent-foreground'
-                                )}>
-                                  {msg.text}
-                                </p>
+                              {msg.replyTo && (
+                                <div className={cn("p-2 text-sm rounded-t-2xl", isSender ? 'bg-black/5' : 'bg-white/10')}>
+                                  <p className={cn("font-semibold text-xs", isSender ? 'text-primary' : 'text-accent-foreground')}>{msg.replyTo.sender}</p>
+                                  <p className={cn("truncate text-xs", isSender ? 'text-primary/80' : 'text-accent-foreground/80')}>{msg.replyTo.text || 'Voice Note'}</p>
+                                </div>
                               )}
-                              {msg.audioUrl && (
-                                 <WaveformPlayer src={msg.audioUrl} isSender={isSender} />
-                              )}
-                               <div className="flex items-center justify-end gap-1.5 mt-1">
-                                {msg.isEdited && <p className="text-xs text-muted-foreground">Edited</p>}
-                                <p className={cn(
-                                  'text-xs',
-                                   isSender
-                                    ? 'text-primary/70'
-                                    : 'text-accent-foreground/70',
-                                  'text-right'
-                                )}>
-                                  {msg.time}
-                                </p>
+                              <div className="p-3">
+                                {msg.text && (
+                                  <p className={cn(
+                                    'text-sm',
+                                    isSender ? 'text-primary' : 'text-accent-foreground'
+                                  )}>
+                                    {msg.text}
+                                  </p>
+                                )}
+                                {msg.audioUrl && (
+                                   <WaveformPlayer src={msg.audioUrl} isSender={isSender} />
+                                )}
+                                 <div className="flex items-center justify-end gap-1.5 mt-1">
+                                  {msg.isEdited && <p className="text-xs text-muted-foreground">Edited</p>}
+                                  <p className={cn(
+                                    'text-xs',
+                                     isSender
+                                      ? 'text-primary/70'
+                                      : 'text-accent-foreground/70',
+                                    'text-right'
+                                  )}>
+                                    {msg.time}
+                                  </p>
+                                 </div>
                                </div>
                             </div>
                         </PopoverTrigger>
@@ -509,14 +534,12 @@ export default function ChatPage() {
                                         <span className="text-lg">{emoji}</span>
                                     </Button>
                                 ))}
+                                <Button variant="ghost" size="sm" onClick={() => handleReply(msg)}>Reply</Button> 
                                 {isSender && msg.text && (
                                     <>
                                         <Button variant="ghost" size="sm" onClick={() => handleEdit(msg)}>Edit</Button>
                                         <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleUnsend(msg.id)}>Unsend</Button>
                                     </>
-                                )}
-                                {!isSender && (
-                                   <Button variant="ghost" size="sm">Reply</Button> 
                                 )}
                             </div>
                         </PopoverContent>
@@ -539,8 +562,17 @@ export default function ChatPage() {
             );
           })}
         </div>
-        <form onSubmit={handleSendMessage} className="p-4 border-t bg-card rounded-b-lg">
-          <div className="relative flex items-center h-12">
+        <div className="p-4 border-t bg-card rounded-b-lg">
+          {replyingTo && (
+            <div className="p-2 mb-2 bg-input rounded-md relative text-sm">
+                <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => setReplyingTo(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+                <p className="font-semibold text-primary">Replying to {replyingTo.sender}</p>
+                <p className="text-muted-foreground truncate">{replyingTo.text || 'Voice Note'}</p>
+            </div>
+          )}
+          <form onSubmit={handleSendMessage} className="relative flex items-center h-12">
             {isRecording ? (
                <div className="flex items-center justify-between w-full h-full rounded-full bg-input px-4">
                   <div className="flex items-center gap-2">
@@ -583,8 +615,8 @@ export default function ChatPage() {
                 </div>
               </>
             )}
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
