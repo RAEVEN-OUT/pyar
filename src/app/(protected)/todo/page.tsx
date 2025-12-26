@@ -82,10 +82,10 @@ export default function TodoPage() {
                 <div
                   key={task.id}
                   className={cn(
-                    'flex items-center gap-4 rounded-lg p-3 transition-colors bg-card',
-                    task.createdBy === 'Him' 
-                      ? 'border-l-[6px] border-primary' 
-                      : 'border-r-[6px] border-accent',
+                    'flex items-center gap-4 rounded-lg p-3 transition-colors',
+                    task.createdBy === 'Him'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card border-r-[6px] border-accent',
                     task.completed ? 'opacity-60' : 'opacity-100'
                   )}
                 >
@@ -93,14 +93,16 @@ export default function TodoPage() {
                     id={`task-${task.id}`}
                     checked={task.completed}
                     onCheckedChange={() => handleToggleTask(task.id)}
-                    className="h-5 w-5"
+                    className={cn(
+                        "h-5 w-5",
+                        task.createdBy === 'Him' && 'border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary'
+                    )}
                   />
                   <label
                     htmlFor={`task-${task.id}`}
                     className={cn(
                       'flex-1 text-sm font-medium cursor-pointer',
-                      task.completed && 'line-through',
-                      'text-card-foreground'
+                      task.completed && 'line-through'
                     )}
                   >
                     {task.text}
