@@ -7,7 +7,6 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Plus,
   Smile,
 } from 'lucide-react';
 import {
@@ -131,10 +130,12 @@ export default function CalendarPage() {
 
             {days.map((day) => {
               const dayEvents = events.filter((e) => isSameDay(e.date, day));
+              const stickerEmoji = dayEvents.length > 0 ? dayEvents[0].emoji : null;
+
               return (
                 <Popover
                   key={day.toString()}
-                  open={isSameDay(day, selectedDate || new Date(0))}
+                  open={isSameDay(day, selectedDate || new Date(0)) && popoverOpen}
                   onOpenChange={(isOpen) => {
                     if (!isOpen) {
                       setSelectedDate(null);
@@ -160,13 +161,17 @@ export default function CalendarPage() {
                       >
                         {format(day, 'd')}
                       </span>
+                      {stickerEmoji && (
+                        <span className="absolute right-2 top-2 text-xl">
+                          {stickerEmoji}
+                        </span>
+                      )}
                       <div className="mt-1 flex flex-col gap-1 overflow-y-auto no-scrollbar">
                         {dayEvents.map((event) => (
                           <div
                             key={event.id}
                             className="flex items-center gap-1 rounded-sm bg-primary/20 px-1 py-0.5 text-xs"
                           >
-                            <span>{event.emoji}</span>
                             <span className="truncate font-semibold text-primary">
                               {event.title}
                             </span>
