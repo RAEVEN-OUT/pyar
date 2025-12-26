@@ -85,7 +85,7 @@ export default function TodoPage() {
                     'flex items-center gap-4 rounded-lg p-3 transition-colors',
                     task.createdBy === 'Him'
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-card border-r-[6px] border-accent',
+                      : 'bg-accent text-accent-foreground',
                     task.completed ? 'opacity-60' : 'opacity-100'
                   )}
                 >
@@ -95,7 +95,9 @@ export default function TodoPage() {
                     onCheckedChange={() => handleToggleTask(task.id)}
                     className={cn(
                         "h-5 w-5",
-                        task.createdBy === 'Him' && 'border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary'
+                        task.createdBy === 'Him' 
+                          ? 'border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary'
+                          : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
                     )}
                   />
                   <label
