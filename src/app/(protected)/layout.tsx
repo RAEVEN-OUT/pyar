@@ -14,8 +14,6 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarFooter,
-  SidebarTrigger,
-  SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
@@ -78,11 +76,9 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
   return (
       <SidebarProvider>
         <Sidebar>
-          <SidebarRail />
           <SidebarContent>
-            <SidebarHeader className="justify-between">
+            <SidebarHeader>
               <Logo className="text-3xl" />
-              <SidebarTrigger />
             </SidebarHeader>
             <SidebarMenu className="flex-1">
               {navItems.map((item) => (
