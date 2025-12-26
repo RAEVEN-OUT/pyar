@@ -81,8 +81,8 @@ export default function TodoPage() {
                 <div
                   key={task.id}
                   className={cn(
-                    'flex items-center gap-4 rounded-lg p-3 border-l-4 transition-colors',
-                    task.createdBy === 'Him' ? 'border-blue-500 bg-card' : 'border-pink-500 bg-accent',
+                    'flex items-center gap-4 rounded-lg p-3 border-l-[6px] transition-colors',
+                    task.createdBy === 'Him' ? 'border-primary bg-card' : 'border-pink-500 bg-accent',
                     task.completed ? 'opacity-60' : 'opacity-100'
                   )}
                 >
@@ -104,7 +104,7 @@ export default function TodoPage() {
                   </label>
                   <div className={cn(
                     'text-xs font-semibold px-2 py-1 rounded-full',
-                     task.createdBy === 'Him' ? 'bg-blue-500/20 text-blue-800' : 'bg-pink-500/20 text-pink-800'
+                     task.createdBy === 'Him' ? 'bg-primary/20 text-primary' : 'bg-pink-500/20 text-pink-800'
                   )}>
                     {task.createdBy}
                   </div>
