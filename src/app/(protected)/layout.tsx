@@ -34,7 +34,6 @@ import { usePathname } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { TaskProvider, useTasks } from '@/context/task-context';
-import { CherryIcon } from '@/components/icons/cherry-icon';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 
@@ -47,52 +46,20 @@ const navItems = [
   { href: '/settings', icon: Settings, label: 'Settings' },
 ];
 
-function CherryTrigger() {
-  const { toggleSidebar } = useSidebar();
-  const isMobile = useIsMobile();
-
-  if (!isMobile) {
-    return null;
-  }
-
-  return (
-    <div className="p-4 md:hidden">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="text-primary hover:text-primary/90"
-        onClick={toggleSidebar}
-      >
-        <CherryIcon className="h-8 w-8" />
-      </Button>
-    </div>
-  );
-}
 
 function AppWithSidebar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const { tasks } = useTasks();
   const incompleteTasks = tasks.filter(task => !task.completedAt).length;
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, isMobile } = useSidebar();
 
   return (
     <>
-      <Sidebar collapsible="none">
+      <Sidebar collapsible={isMobile ? "offcanvas" : "none"}>
         <SidebarContent>
           <SidebarHeader>
             <Logo className="text-3xl" />
-            <Button
-              data-sidebar="trigger"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 data-[state=collapsed]:hidden md:flex"
-              data-state="expanded"
-              onClick={toggleSidebar}
-            >
-              <PanelLeft />
-              <span className="sr-only">Toggle Sidebar</span>
-            </Button>
           </SidebarHeader>
           <SidebarMenu className="flex-1">
             {navItems.map((item) => (
@@ -140,12 +107,21 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
           </SidebarFooter>
         </SidebarContent>
       </Sidebar>
-      <div className="flex flex-col flex-1">
-        <CherryTrigger />
-        <SidebarInset>
-          {children}
-        </SidebarInset>
-      </div>
+      <SidebarInset>
+        {isMobile && (
+           <div className="p-2 md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-primary hover:text-primary/90"
+              onClick={toggleSidebar}
+            >
+              <PanelLeft className="h-6 w-6" />
+            </Button>
+          </div>
+        )}
+        {children}
+      </SidebarInset>
     </>
   );
 }
