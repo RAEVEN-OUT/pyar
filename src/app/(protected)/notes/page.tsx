@@ -5,7 +5,7 @@ import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { NotebookText, Edit, Save, ChevronLeft, ChevronRight } from 'lucide-react';
-import { isFuture, isSameMonth, isToday } from 'date-fns';
+import { isFuture, isSameMonth, isToday, isSameDay } from 'date-fns';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -52,29 +52,32 @@ const NoteEditor = ({
   note,
   onSave,
   colorClass,
+  canEdit,
 }: {
   noteUser: User;
   currentUser: User;
   note: Note | undefined;
   onSave: (content: string) => void;
   colorClass: string;
+  canEdit: boolean;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [text, setText] = useState(note?.content || '');
-  const canEdit = noteUser === currentUser;
 
   const handleSave = () => {
     onSave(text);
     setIsEditing(false);
   };
 
+  const showEditButton = canEdit && noteUser === currentUser;
+
   return (
     <Card className={cn('flex flex-col h-full', colorClass)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-headline">
-          {noteUser === 'Him' ? 'His Note' : 'Hers Note'}
+          {noteUser === 'Him' ? 'His Note' : 'Her Note'}
         </CardTitle>
-        {canEdit && (
+        {showEditButton && (
             isEditing ? (
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave}>
                 <Save className="h-4 w-4" />
@@ -123,7 +126,7 @@ function CustomCaption(props: CaptionProps) {
          >
            <ChevronLeft className="h-4 w-4" />
          </Button>
-         <h2 className="text-xl font-medium">{format(props.displayMonth, 'MMMM yyyy')}</h2>
+         <h2 className="text-xl font-headline">{format(props.displayMonth, 'MMMM yyyy')}</h2>
          <Button
           aria-label="Go to next month"
           variant="outline"
@@ -173,6 +176,8 @@ export default function NotesPage() {
   if (!user) return null;
 
   const otherUser = user === 'Him' ? 'Her' : 'Him';
+  
+  const canEditSelectedDate = selectedDate ? isToday(selectedDate) : false;
 
   return (
     <div className="flex flex-col md:flex-row h-full p-4 gap-4 md:p-8">
@@ -195,7 +200,7 @@ export default function NotesPage() {
               cell: 'h-9 w-9 text-center text-sm p-0 relative',
               day: 'h-9 w-9 p-0 font-normal aria-selected:opacity-100',
               day_today: 'bg-primary text-primary-foreground rounded-full',
-              day_selected: 'bg-transparent text-primary-foreground rounded-md ring-2 ring-primary ring-offset-background focus:ring-primary',
+              day_selected: 'bg-transparent text-primary-foreground rounded-full ring-2 ring-primary ring-offset-background focus:ring-primary',
               day_disabled: 'text-muted-foreground opacity-30 cursor-default hover:bg-transparent',
             }}
             modifiers={{
@@ -226,6 +231,7 @@ export default function NotesPage() {
             note={dailyNotes[user]}
             onSave={handleSaveNote(user)}
             colorClass="bg-card text-card-foreground"
+            canEdit={canEditSelectedDate}
           />
           <NoteEditor
             noteUser={otherUser}
@@ -233,6 +239,7 @@ export default function NotesPage() {
             note={dailyNotes[otherUser]}
             onSave={handleSaveNote(otherUser)}
             colorClass="bg-accent text-accent-foreground"
+            canEdit={canEditSelectedDate}
           />
         </div>
       </div>
