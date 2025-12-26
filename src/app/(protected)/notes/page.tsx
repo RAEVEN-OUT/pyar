@@ -227,7 +227,7 @@ export default function NotesPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-full p-4 gap-4 md:p-8">
-      <div className="flex flex-col items-center gap-4 md:w-80 lg:w-96">
+      <div className="flex flex-col items-center gap-4 md:w-72">
         <div className="flex items-center gap-2 text-2xl font-headline text-primary self-start">
            <NotebookText className="h-8 w-8 text-primary" />
            Our Shared Notes
@@ -244,8 +244,8 @@ export default function NotesPage() {
           {format(selectedDate, 'MMMM d, yyyy')}
         </h2>
         <div className={cn(
-          "grid flex-1 gap-4",
-          isMobile ? "grid-rows-2" : "grid-cols-2"
+          "flex-1 gap-4",
+          isMobile ? "flex flex-col" : "grid grid-cols-2"
         )}>
           <NoteEditor
             noteUser={user}
