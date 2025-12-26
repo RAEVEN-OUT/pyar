@@ -103,41 +103,24 @@ const NoteEditor = ({
 
 
 function CustomCaption(props: CaptionProps) {
-    const { fromDate, toDate } = (props.classNames as any).day_disabled_opts;
     const isCurrentMonth = isSameMonth(new Date(), props.displayMonth);
 
-    const handlePreviousClick = () => {
-      if (props.onMonthChange && props.displayMonth) {
-        const previousMonth = new Date(props.displayMonth);
-        previousMonth.setMonth(previousMonth.getMonth() - 1);
-        props.onMonthChange(previousMonth);
-      }
-    };
-  
-    const handleNextClick = () => {
-       if (props.onMonthChange && props.displayMonth) {
-        const nextMonth = new Date(props.displayMonth);
-        nextMonth.setMonth(nextMonth.getMonth() + 1);
-        props.onMonthChange(nextMonth);
-      }
-    };
-    
     return (
-      <div className="flex justify-between items-center px-2 mb-2">
+      <div className="flex justify-between items-center px-2 mb-4">
          <Button
           aria-label="Go to previous month"
           variant="outline"
           className="h-7 w-7 p-0"
-          onClick={handlePreviousClick}
+          onClick={() => props.onMonthChange && props.onMonthChange(new Date(props.displayMonth.getFullYear(), props.displayMonth.getMonth() - 1))}
          >
            <ChevronLeft className="h-4 w-4" />
          </Button>
-         <span className="text-sm font-medium">{format(props.displayMonth, 'MMMM yyyy')}</span>
+         <h2 className="text-sm font-medium">{format(props.displayMonth, 'MMMM yyyy')}</h2>
          <Button
           aria-label="Go to next month"
           variant="outline"
           className={cn("h-7 w-7 p-0", isCurrentMonth && "invisible")}
-          onClick={handleNextClick}
+          onClick={() => props.onMonthChange && props.onMonthChange(new Date(props.displayMonth.getFullYear(), props.displayMonth.getMonth() + 1))}
           disabled={isCurrentMonth}
          >
            <ChevronRight className="h-4 w-4" />
@@ -199,19 +182,22 @@ export default function NotesPage() {
             onMonthChange={setCurrentMonth}
             showOutsideDays={false}
             className="rounded-md"
+            classNames={{
+              head_cell: 'w-9 text-muted-foreground rounded-md font-normal text-[0.8rem]',
+            }}
             modifiers={{
               hasNote: Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/'))),
               disabled: isFuture,
-              today: isToday
+              today: isToday,
             }}
             modifiersClassNames={{
               hasNote: 'font-bold text-primary',
               today: 'bg-primary text-primary-foreground rounded-full',
-              selected: 'bg-primary/20 text-primary-foreground rounded-md',
-              disabled: 'opacity-50'
+              selected: 'bg-primary/20 text-primary !rounded-md',
+              disabled: 'text-muted-foreground opacity-50 cursor-not-allowed',
             }}
             components={{
-                Caption: CustomCaption
+                Caption: CustomCaption,
             }}
           />
         </Card>
