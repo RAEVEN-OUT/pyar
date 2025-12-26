@@ -273,13 +273,8 @@ const SidebarTrigger = React.forwardRef<
       variant="ghost"
       size="icon"
       className={cn(
-        'h-7 w-7 transition-transform duration-200 ease-in-out',
-        state === "expanded" && 'rotate-180',
-         'absolute top-3 z-50',
-         'group-data-[side=left]/sidebar-wrapper:left-[calc(var(--sidebar-width)_-_2.25rem)]',
-         'group-data-[side=right]/sidebar-wrapper:right-[calc(var(--sidebar-width)_-_2.25rem)]',
-         'group-data-[state=collapsed]/sidebar-wrapper:group-data-[side=left]/sidebar-wrapper:left-[calc(var(--sidebar-width-icon)_-_2.25rem)]',
-         'group-data-[state=collapsed]/sidebar-wrapper:group-data-[side=right]/sidebar-wrapper:right-[calc(var(--sidebar-width-icon)_-_2.25rem)]',
+        "h-7 w-7 transition-transform duration-200 ease-in-out group-data-[state=expanded]:rotate-180",
+        "group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:right-3 group-data-[collapsible=icon]:top-3 group-data-[collapsible=icon]:rotate-0",
         className
       )}
       onClick={(event) => {
