@@ -3,7 +3,7 @@
 
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, Children, cloneElement } from 'react';
+import React, { useEffect, useState, Children, cloneElement } from 'react';
 import {
   Sidebar,
   SidebarProvider,
