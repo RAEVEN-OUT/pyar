@@ -38,6 +38,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type CalendarEvent = {
   id: string;
@@ -148,7 +149,9 @@ export default function CalendarPage() {
                 <AccordionItem key={event.id} value={event.id}>
                   <AccordionTrigger className="truncate">{event.title}</AccordionTrigger>
                   <AccordionContent>
-                    {event.description || <p className="text-sm text-muted-foreground italic">No description provided.</p>}
+                    <ScrollArea className="h-24 pr-4">
+                      {event.description || <p className="text-sm text-muted-foreground italic">No description provided.</p>}
+                    </ScrollArea>
                   </AccordionContent>
                 </AccordionItem>
               ))}
