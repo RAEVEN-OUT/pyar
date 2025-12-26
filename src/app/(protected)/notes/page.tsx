@@ -5,12 +5,12 @@ import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { NotebookText, Edit, Save, ChevronLeft, ChevronRight } from 'lucide-react';
-import { isFuture, isSameMonth, isToday, isSameDay } from 'date-fns';
+import { isFuture, isSameMonth, isToday } from 'date-fns';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
-import { DayPicker, CaptionProps } from 'react-day-picker';
+import { type CaptionProps } from 'react-day-picker';
 import { Calendar } from '@/components/ui/calendar';
 
 type Note = {
@@ -199,12 +199,12 @@ export default function NotesPage() {
               head_cell: 'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
               cell: 'h-9 w-9 text-center text-sm p-0 relative',
               day: cn(
-                'h-9 w-9 p-0 font-normal aria-selected:opacity-100',
+                'h-9 w-9 p-0 font-normal aria-selected:opacity-100 rounded-full',
                 '[&:not([aria-disabled])]:hover:bg-accent [&:not([aria-disabled])]:hover:text-accent-foreground'
               ),
-              day_today: 'bg-primary text-primary-foreground rounded-full',
+              day_today: 'bg-primary text-primary-foreground',
               day_selected:
-                'bg-transparent text-foreground rounded-md ring-2 ring-primary ring-offset-background focus:ring-primary',
+                'bg-transparent text-foreground ring-2 ring-primary ring-offset-background !rounded-md focus:ring-primary',
               day_disabled: 'text-muted-foreground opacity-50 cursor-default',
             }}
             modifiers={{
@@ -243,7 +243,7 @@ export default function NotesPage() {
             note={dailyNotes[otherUser]}
             onSave={handleSaveNote(otherUser)}
             colorClass="bg-accent text-accent-foreground"
-            canEdit={canEditSelectedDate}
+            canEdit={false}
           />
         </div>
       </div>
