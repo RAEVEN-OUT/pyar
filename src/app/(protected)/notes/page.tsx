@@ -5,11 +5,12 @@ import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
-import { NotebookText, Edit, Save } from 'lucide-react';
-import { format, isFuture, isSameMonth } from 'date-fns';
+import { NotebookText, Edit, Save, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, isFuture, isSameMonth, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
+import { DayPicker, CaptionProps } from 'react-day-picker';
 
 type Note = {
   content: string;
@@ -101,6 +102,51 @@ const NoteEditor = ({
 };
 
 
+function CustomCaption(props: CaptionProps) {
+    const { fromDate, toDate } = (props.classNames as any).day_disabled_opts;
+    const isCurrentMonth = isSameMonth(new Date(), props.displayMonth);
+
+    const handlePreviousClick = () => {
+      if (props.onMonthChange && props.displayMonth) {
+        const previousMonth = new Date(props.displayMonth);
+        previousMonth.setMonth(previousMonth.getMonth() - 1);
+        props.onMonthChange(previousMonth);
+      }
+    };
+  
+    const handleNextClick = () => {
+       if (props.onMonthChange && props.displayMonth) {
+        const nextMonth = new Date(props.displayMonth);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        props.onMonthChange(nextMonth);
+      }
+    };
+    
+    return (
+      <div className="flex justify-between items-center px-2 mb-2">
+         <Button
+          aria-label="Go to previous month"
+          variant="outline"
+          className="h-7 w-7 p-0"
+          onClick={handlePreviousClick}
+         >
+           <ChevronLeft className="h-4 w-4" />
+         </Button>
+         <span className="text-sm font-medium">{format(props.displayMonth, 'MMMM yyyy')}</span>
+         <Button
+          aria-label="Go to next month"
+          variant="outline"
+          className={cn("h-7 w-7 p-0", isCurrentMonth && "invisible")}
+          onClick={handleNextClick}
+          disabled={isCurrentMonth}
+         >
+           <ChevronRight className="h-4 w-4" />
+         </Button>
+      </div>
+    );
+}
+
+
 export default function NotesPage() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
@@ -151,41 +197,22 @@ export default function NotesPage() {
             onSelect={setSelectedDate}
             month={currentMonth}
             onMonthChange={setCurrentMonth}
+            showOutsideDays={false}
             className="rounded-md"
             modifiers={{
               hasNote: Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/'))),
-              disabled: isFuture
+              disabled: isFuture,
+              today: isToday
             }}
             modifiersClassNames={{
               hasNote: 'font-bold text-primary',
+              today: 'bg-primary text-primary-foreground rounded-full',
+              selected: 'bg-primary/20 text-primary-foreground rounded-md',
+              disabled: 'opacity-50'
             }}
             components={{
-                Caption: ({ ...props }) => {
-                  const isCurrentMonth = isSameMonth(new Date(), props.displayMonth);
-                  return (
-                    <div className="flex justify-between items-center px-2">
-                       <Button
-                        aria-label="Go to previous month"
-                        variant="outline"
-                        className="h-7 w-7 p-0"
-                        onClick={() => setCurrentMonth(new Date(props.displayMonth.setMonth(props.displayMonth.getMonth() - 1)))}
-                       >
-                         <NotebookText className="h-4 w-4" />
-                       </Button>
-                       <span className="text-sm font-medium">{format(props.displayMonth, 'MMMM yyyy')}</span>
-                       <Button
-                        aria-label="Go to next month"
-                        variant="outline"
-                        className={cn("h-7 w-7 p-0", isCurrentMonth && "invisible")}
-                        onClick={() => setCurrentMonth(new Date(props.displayMonth.setMonth(props.displayMonth.getMonth() + 1)))}
-                        disabled={isCurrentMonth}
-                       >
-                         <NotebookText className="h-4 w-4" />
-                       </Button>
-                    </div>
-                  );
-                },
-              }}
+                Caption: CustomCaption
+            }}
           />
         </Card>
       </div>
