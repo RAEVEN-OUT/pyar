@@ -24,7 +24,7 @@ import {
   CalendarDays,
   ListChecks,
   Image,
-  Settings,
+  ShieldCheck,
   LogOut,
   Heart,
   PanelLeft,
@@ -43,7 +43,7 @@ const navItems = [
   { href: '/calendar', icon: CalendarDays, label: 'Calendar' },
   { href: '/todo', icon: ListChecks, label: 'To-Do' },
   { href: '/photos', icon: Image, label: 'Photos' },
-  { href: '/settings', icon: Settings, label: 'Settings' },
+  { href: '/discipline', icon: ShieldCheck, label: 'Discipline' },
 ];
 
 
