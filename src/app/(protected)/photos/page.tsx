@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogClose
 } from '@/components/ui/dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Label } from '@/components/ui/label';
@@ -39,6 +40,11 @@ const initialPhotos: Photo[] = PlaceHolderImages.map(p => ({
     isPrivate: false,
 }));
 
+type ImageDimensions = {
+  width: number;
+  height: number;
+};
+
 export default function PhotosPage() {
   const { user } = useAuth();
   const [photos, setPhotos] = useState(initialPhotos);
@@ -55,6 +61,7 @@ export default function PhotosPage() {
   const [passwordError, setPasswordError] = useState('');
 
   const [viewingPhoto, setViewingPhoto] = useState<Photo | null>(null);
+  const [imageDimensions, setImageDimensions] = useState<ImageDimensions | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -105,7 +112,7 @@ export default function PhotosPage() {
 
   const handleDeletePhoto = (id: string) => {
     setPhotos(prev => prev.filter(p => p.id !== id));
-    setViewingPhoto(null);
+    closeViewer();
   };
   
   const handleTabChange = useCallback((value: string) => {
@@ -158,7 +165,8 @@ export default function PhotosPage() {
         }
       }
   }, [isPasswordDialogOpen, handlePinPadClick, handlePinPadBackspace]);
-
+  
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Using handleKeyDown which is not a dependency
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => {
@@ -168,19 +176,23 @@ export default function PhotosPage() {
   
   const closeViewer = () => {
     setViewingPhoto(null);
+    setImageDimensions(null);
   };
 
-
   if (!user) return null;
-
+  
+  const isLandscape = imageDimensions ? imageDimensions.width > imageDimensions.height : false;
   const pinDisplay = '●'.repeat(passwordInput.length).padEnd(4, '○');
   const isViewingPhotoOwner = viewingPhoto?.uploader === user;
 
   return (
     <div className="flex h-full flex-col p-4 md:p-8">
-      <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
+       <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
         <DialogContent
-          className="p-0 bg-transparent border-0 shadow-none inline-block w-auto"
+          className={cn(
+            'p-0 bg-transparent border-0 shadow-none w-auto h-auto inline-block duration-500',
+            isLandscape && "rotate-90"
+          )}
           onInteractOutside={closeViewer}
         >
           {viewingPhoto && (
@@ -189,20 +201,30 @@ export default function PhotosPage() {
                     <DialogTitle>Viewing Photo: {viewingPhoto.description}</DialogTitle>
                 </DialogHeader>
 
-                <div className="relative">
+                <div className="flex-shrink-0">
                     <Image
-                    src={viewingPhoto.url}
-                    alt={viewingPhoto.description}
-                    width={1920}
-                    height={1080}
-                    className="object-contain transition-opacity duration-300 w-auto h-auto max-w-[95vw] max-h-[95vh]"
-                    priority
+                      src={viewingPhoto.url}
+                      alt={viewingPhoto.description}
+                      width={1920}
+                      height={1080}
+                      onLoad={({ target }) => {
+                        const { naturalWidth, naturalHeight } = target as HTMLImageElement;
+                        setImageDimensions({ width: naturalWidth, height: naturalHeight });
+                      }}
+                      className={cn(
+                        "object-contain",
+                        isLandscape ? "w-[95vh] h-auto" : "h-[95vh] w-auto"
+                      )}
+                      priority
                     />
                 </div>
                 
-                <div className="flex h-[52px] items-center justify-between border-t bg-card/80 p-3 backdrop-blur-sm">
+                <div className={cn(
+                  "flex h-[52px] items-center justify-between border-t bg-card/80 p-3 backdrop-blur-sm",
+                  isLandscape && "-rotate-90"
+                  )}>
                     <p className="truncate pr-4 text-sm font-semibold text-card-foreground">
-                    {viewingPhoto.description}
+                      {viewingPhoto.description}
                     </p>
                     {isViewingPhotoOwner && (
                     <Button
@@ -360,3 +382,5 @@ export default function PhotosPage() {
     </div>
   );
 }
+
+    
