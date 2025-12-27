@@ -29,7 +29,7 @@ export default function TodoPage() {
       const completedDate = new Date(task.completedAt);
       return !isBefore(completedDate, today);
     });
-    setVisibleTasks(filteredTasks.sort((a,b) => b.id - a.id));
+    setVisibleTasks(filteredTasks.sort((a,b) => (a.completedAt ? 1 : -1) - (b.completedAt ? 1 : -1) || b.id - a.id));
   }, [tasks]);
 
   const handleAddTask = (e: React.FormEvent) => {
