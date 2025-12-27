@@ -93,6 +93,7 @@ const NoteEditor = ({
   const handleEdit = () => {
     setIsEditing(true);
     setTimeout(() => {
+      textareaRef.current?.focus();
       autoResizeTextarea();
     }, 0);
   }
@@ -117,7 +118,7 @@ const NoteEditor = ({
             )
         )}
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col gap-2">
+      <CardContent className="flex-1 flex flex-col gap-2">
         {isEditing ? (
           <Textarea
             ref={textareaRef}
@@ -128,8 +129,8 @@ const NoteEditor = ({
             rows={1}
           />
         ) : (
-          <div className="flex min-h-[80px] flex-1 flex-col">
-            <div className="flex-1 whitespace-pre-wrap p-2 font-body text-sm">
+          <div className="flex flex-col flex-1 min-h-[80px]">
+            <div className="whitespace-pre-wrap p-2 font-body text-sm flex-1">
               {note?.content || <p className="text-muted-foreground italic">No note yet.</p>}
             </div>
             {note && (
