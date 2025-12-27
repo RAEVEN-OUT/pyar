@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,35 +11,27 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-
-const initialActivities = [
-  { id: 'workout', label: 'Workout' },
-  { id: 'read', label: 'Read a book' },
-  { id: 'wake-up', label: 'Wake up early' },
-  { id: 'no-junk', label: 'No junk food' },
-  { id: 'meditate', label: 'Meditate' },
-  { id: 'journal', label: 'Journal' },
-];
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where, doc, writeBatch, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { format, startOfToday } from 'date-fns';
 
 type Activity = {
   id: string;
   label: string;
-};
-
-type CheckedState = {
-  [key in User]: {
-    [activityId: string]: boolean;
+  createdBy: User;
+  checks: {
+    [key in User]?: boolean;
   };
+  date: string;
 };
 
 type UserColumnProps = {
   displayedUser: User;
   currentUser: User;
   activities: Activity[];
-  checked: CheckedState;
   score: number;
   newActivity: string;
-  onCheckChange: (user: User, activityId: string) => void;
+  onCheckChange: (user: User, activityId: string, currentState: boolean) => void;
   onDeleteActivity: (activityId: string) => void;
   onAddActivity: (e: React.FormEvent) => void;
   onNewActivityChange: (value: string) => void;
@@ -50,7 +42,6 @@ const UserColumn = ({
   displayedUser, 
   currentUser, 
   activities,
-  checked,
   score,
   newActivity,
   onCheckChange,
@@ -89,8 +80,8 @@ const UserColumn = ({
                 {isCurrentUser ? (
                   <Checkbox
                     id={`${displayedUser}-${activity.id}`}
-                    checked={!!checked[displayedUser][activity.id]}
-                    onCheckedChange={() => onCheckChange(displayedUser, activity.id)}
+                    checked={!!activity.checks[displayedUser]}
+                    onCheckedChange={(isChecked) => onCheckChange(displayedUser, activity.id, !!isChecked)}
                     className={cn(
                         "h-6 w-6",
                         displayedUser === 'Him' 
@@ -105,7 +96,7 @@ const UserColumn = ({
                   htmlFor={`${displayedUser}-${activity.id}`}
                   className={cn(
                     'text-base font-medium flex-1 break-all',
-                    checked[displayedUser][activity.id] && 'line-through text-muted-foreground'
+                    activity.checks[displayedUser] && 'line-through text-muted-foreground'
                   )}
                 >
                   {activity.label}
@@ -145,117 +136,82 @@ const UserColumn = ({
 
 export default function DisciplinePage() {
   const { user } = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
-  const [activities, setActivities] = useState<Activity[]>(initialActivities);
   const [newActivity, setNewActivity] = useState('');
-  const [checked, setChecked] = useState<CheckedState>({
-    Him: {},
-    Her: {},
-  });
+  const todayString = useMemo(() => format(startOfToday(), 'yyyy-MM-dd'), []);
   
+  const activitiesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'discipline-activities'), where('date', '==', todayString));
+  }, [firestore, todayString]);
+
+  const { data: activities, isLoading } = useCollection<Activity>(activitiesQuery);
+
+  const prevActivitiesRef = useRef<Activity[]>();
   const otherUser = user === 'Him' ? 'Her' : 'Him';
-  const prevCheckedRef = useRef<CheckedState>();
-  
-  if (!user) {
+
+  useEffect(() => {
+    if (!activities || !prevActivitiesRef.current || !user || !otherUser) {
+      prevActivitiesRef.current = activities || [];
+      return;
+    }
+
+    const prevOtherUserScore = prevActivitiesRef.current
+        .map(a => a.checks[otherUser] ? 1 : 0)
+        .reduce((sum, current) => sum + current, 0);
+    
+    const currentOtherUserScore = activities
+        .map(a => a.checks[otherUser] ? 1 : 0)
+        .reduce((sum, current) => sum + current, 0);
+
+    if (currentOtherUserScore > prevOtherUserScore) {
+      const completedActivity = activities.find(act => {
+        const prevAct = prevActivitiesRef.current?.find(p => p.id === act.id);
+        return act.checks[otherUser] && !prevAct?.checks[otherUser];
+      });
+      if (completedActivity) {
+        toast({
+          title: `${otherUser} completed a task! 🎉`,
+          description: `${otherUser === 'Her' ? 'She' : 'He'} finished '${completedActivity.label}'. Way to go!`,
+        });
+      }
+    }
+    prevActivitiesRef.current = activities;
+  }, [activities, user, otherUser, toast]);
+
+  if (!user || !firestore) {
     return null;
   }
 
-  useEffect(() => {
-    // Reset daily checks at midnight
-    const today = new Date().toISOString().slice(0, 10);
-    const lastReset = localStorage.getItem('disciplineLastReset');
-    
-    let loadedChecks: CheckedState = { Him: {}, Her: {} };
-
-    if (lastReset !== today) {
-      localStorage.setItem('disciplineLastReset', today);
-      localStorage.removeItem('disciplineChecks');
-    } else {
-       // Load persisted checks from localStorage
-      const savedChecks = localStorage.getItem('disciplineChecks');
-      if (savedChecks) {
-          try {
-              const parsedChecks = JSON.parse(savedChecks);
-              loadedChecks = parsedChecks;
-          } catch (e) {
-              console.error("Failed to parse discipline checks from localStorage", e);
-          }
-      }
-    }
-    setChecked(loadedChecks);
-    prevCheckedRef.current = loadedChecks;
-  }, []);
-
-  useEffect(() => {
-    // Persist checks to localStorage whenever they change
-    try {
-        localStorage.setItem('disciplineChecks', JSON.stringify(checked));
-    } catch (e) {
-        console.error("Failed to save discipline checks to localStorage", e);
-    }
-
-    if (prevCheckedRef.current && user) {
-        const prevOtherUserChecks = prevCheckedRef.current[otherUser] || {};
-        const currentOtherUserChecks = checked[otherUser] || {};
-
-        const prevScore = Object.values(prevOtherUserChecks).filter(Boolean).length;
-        const currentScore = Object.values(currentOtherUserChecks).filter(Boolean).length;
-        
-        if (currentScore > prevScore) {
-            const completedActivityId = Object.keys(currentOtherUserChecks).find(
-                (id) => currentOtherUserChecks[id] && !prevOtherUserChecks[id]
-            );
-
-            if (completedActivityId) {
-                const activity = activities.find(a => a.id === completedActivityId);
-                if (activity) {
-                     toast({
-                        title: `${otherUser} completed a task! 🎉`,
-                        description: `${otherUser === 'Her' ? 'She' : 'He'} finished '${activity.label}'. Way to go!`,
-                    });
-                }
-            }
-        }
-    }
-    prevCheckedRef.current = checked;
-
-  }, [checked, user, otherUser, activities, toast]);
-
-
-  const handleCheckChange = (checkedUser: User, activityId: string) => {
+  const handleCheckChange = async (checkedUser: User, activityId: string, isChecked: boolean) => {
     if (checkedUser !== user) return;
-    setChecked((prev) => ({
-      ...prev,
-      [checkedUser]: {
-        ...prev[checkedUser],
-        [activityId]: !prev[checkedUser][activityId],
-      },
-    }));
+    const activityRef = doc(firestore, 'discipline-activities', activityId);
+    const fieldToUpdate = `checks.${user}`;
+    await updateDoc(activityRef, { [fieldToUpdate]: isChecked });
   };
 
-  const handleAddActivity = (e: React.FormEvent) => {
+  const handleAddActivity = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newActivity.trim() === '') return;
-    const newActivityItem = {
-      id: crypto.randomUUID(),
+    if (newActivity.trim() === '' || !user) return;
+    
+    const newActivityData = {
       label: newActivity.trim(),
+      createdBy: user,
+      date: todayString,
+      checks: { Him: false, Her: false },
     };
-    setActivities((prev) => [...prev, newActivityItem]);
+    
+    await addDoc(collection(firestore, 'discipline-activities'), newActivityData);
     setNewActivity('');
   };
 
-  const handleDeleteActivity = (activityId: string) => {
-    setActivities((prev) => prev.filter((activity) => activity.id !== activityId));
-    setChecked((prev) => {
-      const newChecked = { ...prev };
-      delete newChecked.Him[activityId];
-      delete newChecked.Her[activityId];
-      return newChecked;
-    });
+  const handleDeleteActivity = async (activityId: string) => {
+    await deleteDoc(doc(firestore, 'discipline-activities', activityId));
   };
-
-  const userScore = Object.values(checked[user] || {}).filter(Boolean).length;
-  const otherUserScore = Object.values(checked[otherUser] || {}).filter(Boolean).length;
+  
+  const userScore = activities ? activities.filter(a => a.checks[user]).length : 0;
+  const otherUserScore = activities ? activities.filter(a => a.checks[otherUser]).length : 0;
   
   return (
     <div className="flex h-full flex-col items-center justify-center p-4 md:p-8">
@@ -264,33 +220,36 @@ export default function DisciplinePage() {
             <ShieldCheck className="h-10 w-10 text-primary" />
             Discipline Tracker
           </div>
-          <div className="grid w-full grid-cols-1 md:grid-cols-2 gap-8 items-start">
-            <UserColumn 
-              displayedUser={user}
-              currentUser={user}
-              activities={activities}
-              checked={checked}
-              score={userScore}
-              newActivity={newActivity}
-              onCheckChange={handleCheckChange}
-              onDeleteActivity={handleDeleteActivity}
-              onAddActivity={handleAddActivity}
-              onNewActivityChange={setNewActivity}
-            />
-            <UserColumn 
-              displayedUser={otherUser}
-              currentUser={user}
-              activities={activities}
-              checked={checked}
-              score={otherUserScore}
-              newActivity={newActivity}
-              onCheckChange={handleCheckChange}
-              onDeleteActivity={handleDeleteActivity}
-              onAddActivity={handleAddActivity}
-              onNewActivityChange={setNewActivity}
-            />
-          </div>
+          {isLoading && <p>Loading activities...</p>}
+          {activities && (
+            <div className="grid w-full grid-cols-1 md:grid-cols-2 gap-8 items-start">
+              <UserColumn 
+                displayedUser={user}
+                currentUser={user}
+                activities={activities}
+                score={userScore}
+                newActivity={newActivity}
+                onCheckChange={handleCheckChange}
+                onDeleteActivity={handleDeleteActivity}
+                onAddActivity={handleAddActivity}
+                onNewActivityChange={setNewActivity}
+              />
+              <UserColumn 
+                displayedUser={otherUser}
+                currentUser={user}
+                activities={activities}
+                score={otherUserScore}
+                newActivity={newActivity}
+                onCheckChange={handleCheckChange}
+                onDeleteActivity={handleDeleteActivity}
+                onAddActivity={handleAddActivity}
+                onNewActivityChange={setNewActivity}
+              />
+            </div>
+          )}
         </div>
     </div>
   );
 }
+
+    

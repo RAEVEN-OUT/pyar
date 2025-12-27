@@ -159,6 +159,26 @@ service cloud.firestore {
       allow update: if isSignedIn() && resource != null;
       allow delete: if isSignedIn() && resource != null;
     }
+    
+    /**
+     * @description Manages shared discipline activities. Any user can read, but creation and deletion are tied to the creator.
+     * @path /discipline-activities/{activityId}
+     * @allow (read) Any authenticated user.
+     * @allow (create) User creating an activity they own.
+     * @allow (update) Any authenticated user, but they can only change their own check status.
+     * @allow (delete) The original creator of the activity.
+     */
+    match /discipline-activities/{activityId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && hasCorrectCreatorId('createdBy');
+      allow update: if isSignedIn() 
+                      && resource != null
+                      && request.resource.data.label == resource.data.label
+                      && request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if isSignedIn() && resource != null && isOwner(resource.data.createdBy);
+    }
+
 
     /**
      * @description Manages photos in the shared album. Any authenticated user can add, view, or remove photos.
@@ -208,3 +228,4 @@ service cloud.firestore {
     }
   }
 }
+    

@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFirebase } from '@/firebase';
+import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 
 export type User = 'Him' | 'Her';
 
@@ -20,49 +22,59 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const roleEmails = {
+  'Him': 'him@amoremduo.app',
+  'Her': 'her@amoremduo.app'
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { auth, isUserLoading, user: firebaseUser } = useFirebase();
 
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('amorem-duo-user') as User | null;
-      if (storedUser) {
-        setUser(storedUser);
+    if(!isUserLoading) {
+      if (firebaseUser) {
+        const role = firebaseUser.email === roleEmails.Him ? 'Him' : 'Her';
+        setUser(role);
+        localStorage.setItem('amorem-duo-user', role);
+      } else {
+        setUser(null);
+        localStorage.removeItem('amorem-duo-user');
       }
-    } catch (error) {
-      console.error('Could not access local storage:', error);
-    } finally {
       setLoading(false);
     }
-  }, []);
+  }, [firebaseUser, isUserLoading]);
 
   const login = async (selectedUser: User, magicWord: string) => {
-    // In a real app, you'd verify the magicWord against Firebase here.
-    // For this mock, we'll accept any password.
     setLoading(true);
+    const email = roleEmails[selectedUser];
     try {
-      localStorage.setItem('amorem-duo-user', selectedUser);
-      setUser(selectedUser);
-      router.push('/chat');
-    } catch (error) {
-      console.error('Could not set user in local storage:', error);
+      await signInWithEmailAndPassword(auth, email, magicWord);
+      // Auth state change will be handled by onAuthStateChanged
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found') {
+        try {
+          await createUserWithEmailAndPassword(auth, email, magicWord);
+        } catch (createError) {
+          console.error("Could not create user:", createError);
+        }
+      } else {
+        console.error('Could not log in user:', error);
+      }
     } finally {
-      setLoading(false);
+      // Don't set loading to false here, wait for onAuthStateChanged
     }
   };
 
-  const logout = () => {
-    setLoading(true);
+  const logout = async () => {
     try {
-      localStorage.removeItem('amorem-duo-user');
-      setUser(null);
+      await signOut(auth);
+      // Auth state change will be handled by onAuthStateChanged
       router.push('/');
     } catch (error) {
-      console.error('Could not remove user from local storage:', error);
-    } finally {
-      setLoading(false);
+      console.error('Could not log out user:', error);
     }
   };
 
@@ -78,3 +90,5 @@ export function useAuth() {
   }
   return context;
 }
+
+    

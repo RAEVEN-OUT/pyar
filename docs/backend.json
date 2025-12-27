@@ -239,6 +239,49 @@
         "taskId",
         "completionCount"
       ]
+    },
+    "DisciplineActivity": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DisciplineActivity",
+      "type": "object",
+      "description": "Represents a daily discipline activity in the tracker.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the activity."
+        },
+        "label": {
+          "type": "string",
+          "description": "The description of the activity (e.g., 'Workout')."
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "The role of the user who created the activity ('Him' or 'Her')."
+        },
+        "checks": {
+          "type": "object",
+          "description": "A map storing the completion status for the current day.",
+          "properties": {
+            "Him": {
+              "type": "boolean"
+            },
+            "Her": {
+              "type": "boolean"
+            }
+          }
+        },
+        "date": {
+          "type": "string",
+          "description": "The date for which the checks are recorded (YYYY-MM-DD)."
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "createdBy",
+        "checks",
+        "date"
+      ]
     }
   },
   "auth": {
@@ -400,8 +443,25 @@
             }
           ]
         }
+      },
+      {
+        "path": "/discipline-activities/{activityId}",
+        "definition": {
+          "entityName": "DisciplineActivity",
+          "schema": {
+            "$ref": "#/backend/entities/DisciplineActivity"
+          },
+          "description": "Stores discipline activities and their daily completion status.",
+          "params": [
+            {
+              "name": "activityId",
+              "description": "The unique identifier for the discipline activity."
+            }
+          ]
+        }
       }
     ],
     "reasoning": "This Firestore structure prioritizes security, scalability, and debuggability based on the Amorem Duo application requirements. It adheres to the core design principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). The structure leverages denormalization and structural segregation to simplify security rules and improve performance.\n\n**Authorization Independence:**\nAuthorization is achieved through path-based ownership (`/users/{userId}`) and membership maps where necessary. Specifically, access to user-specific data (mood, notes) is controlled via path-based rules. For shared data (photos, to-do tasks), where collaborative access is required, membership maps (`members`) are used. These maps are denormalized into relevant documents, avoiding `get()` calls in security rules and allowing atomic operations. Note that as only 2 users are allowed, you can assume the existence of the opposite user in all security rules. For example, you can allow writes if `request.auth.uid != resource.data.userId` in most cases. This structure is still not encouraged, and if more users are added, it can cause potential errors. It's better to maintain a list of possible users and validate them during the write operations.\n\n**Clarity of Intent:**\nThe structure is designed to make authorization intent explicit. Path-based ownership clearly defines who owns specific data. The use of dedicated collections for different data types (e.g., `/users/{userId}/notes` for notes, `/shared_photos` for shared photos) segregates data with different security requirements.\n\n**DBAC (Database-Based Access Control):**\nUser roles ('Him' or 'Her') are stored as a field in the `/users/{userId}` document. Security rules use `request.auth.uid` and the `role` field from the user document to determine access. This removes the need for custom claims.\n\n**QAPs (Rules are not Filters):**\nThis structure enables secure `list` operations. Path-based ownership allows listing of user-owned data using rules that check the requested user ID against the authenticated user ID. For shared collections like `/shared_photos`, security rules enforce that only members (as defined in the membership map) can list documents.\n\n**Invariants:**\nThe structure supports the integrity of ownership, timestamps, and denormalized data. Security rules enforce that the `userId` field in documents corresponds to the authenticated user's ID. Timestamps can be validated within security rules to ensure proper ordering and prevent tampering.\n\n**Specific Design Choices:**\n*   `/users/{userId}`: Stores user profiles, including the 'role' field for authentication.\n*   `/users/{userId}/moods/{moodId}`: Stores user moods. This utilizes path-based ownership.\n*   `/users/{userId}/notes/{noteId}`: Stores user notes, organized by date. This uses path-based ownership.\n*   `/important_dates/{dateId}`: Stores important dates. Requires a rule that only allows valid users.\n*   `/to_do_tasks/{taskId}`: Stores the shared to-do list. Requires a rule that only allows valid users.\n*   `/completion_counters/{completionCounterId}`: Stores the live counter for each task, to increment/decrement in real time, as the opposite user checks/unchecks a task.\n*   `/shared_photos/{photoId}`: Stores shared photos. Requires a rule that only allows valid users.\n*   `/private_photos/{photoId}`: Stores private photos. Requires a rule that only allows valid users.\n*   `/chat_messages/{messageId}`: Stores chat messages.\n\nThis structure is highly scalable and maintainable due to its clear separation of concerns and reliance on simple, declarative security rules."
   }
 }
+    
