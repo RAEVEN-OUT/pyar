@@ -5,13 +5,13 @@
 @layer base {
   :root {
     --background: 0 100% 88%; /* #FFC4C4 */
-    --foreground: 20 15% 25%; /* Soft charcoal */
+    --foreground: 339 79% 29%; /* #850E33 */
 
     --card: 39 100% 95%; /* #FFF5E4 */
-    --card-foreground: 20 15% 25%; /* #403A3A - Swapped for readability */
+    --card-foreground: 339 79% 29%; /* #850E33 */
 
     --popover: 39 100% 95%;
-    --popover-foreground: 20 15% 25%;
+    --popover-foreground: 339 79% 29%; /* #850E33 */
 
     --primary: 339 79% 29%; /* #850E33 */
     --primary-foreground: 39 100% 95%; /* #FFF5E4 */
@@ -23,7 +23,7 @@
     --muted-foreground: 20 10% 50%;
 
     --accent: 348 81% 67%; /* #EE6983 */
-    --accent-foreground: 39 100% 95%; /* #FFF5E4 - Swapped for readability */
+    --accent-foreground: 39 100% 95%; /* #FFF5E4 */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
