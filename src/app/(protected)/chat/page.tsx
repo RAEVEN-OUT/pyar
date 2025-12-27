@@ -450,14 +450,6 @@ export default function ChatPage() {
           onMoodChange={setMood}
         />
         <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 chat-bg-pattern no-scrollbar" style={{scrollBehavior: 'smooth'}}>
-          {hasMicPermission === false && (
-             <Alert variant="destructive">
-              <AlertTitle>Microphone Access Required</AlertTitle>
-              <AlertDescription>
-                To send voice notes, please enable microphone permissions in your browser settings.
-              </AlertDescription>
-            </Alert>
-          )}
           {messages.map((msg) => {
             const isSender = msg.sender === user;
             const messageReactions = msg.reactions ? Object.entries(msg.reactions) : [];
