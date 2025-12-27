@@ -28,7 +28,7 @@ import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/auth-context';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogOverlay } from '@/components/ui/dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -154,7 +154,7 @@ export default function PhotosPage() {
   const [activeTab, setActiveTab] = useState('shared');
   
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFile, setUploadFile = useState<File | null>(null);
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploadIsPrivate, setUploadIsPrivate] = useState(false);
   
@@ -324,36 +324,36 @@ export default function PhotosPage() {
         </CardHeader>
         <CardContent className="pt-6">
             <Dialog open={!!viewingPhoto} onOpenChange={(isOpen) => !isOpen && setViewingPhoto(null)}>
-              <DialogContent className="max-w-4xl p-0">
                 {viewingPhoto && (
-                  <>
-                  <DialogHeader className="sr-only">
-                    <DialogTitle>{viewingPhoto.description}</DialogTitle>
-                    <DialogDescription>Uploaded by {viewingPhoto.uploader}</DialogDescription>
-                  </DialogHeader>
-                  <div className="relative">
-                    <Image
-                      src={viewingPhoto.url}
-                      alt={viewingPhoto.description}
-                      width={1600}
-                      height={900}
-                      className="rounded-t-lg object-contain"
-                    />
-                    {isViewingPhotoOwner && (
-                      <div className="absolute top-4 right-14">
-                        <Button variant="destructive" size="icon" onClick={() => handleDeletePhoto(viewingPhoto!.id)}>
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4 pt-2">
-                    <p className="font-semibold">{viewingPhoto.description}</p>
-                    <p className="text-sm text-muted-foreground">Uploaded by {viewingPhoto.uploader}</p>
-                  </div>
-                  </>
+                  <DialogOverlay className="bg-black/90" onClick={() => setViewingPhoto(null)}>
+                    <DialogContent 
+                      className="bg-transparent border-0 shadow-none w-full h-full max-w-none max-h-none p-4 flex items-center justify-center"
+                      onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the image/content
+                      onInteractOutside={(e) => e.preventDefault()}
+                    >
+                        <div className="relative w-full h-full flex items-center justify-center">
+                          <Image
+                            src={viewingPhoto.url}
+                            alt={viewingPhoto.description}
+                            width={1920}
+                            height={1080}
+                            className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
+                          />
+                          <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center bg-black/50 p-3 rounded-lg text-white">
+                            <p className="font-semibold">{viewingPhoto.description}</p>
+                            {isViewingPhotoOwner && (
+                                <Button variant="destructive" size="icon" onClick={() => handleDeletePhoto(viewingPhoto!.id)}>
+                                    <Trash2 className="h-5 w-5" />
+                                </Button>
+                            )}
+                          </div>
+                           <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-white bg-black/50" onClick={() => setViewingPhoto(null)}>
+                              <X className="h-6 w-6" />
+                           </Button>
+                        </div>
+                    </DialogContent>
+                  </DialogOverlay>
                 )}
-              </DialogContent>
             </Dialog>
 
             <Dialog open={isUploadModalOpen} onOpenChange={setUploadModalOpen}>
@@ -458,3 +458,5 @@ export default function PhotosPage() {
     </div>
   );
 }
+
+    
