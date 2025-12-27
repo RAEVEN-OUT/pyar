@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Accordion,
@@ -40,13 +39,24 @@ import { Textarea } from '@/components/ui/textarea';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/auth-context';
-
+import { db } from '@/lib/firebase';
+import { 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  doc, 
+  setDoc,
+  serverTimestamp,
+  Timestamp,
+  query 
+} from 'firebase/firestore';
 
 type CalendarEvent = {
   id: string;
   date: string;
   title: string;
   description?: string;
+  createdAt?: Timestamp;
 };
 
 type CalendarSticker = {
@@ -56,26 +66,46 @@ type CalendarSticker = {
 
 type ViewMode = 'add' | 'view';
 
-const mockEvents: CalendarEvent[] = [
-    { id: '1', date: new Date().toISOString(), title: "Today's Special Event", description: "This is a description for today's event." },
-];
-
-const mockStickers: CalendarSticker[] = [
-    { id: format(add(new Date(), { days: -2 }), 'yyyy-MM-dd'), emoji: '💖' },
-];
-
 export default function CalendarPage() {
   const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const [events, setEvents] = useState<CalendarEvent[]>(mockEvents);
-  const [stickers, setStickers] = useState<CalendarSticker[]>(mockStickers);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [stickers, setStickers] = useState<CalendarSticker[]>([]);
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [eventTitle, setEventTitle] = useState('');
   const [eventDesc, setEventDesc] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('add');
+
+  // Listen to events
+  useEffect(() => {
+    const eventsRef = collection(db, 'calendar_events');
+    const unsubscribe = onSnapshot(query(eventsRef), (snapshot) => {
+      const newEvents: CalendarEvent[] = [];
+      snapshot.forEach((doc) => {
+        newEvents.push({ id: doc.id, ...doc.data() } as CalendarEvent);
+      });
+      setEvents(newEvents);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Listen to stickers
+  useEffect(() => {
+    const stickersRef = collection(db, 'calendar_stickers');
+    const unsubscribe = onSnapshot(query(stickersRef), (snapshot) => {
+      const newStickers: CalendarSticker[] = [];
+      snapshot.forEach((doc) => {
+        newStickers.push({ id: doc.id, ...doc.data() } as CalendarSticker);
+      });
+      setStickers(newStickers);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const firstDayOfMonth = startOfMonth(currentDate);
   const lastDayOfMonth = endOfMonth(currentDate);
@@ -113,30 +143,40 @@ export default function CalendarPage() {
     setPopoverOpen(true);
   };
 
-  const onEmojiClick = (emojiData: EmojiClickData) => {
+  const onEmojiClick = async (emojiData: EmojiClickData) => {
     if (selectedDate) {
       const dateKey = format(selectedDate, 'yyyy-MM-dd');
-      setStickers(prev => {
-        const existing = prev.find(s => s.id === dateKey);
-        if (existing) {
-          return prev.map(s => s.id === dateKey ? { ...s, emoji: emojiData.emoji } : s);
-        }
-        return [...prev, { id: dateKey, emoji: emojiData.emoji }];
-      });
+      try {
+        const stickerRef = doc(db, 'calendar_stickers', dateKey);
+        await setDoc(stickerRef, {
+          id: dateKey,
+          emoji: emojiData.emoji,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (error) {
+        console.error('Error saving sticker:', error);
+      }
     }
   };
 
-  const handleAddEvent = () => {
+  const handleAddEvent = async () => {
     if (selectedDate && eventTitle && user) {
-      const newEvent: CalendarEvent = {
-        id: new Date().toISOString(),
-        date: selectedDate.toISOString(),
-        title: eventTitle,
-        description: eventDesc,
-      };
-      setEvents(prev => [...prev, newEvent]);
-      setPopoverOpen(false);
-      setSelectedDate(null);
+      try {
+        await addDoc(collection(db, 'calendar_events'), {
+          date: selectedDate.toISOString(),
+          title: eventTitle,
+          description: eventDesc,
+          createdBy: user,
+          createdAt: serverTimestamp(),
+        });
+        
+        setPopoverOpen(false);
+        setSelectedDate(null);
+        setEventTitle('');
+        setEventDesc('');
+      } catch (error) {
+        console.error('Error adding event:', error);
+      }
     }
   };
   
@@ -150,7 +190,6 @@ export default function CalendarPage() {
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
     return stickers.find(s => s.id === dateKey)?.emoji;
   }, [stickers, selectedDate]);
-
 
   const renderPopoverContent = () => {
     if (!selectedDate) return null;

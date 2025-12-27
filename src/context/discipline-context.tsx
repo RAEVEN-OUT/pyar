@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -7,8 +6,20 @@ import {
   useState,
   type ReactNode,
   useCallback,
+  useEffect,
 } from 'react';
 import { useAuth, type User } from './auth-context';
+import { db } from '@/lib/firebase';
+import { 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  doc, 
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy 
+} from 'firebase/firestore';
 
 export type Activity = {
   id: string;
@@ -28,45 +39,62 @@ interface DisciplineContextType {
 
 const DisciplineContext = createContext<DisciplineContextType | undefined>(undefined);
 
-const mockActivities: Activity[] = [
-    { id: '1', label: 'Workout', checks: { Raveen: true, Priya: false }, creatorId: 'raveen' },
-    { id: '2', label: 'Read 30 mins', checks: { Raveen: true, Priya: true }, creatorId: 'raveen' },
-    { id: '3', label: 'Journal', checks: { Priya: true, Raveen: false }, creatorId: 'priya' },
-];
-
-
 export function DisciplineProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [activities, setActivities] = useState<Activity[]>(mockActivities);
+  const [activities, setActivities] = useState<Activity[]>([]);
 
-  const addActivity = useCallback((label: string) => {
+  useEffect(() => {
+    const activitiesRef = collection(db, 'activities');
+    const q = query(activitiesRef, orderBy('createdAt', 'asc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newActivities: Activity[] = [];
+      snapshot.forEach((doc) => {
+        newActivities.push({ id: doc.id, ...doc.data() } as Activity);
+      });
+      setActivities(newActivities);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const addActivity = useCallback(async (label: string) => {
     if (!user) return;
-    const newActivity: Activity = {
-      id: new Date().toISOString(),
-      label,
-      checks: {},
-      creatorId: user.toLowerCase(),
-    };
-    setActivities(prev => [...prev, newActivity]);
+    
+    try {
+      await addDoc(collection(db, 'activities'), {
+        label,
+        checks: {},
+        creatorId: user.toLowerCase(),
+        createdAt: new Date(),
+      });
+    } catch (error) {
+      console.error('Error adding activity:', error);
+    }
   }, [user]);
 
-  const toggleActivity = useCallback((activityId: string, userToToggle: User) => {
-    setActivities(prev => 
-      prev.map(activity => {
-        if (activity.id === activityId) {
-          const newChecks = { ...activity.checks };
-          newChecks[userToToggle] = !newChecks[userToToggle];
-          return { ...activity, checks: newChecks };
-        }
-        return activity;
-      })
-    );
-  }, []);
-  
-  const deleteActivity = useCallback((activityId: string) => {
-    setActivities(prev => prev.filter(a => a.id !== activityId));
-  }, []);
+  const toggleActivity = useCallback(async (activityId: string, userToToggle: User) => {
+    const activity = activities.find(a => a.id === activityId);
+    if (!activity) return;
 
+    const newChecks = { ...activity.checks };
+    newChecks[userToToggle] = !newChecks[userToToggle];
+
+    try {
+      const activityRef = doc(db, 'activities', activityId);
+      await updateDoc(activityRef, { checks: newChecks });
+    } catch (error) {
+      console.error('Error toggling activity:', error);
+    }
+  }, [activities]);
+  
+  const deleteActivity = useCallback(async (activityId: string) => {
+    try {
+      await deleteDoc(doc(db, 'activities', activityId));
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+    }
+  }, []);
 
   const value = { activities, addActivity, toggleActivity, deleteActivity };
 

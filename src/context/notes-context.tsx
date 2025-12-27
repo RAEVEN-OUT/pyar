@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -7,15 +6,25 @@ import {
   type ReactNode,
   useCallback,
   useState,
+  useEffect,
 } from 'react';
 import { type User } from './auth-context';
 import { format } from 'date-fns';
+import { db } from '@/lib/firebase';
+import { 
+  collection, 
+  onSnapshot, 
+  doc, 
+  setDoc,
+  serverTimestamp,
+  Timestamp 
+} from 'firebase/firestore';
 
 export type Note = {
   id: string; // "yyyy-MM-dd"
   author: User;
   text: string;
-  lastUpdated: any;
+  lastUpdated: Timestamp;
 };
 
 interface NotesContextType {
@@ -25,36 +34,37 @@ interface NotesContextType {
 
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
-const mockNotes: Note[] = [
-    { id: format(new Date(), 'yyyy-MM-dd'), author: 'Raveen', text: 'Feeling great today!', lastUpdated: { seconds: Date.now() / 1000 } },
-    { id: format(new Date(), 'yyyy-MM-dd'), author: 'Priya', text: 'Excited for the weekend! 💕', lastUpdated: { seconds: Date.now() / 1000 } },
-];
-
-
 export function NotesProvider({ children }: { children: ReactNode }) {
-  const [notes, setNotes] = useState<Note[]>(mockNotes);
+  const [notes, setNotes] = useState<Note[]>([]);
 
-  const saveNote = useCallback((author: User, date: Date, text: string) => {
-    const dateKey = format(date, 'yyyy-MM-dd');
-    
-    setNotes(prev => {
-        const existingNoteIndex = prev.findIndex(n => n.id === dateKey && n.author === author);
-        const newNote: Note = {
-            id: dateKey,
-            author,
-            text,
-            lastUpdated: { seconds: Date.now() / 1000 },
-        };
-        
-        if (existingNoteIndex > -1) {
-            const newNotes = [...prev];
-            newNotes[existingNoteIndex] = newNote;
-            return newNotes;
-        } else {
-            return [...prev, newNote];
-        }
+  useEffect(() => {
+    const notesRef = collection(db, 'notes');
+    const unsubscribe = onSnapshot(notesRef, (snapshot) => {
+      const newNotes: Note[] = [];
+      snapshot.forEach((doc) => {
+        newNotes.push({ id: doc.id, ...doc.data() } as Note);
+      });
+      setNotes(newNotes);
     });
 
+    return () => unsubscribe();
+  }, []);
+
+  const saveNote = useCallback(async (author: User, date: Date, text: string) => {
+    const dateKey = format(date, 'yyyy-MM-dd');
+    const noteId = `${dateKey}_${author.toLowerCase()}`;
+    
+    try {
+      const noteRef = doc(db, 'notes', noteId);
+      await setDoc(noteRef, {
+        id: dateKey,
+        author,
+        text,
+        lastUpdated: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Error saving note:', error);
+    }
   }, []);
   
   const value = { notes, saveNote };

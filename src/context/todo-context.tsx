@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -7,9 +6,21 @@ import {
   type ReactNode,
   useCallback,
   useState,
+  useEffect,
 } from 'react';
 import { type User } from './auth-context';
-import { format } from 'date-fns';
+import { db } from '@/lib/firebase';
+import { 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  doc, 
+  updateDoc,
+  serverTimestamp,
+  Timestamp,
+  query,
+  orderBy 
+} from 'firebase/firestore';
 
 export type Task = {
   id: string;
@@ -17,7 +28,7 @@ export type Task = {
   completedAt: string | null;
   assignee: User;
   creator: User;
-  createdAt: any;
+  createdAt: Timestamp;
 };
 
 interface TasksContextType {
@@ -28,38 +39,51 @@ interface TasksContextType {
 
 const TasksContext = createContext<TasksContextType | undefined>(undefined);
 
-const mockTasks: Task[] = [
-    { id: '1', text: 'Buy groceries', completedAt: null, assignee: 'Priya', creator: 'Raveen', createdAt: { seconds: Date.now() / 1000 - 86400 } },
-    { id: '2', text: 'Plan weekend trip', completedAt: null, assignee: 'Raveen', creator: 'Raveen', createdAt: { seconds: Date.now() / 1000 - 43200 } },
-    { id: '3', text: 'Call parents', completedAt: new Date().toISOString(), assignee: 'Priya', creator: 'Priya', createdAt: { seconds: Date.now() / 1000 - 172800 } },
-];
-
-
 export function TasksProvider({ children }: { children: ReactNode }) {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
-  const addTask = useCallback((text: string, currentUser: User) => {
-    const newTask: Task = {
-        id: new Date().toISOString(),
+  useEffect(() => {
+    const tasksRef = collection(db, 'tasks');
+    const q = query(tasksRef, orderBy('createdAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newTasks: Task[] = [];
+      snapshot.forEach((doc) => {
+        newTasks.push({ id: doc.id, ...doc.data() } as Task);
+      });
+      setTasks(newTasks);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const addTask = useCallback(async (text: string, currentUser: User) => {
+    try {
+      await addDoc(collection(db, 'tasks'), {
         text,
         completedAt: null,
         assignee: currentUser,
         creator: currentUser,
-        createdAt: { seconds: Date.now() / 1000 },
-    };
-    setTasks(prev => [newTask, ...prev]);
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Error adding task:', error);
+    }
   }, []);
 
-  const toggleTask = useCallback((taskId: string) => {
-    setTasks(prev => 
-        prev.map(task => {
-            if (task.id === taskId) {
-                return { ...task, completedAt: task.completedAt ? null : format(new Date(), 'yyyy-MM-dd') };
-            }
-            return task;
-        })
-    );
-  }, []);
+  const toggleTask = useCallback(async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    try {
+      const taskRef = doc(db, 'tasks', taskId);
+      await updateDoc(taskRef, {
+        completedAt: task.completedAt ? null : new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Error toggling task:', error);
+    }
+  }, [tasks]);
 
   const value = { tasks, addTask, toggleTask };
 

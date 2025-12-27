@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useAuth, type User } from '@/context/auth-context';
@@ -18,6 +17,19 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { db } from '@/lib/firebase';
+import { 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  doc, 
+  updateDoc, 
+  deleteDoc,
+  serverTimestamp,
+  Timestamp 
+} from 'firebase/firestore';
 
 type Mood = {
   mood: string;
@@ -41,22 +53,13 @@ export type Message = {
   sender: User;
   text?: string;
   audioUrl?: string;
-  timestamp: any;
+  timestamp: Timestamp;
   reactions?: { [emoji: string]: string[] };
   isEdited?: boolean;
   replyTo?: Message;
 };
 
-const mockMessages: Message[] = [
-    { id: '1', senderId: 'raveen', sender: 'Raveen', text: 'Hey Priya! How was your day?', timestamp: { seconds: Date.now() / 1000 - 300 } },
-    { id: '2', senderId: 'priya', sender: 'Priya', text: 'It was great! Just got home. What about you?', timestamp: { seconds: Date.now() / 1000 - 240 } },
-    { id: '3', senderId: 'raveen', sender: 'Raveen', text: 'Same, pretty chill day. Thinking about what to have for dinner.', timestamp: { seconds: Date.now() / 1000 - 180 } },
-    { id: '4', senderId: 'priya', sender: 'Priya', text: 'Pastaaaa!', timestamp: { seconds: Date.now() / 1000 - 120 }, reactions: { '🥰': ['raveen'] } },
-];
-
-
 const reactionEmojis = ['❤️', '😂', '🥰', '😍', '😢', '😮'];
-
 
 function MoodDisplay({
   user,
@@ -68,8 +71,44 @@ function MoodDisplay({
   const [currentUserMood, setCurrentUserMood] = useState<Mood>(moodOptions[0]);
   const [otherUserMood, setOtherUserMood] = useState<Mood>(moodOptions[1]);
 
-  const onMoodChange = (newMood: Mood) => {
+  useEffect(() => {
+    const moodsRef = collection(db, 'moods');
+    const unsubscribe = onSnapshot(moodsRef, (snapshot) => {
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        if (doc.id === user.toLowerCase()) {
+          const mood = moodOptions.find(m => m.emoji === data.emoji) || moodOptions[0];
+          setCurrentUserMood(mood);
+        } else if (doc.id === otherUser.toLowerCase()) {
+          const mood = moodOptions.find(m => m.emoji === data.emoji) || moodOptions[1];
+          setOtherUserMood(mood);
+        }
+      });
+    });
+
+    return () => unsubscribe();
+  }, [user, otherUser]);
+
+  const onMoodChange = async (newMood: Mood) => {
     setCurrentUserMood(newMood);
+    try {
+      const moodRef = doc(db, 'moods', user.toLowerCase());
+      await updateDoc(moodRef, {
+        emoji: newMood.emoji,
+        mood: newMood.mood,
+        updatedAt: serverTimestamp(),
+      }).catch(async () => {
+        // If document doesn't exist, create it
+        await addDoc(collection(db, 'moods'), {
+          userId: user.toLowerCase(),
+          emoji: newMood.emoji,
+          mood: newMood.mood,
+          updatedAt: serverTimestamp(),
+        });
+      });
+    } catch (error) {
+      console.error('Error updating mood:', error);
+    }
   };
   
   return (
@@ -177,7 +216,6 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
     setPlaybackRate(nextRate);
   };
 
-
   const progressPercentage = duration ? (progress / duration) * 100 : 0;
   
   const waveColor = isSender ? 'hsl(var(--primary))' : 'hsl(var(--accent-foreground))';
@@ -204,12 +242,11 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
   );
 };
 
-
 export default function ChatPage() {
   const { user, loading } = useAuth();
   const { toast } = useToast();
   
-  const [messages, setMessages] = useState<Message[]>(mockMessages);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -225,6 +262,22 @@ export default function ChatPage() {
   const [editedText, setEditedText] = useState('');
 
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+
+  // Listen to messages
+  useEffect(() => {
+    const messagesRef = collection(db, 'messages');
+    const q = query(messagesRef, orderBy('timestamp', 'asc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newMessages: Message[] = [];
+      snapshot.forEach((doc) => {
+        newMessages.push({ id: doc.id, ...doc.data() } as Message);
+      });
+      setMessages(newMessages);
+    });
+
+    return () => unsubscribe();
+  }, []);
   
   useEffect(() => {
     navigator.permissions.query({ name: 'microphone' as PermissionName }).then((result) => {
@@ -242,49 +295,76 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim() === '' || !user) return;
     
-    const newMsg: Message = {
-        id: new Date().toISOString(),
+    try {
+      await addDoc(collection(db, 'messages'), {
         senderId: user.toLowerCase(),
         sender: user,
         text: newMessage.trim(),
-        timestamp: { seconds: Date.now() / 1000 },
-        replyTo: replyingTo || undefined,
-    };
+        timestamp: serverTimestamp(),
+        reactions: {},
+        isEdited: false,
+        replyTo: replyingTo ? {
+          id: replyingTo.id,
+          sender: replyingTo.sender,
+          text: replyingTo.text || 'Voice Note',
+        } : null,
+      });
 
-    setMessages(prev => [...prev, newMsg]);
-    setNewMessage('');
-    setReplyingTo(null);
-    setShowEmojiPicker(false);
+      setNewMessage('');
+      setReplyingTo(null);
+      setShowEmojiPicker(false);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to send message. Please try again.',
+      });
+    }
   };
 
-  const handleReaction = (messageId: string, emoji: string) => {
+  const handleReaction = async (messageId: string, emoji: string) => {
     if (!user) return;
 
-    setMessages(prev => prev.map(msg => {
-        if (msg.id === messageId) {
-            const newReactions = { ...(msg.reactions || {}) };
-            const usersForEmoji = newReactions[emoji] || [];
+    const message = messages.find(m => m.id === messageId);
+    if (!message) return;
 
-            if (usersForEmoji.includes(user.toLowerCase())) {
-                newReactions[emoji] = usersForEmoji.filter((uid) => uid !== user.toLowerCase());
-                if (newReactions[emoji].length === 0) {
-                    delete newReactions[emoji];
-                }
-            } else {
-                newReactions[emoji] = [...usersForEmoji, user.toLowerCase()];
-            }
-            return { ...msg, reactions: newReactions };
-        }
-        return msg;
-    }));
+    const newReactions = { ...(message.reactions || {}) };
+    const usersForEmoji = newReactions[emoji] || [];
+
+    if (usersForEmoji.includes(user.toLowerCase())) {
+      newReactions[emoji] = usersForEmoji.filter((uid) => uid !== user.toLowerCase());
+      if (newReactions[emoji].length === 0) {
+        delete newReactions[emoji];
+      }
+    } else {
+      newReactions[emoji] = [...usersForEmoji, user.toLowerCase()];
+    }
+
+    try {
+      const messageRef = doc(db, 'messages', messageId);
+      await updateDoc(messageRef, { reactions: newReactions });
+    } catch (error) {
+      console.error('Error updating reaction:', error);
+    }
   };
 
-  const handleUnsend = (messageId: string) => {
-    setMessages(prev => prev.filter(msg => msg.id !== messageId));
+  const handleUnsend = async (messageId: string) => {
+    try {
+      await deleteDoc(doc(db, 'messages', messageId));
+      toast({ title: 'Message deleted' });
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to delete message.',
+      });
+    }
   };
   
   const handleEdit = (message: Message) => {
@@ -294,17 +374,28 @@ export default function ChatPage() {
 
   const handleReply = (message: Message) => {
     setReplyingTo(message);
-  }
-
-  const submitEdit = () => {
-    if (!editingMessage) return;
-    setMessages(prev => prev.map(msg => 
-        msg.id === editingMessage.id ? { ...msg, text: editedText, isEdited: true } : msg
-    ));
-    setEditingMessage(null);
-    setEditedText('');
   };
 
+  const submitEdit = async () => {
+    if (!editingMessage) return;
+    
+    try {
+      const messageRef = doc(db, 'messages', editingMessage.id);
+      await updateDoc(messageRef, { 
+        text: editedText, 
+        isEdited: true 
+      });
+      setEditingMessage(null);
+      setEditedText('');
+    } catch (error) {
+      console.error('Error editing message:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to edit message.',
+      });
+    }
+  };
   
   const stopRecording = (send: boolean) => {
     if (mediaRecorderRef.current && isRecording) {
@@ -317,7 +408,7 @@ export default function ChatPage() {
          mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
       }
     }
-  }
+  };
 
   const handleVoiceMessage = async () => {
     if (!user) return;
@@ -365,17 +456,29 @@ export default function ChatPage() {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                 const audioUrl = URL.createObjectURL(audioBlob);
 
-                const newMsg: Message = {
-                    id: new Date().toISOString(),
+                // In production, upload to Firebase Storage
+                try {
+                  await addDoc(collection(db, 'messages'), {
                     senderId: user.toLowerCase(),
                     sender: user,
                     audioUrl,
-                    timestamp: { seconds: Date.now() / 1000 },
-                    replyTo: replyingTo || undefined,
-                };
-
-                setMessages(prev => [...prev, newMsg]);
-                setReplyingTo(null);
+                    timestamp: serverTimestamp(),
+                    reactions: {},
+                    replyTo: replyingTo ? {
+                      id: replyingTo.id,
+                      sender: replyingTo.sender,
+                      text: replyingTo.text || 'Voice Note',
+                    } : null,
+                  });
+                  setReplyingTo(null);
+                } catch (error) {
+                  console.error('Error sending voice message:', error);
+                  toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: 'Failed to send voice message.',
+                  });
+                }
             }
             
             stream.getTracks().forEach(track => track.stop());
@@ -394,7 +497,6 @@ export default function ChatPage() {
     }
   };
 
-
   const onEmojiClick = (emojiData: EmojiClickData, event: MouseEvent) => {
     setNewMessage((prevMessage) => prevMessage + emojiData.emoji);
   };
@@ -403,7 +505,7 @@ export default function ChatPage() {
     const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
     const secs = (seconds % 60).toString().padStart(2, '0');
     return `${minutes}:${secs}`;
-  }
+  };
 
   const handleScrollToMessage = (messageId: string) => {
     const messageElement = document.getElementById(`message-${messageId}`);
@@ -418,8 +520,9 @@ export default function ChatPage() {
   
   const formatTimestamp = (timestamp: any) => {
     if (!timestamp) return '';
-    return new Date(timestamp.seconds * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  }
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
+    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  };
 
   if (loading || !user) {
     return null;
@@ -448,10 +551,7 @@ export default function ChatPage() {
         </DialogContent>
       </Dialog>
       <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-transparent rounded-lg shadow-md border-0">
-        <MoodDisplay
-          user={user}
-          otherUser={otherUser}
-        />
+        <MoodDisplay user={user} otherUser={otherUser} />
         <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 no-scrollbar" style={{scrollBehavior: 'smooth'}}>
           {messages && messages.map((msg) => {
             const isSender = msg.sender === user;
