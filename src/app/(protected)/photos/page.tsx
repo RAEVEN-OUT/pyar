@@ -10,7 +10,14 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/auth-context';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -186,6 +193,7 @@ export default function PhotosPage() {
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
         <DialogContent
           className="p-0 bg-transparent border-0 shadow-none w-screen h-screen flex items-center justify-center"
+          onInteractOutside={closeViewer}
         >
           {viewingPhoto && (
             <div
@@ -386,5 +394,6 @@ export default function PhotosPage() {
       </Card>
     </div>
   );
+}
 
-    
+  
