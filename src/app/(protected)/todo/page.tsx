@@ -111,7 +111,7 @@ export default function TodoPage() {
                     </label>
                      <p className={cn(
                         'text-xs mt-1',
-                         task.creator === 'Her' ? 'text-accent-foreground/70' : 'text-card-foreground/70',
+                         task.creator === 'Him' ? 'text-card-foreground/70' : 'text-accent-foreground/70',
                          isCompleted && 'line-through'
                       )}>
                       Created by {task.creator} on {task.createdAt}
