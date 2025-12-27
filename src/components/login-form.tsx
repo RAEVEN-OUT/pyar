@@ -31,11 +31,21 @@ export default function LoginForm() {
     try {
       await login(selectedUser, magicWord);
     } catch (err: any) {
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
-        setError('Invalid magic word. Please try again.');
-      } else {
-        setError('An unexpected error occurred. Please try again.');
-        console.error(err);
+      switch (err.code) {
+        case 'auth/invalid-credential':
+        case 'auth/wrong-password':
+          setError('Invalid magic word. Please try again.');
+          break;
+        case 'auth/weak-password':
+          setError('The magic word must be at least 6 characters long.');
+          break;
+        case 'auth/invalid-email':
+           setError('An internal error occurred with the user role. Please contact support.');
+           break;
+        default:
+          setError('An unexpected error occurred. Please try again.');
+          console.error(err);
+          break;
       }
     }
   };
