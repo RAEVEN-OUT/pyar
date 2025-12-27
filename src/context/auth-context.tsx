@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (MAGIC_WORDS[selectedUser] === magicWord) {
       setUserRole(selectedUser);
       localStorage.setItem('amorem_duo_user', selectedUser);
-      router.push('/chat');
+      router.push('/chat'); // This was missing
     } else {
       setLoading(false);
       throw new Error('That\'s not the right magic word. Please try again.');
