@@ -87,7 +87,7 @@ export default function TodoPage() {
                       onCheckedChange={() => toggleTask(task.id)}
                       className={cn(
                           "h-5 w-5",
-                          task.creator === 'Him' 
+                          task.assignee === 'Him' 
                             ? 'border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
                             : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
                       )}
@@ -95,7 +95,7 @@ export default function TodoPage() {
                   ) : (
                      <div className={cn(
                       "h-5 w-5 flex-shrink-0 border-2 rounded-sm",
-                       task.completedAt ? (task.creator === 'Him' ? 'bg-primary border-primary' : 'bg-accent-foreground border-accent-foreground') : 'border-muted-foreground/50'
+                       task.completedAt ? (task.assignee === 'Him' ? 'bg-primary border-primary' : 'bg-accent-foreground border-accent-foreground') : 'border-muted-foreground/50'
                     )}
                   />
                   )}
