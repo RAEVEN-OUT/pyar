@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,13 +11,20 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useFirebase } from '@/firebase';
+import { useCollection } from '@/firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, doc, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { format, startOfDay } from 'date-fns';
 
 type Activity = {
   id: string;
   label: string;
+  date: string; // 'yyyy-MM-dd'
   checks: {
     [key in User]?: boolean;
   };
+  creatorId: string;
 };
 
 type UserColumnProps = {
@@ -31,13 +38,6 @@ type UserColumnProps = {
   onAddActivity: (e: React.FormEvent) => void;
   onNewActivityChange: (value: string) => void;
 };
-
-const initialActivities: Activity[] = [
-  { id: '1', label: 'Workout', checks: { Him: true, Her: false } },
-  { id: '2', label: 'Read for 30 mins', checks: { Him: false, Her: true } },
-  { id: '3', label: 'No social media after 10 PM', checks: { Him: true, Her: true } },
-];
-
 
 const UserColumn = ({ 
   displayedUser, 
@@ -91,7 +91,11 @@ const UserColumn = ({
                     )}
                   />
                 ) : (
-                  <div className="h-6 w-6 flex-shrink-0" />
+                  <div className={cn(
+                      "h-6 w-6 flex-shrink-0 border-2 rounded-sm",
+                       activity.checks[displayedUser] ? (displayedUser === 'Him' ? 'bg-primary border-primary' : 'bg-accent-foreground border-accent-foreground') : 'border-muted-foreground/50'
+                    )}
+                  />
                 )}
                 <label
                   htmlFor={`${displayedUser}-${activity.id}`}
@@ -120,7 +124,7 @@ const UserColumn = ({
               <form onSubmit={onAddActivity} className="flex gap-2 w-full">
                 <Input
                   type="text"
-                  placeholder="New activity..."
+                  placeholder="New daily activity..."
                   value={newActivity}
                   onChange={(e) => onNewActivityChange(e.target.value)}
                   className="h-10 bg-background/50"
@@ -136,16 +140,23 @@ const UserColumn = ({
   };
 
 export default function DisciplinePage() {
-  const { user } = useAuth();
+  const { user: currentUserRole } = useAuth();
+  const { firestore, user: firebaseUser } = useFirebase();
   const { toast } = useToast();
-  const [activities, setActivities] = useState<Activity[]>(initialActivities);
   const [newActivity, setNewActivity] = useState('');
+  const todayString = format(startOfDay(new Date()), 'yyyy-MM-dd');
+
+  const activitiesQuery = useMemo(() => 
+    query(collection(firestore, 'discipline-activities'), where('date', '==', todayString)),
+    [firestore, todayString]
+  );
+  const { data: activities, isLoading } = useCollection<Activity>(activitiesQuery);
   
   const prevActivitiesRef = useRef<Activity[]>();
-  const otherUser = user === 'Him' ? 'Her' : 'Him';
+  const otherUser = currentUserRole === 'Him' ? 'Her' : 'Him';
 
   useEffect(() => {
-    if (!activities || !prevActivitiesRef.current || !user || !otherUser) {
+    if (!activities || !prevActivitiesRef.current || !currentUserRole || !otherUser) {
       prevActivitiesRef.current = activities || [];
       return;
     }
@@ -171,49 +182,47 @@ export default function DisciplinePage() {
       }
     }
     prevActivitiesRef.current = activities;
-  }, [activities, user, otherUser, toast]);
+  }, [activities, currentUserRole, otherUser, toast]);
 
 
-  if (!user) {
-    return null;
+  if (!currentUserRole || !firebaseUser || isLoading) {
+    return null; // Or a loading spinner
   }
 
   const handleCheckChange = (checkedUser: User, activityId: string, isChecked: boolean) => {
-    setActivities((prev) =>
-      prev.map((act) =>
-        act.id === activityId
-          ? {
-              ...act,
-              checks: { ...act.checks, [checkedUser]: isChecked },
-            }
-          : act
-      )
-    );
+    const activity = activities?.find(a => a.id === activityId);
+    if (!activity) return;
+    
+    const activityRef = doc(firestore, 'discipline-activities', activityId);
+    const updatedChecks = { ...activity.checks, [checkedUser]: isChecked };
+    
+    updateDocumentNonBlocking(activityRef, { checks: updatedChecks });
   };
 
   const handleAddActivity = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newActivity.trim() === '' || !user) return;
+    if (newActivity.trim() === '' || !firebaseUser) return;
     
-    const newActivityData: Activity = {
-      id: crypto.randomUUID(),
+    const newActivityData = {
       label: newActivity.trim(),
+      date: todayString,
       checks: { Him: false, Her: false },
+      creatorId: firebaseUser.uid,
     };
     
-    setActivities((prev) => [...prev, newActivityData]);
+    addDocumentNonBlocking(collection(firestore, 'discipline-activities'), newActivityData);
     setNewActivity('');
   };
 
   const handleDeleteActivity = (activityId: string) => {
-    setActivities(prev => prev.filter(act => act.id !== activityId));
+    deleteDocumentNonBlocking(doc(firestore, 'discipline-activities', activityId));
   };
   
-  const userScore = activities.filter(a => a.checks[user]).length;
-  const otherUserScore = activities.filter(a => a.checks[otherUser]).length;
+  const userScore = activities?.filter(a => a.checks[currentUserRole]).length || 0;
+  const otherUserScore = activities?.filter(a => a.checks[otherUser]).length || 0;
 
-  const userActivities = activities;
-  const otherUserActivities = activities;
+  const userActivities = activities || [];
+  const otherUserActivities = activities || [];
   
   return (
     <div className="flex h-full flex-col items-center justify-center p-4 md:p-8">
@@ -224,8 +233,8 @@ export default function DisciplinePage() {
           </div>
           <div className="grid w-full grid-cols-1 md:grid-cols-2 gap-8 items-start">
             <UserColumn 
-              displayedUser={user}
-              currentUser={user}
+              displayedUser={currentUserRole}
+              currentUser={currentUserRole}
               activities={userActivities}
               score={userScore}
               newActivity={newActivity}
@@ -236,14 +245,14 @@ export default function DisciplinePage() {
             />
             <UserColumn 
               displayedUser={otherUser}
-              currentUser={user}
+              currentUser={currentUserRole}
               activities={otherUserActivities}
               score={otherUserScore}
-              newActivity={newActivity} // These are passed but the component won't render the inputs
-              onCheckChange={handleCheckChange}
-              onDeleteActivity={handleDeleteActivity}
-              onAddActivity={handleAddActivity}
-              onNewActivityChange={setNewActivity}
+              newActivity={''} // Not used for other user
+              onCheckChange={() => {}} // Not used
+              onDeleteActivity={() => {}} // Not used
+              onAddActivity={() => {}} // Not used
+              onNewActivityChange={() => {}} // Not used
             />
           </div>
         </div>

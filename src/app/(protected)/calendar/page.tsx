@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Accordion,
@@ -39,24 +39,37 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useFirebase } from '@/firebase';
+import { useCollection } from '@/firebase/firestore';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, doc, serverTimestamp } from 'firebase/firestore';
 
 type CalendarEvent = {
   id: string;
-  date: Date;
+  date: string;
   title: string;
   description?: string;
+  creatorId: string;
 };
 
 type CalendarSticker = {
-  [date: string]: string; // date format: 'yyyy-MM-dd'
+  id: string; // date 'yyyy-MM-dd'
+  emoji: string;
+  creatorId: string;
 };
 
 type ViewMode = 'add' | 'view';
 
 export default function CalendarPage() {
+  const { firestore, user: firebaseUser } = useFirebase();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [stickers, setStickers] = useState<CalendarSticker>({});
+  
+  const eventsQuery = useMemo(() => collection(firestore, 'important_dates'), [firestore]);
+  const { data: events } = useCollection<CalendarEvent>(eventsQuery);
+
+  const stickersQuery = useMemo(() => collection(firestore, 'stickers'), [firestore]);
+  const { data: stickers } = useCollection<CalendarSticker>(stickersQuery);
+  
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [eventTitle, setEventTitle] = useState('');
@@ -89,7 +102,7 @@ export default function CalendarPage() {
     setEventTitle('');
     setEventDesc('');
     
-    const dayHasEvents = events.some(e => isSameDay(e.date, day));
+    const dayHasEvents = events?.some(e => isSameDay(new Date(e.date), day));
     if (dayHasEvents) {
       setViewMode('view');
     } else {
@@ -100,28 +113,38 @@ export default function CalendarPage() {
   };
 
   const onEmojiClick = (emojiData: EmojiClickData) => {
-    if (selectedDate) {
+    if (selectedDate && firebaseUser) {
       const dateKey = format(selectedDate, 'yyyy-MM-dd');
-      setStickers((prev) => ({ ...prev, [dateKey]: emojiData.emoji }));
+      const stickerRef = doc(firestore, 'stickers', dateKey);
+      setDocumentNonBlocking(stickerRef, { 
+        id: dateKey, 
+        emoji: emojiData.emoji, 
+        creatorId: firebaseUser.uid 
+      });
     }
   };
 
   const handleAddEvent = () => {
-    if (selectedDate && eventTitle) {
-      const newEvent: CalendarEvent = {
-        id: crypto.randomUUID(),
-        date: selectedDate,
+    if (selectedDate && eventTitle && firebaseUser) {
+      const eventsCol = collection(firestore, 'important_dates');
+      addDocumentNonBlocking(eventsCol, {
+        date: selectedDate.toISOString().split('T')[0],
         title: eventTitle,
         description: eventDesc,
-      };
-      setEvents([...events, newEvent]);
+        creatorId: firebaseUser.uid,
+        timestamp: serverTimestamp(),
+      });
       setPopoverOpen(false);
       setSelectedDate(null);
     }
   };
   
-  const dayEvents = selectedDate ? events.filter((e) => isSameDay(e.date, selectedDate)) : [];
-  const selectedSticker = selectedDate ? stickers[format(selectedDate, 'yyyy-MM-dd')] : undefined;
+  const dayEvents = useMemo(() => selectedDate ? events?.filter((e) => isSameDay(new Date(e.date), selectedDate)) : [], [events, selectedDate]);
+  const selectedSticker = useMemo(() => {
+    if (!selectedDate || !stickers) return undefined;
+    const dateKey = format(selectedDate, 'yyyy-MM-dd');
+    return stickers.find(s => s.id === dateKey)?.emoji;
+  }, [stickers, selectedDate]);
 
 
   const renderPopoverContent = () => {
@@ -143,7 +166,7 @@ export default function CalendarPage() {
               Your events for this day.
             </p>
           </div>
-          {dayEvents.length > 0 ? (
+          {dayEvents && dayEvents.length > 0 ? (
             <Accordion type="single" collapsible className="w-full">
               {dayEvents.map(event => (
                 <AccordionItem key={event.id} value={event.id}>
@@ -246,8 +269,8 @@ export default function CalendarPage() {
 
             {days.map((day) => {
               const dateKey = format(day, 'yyyy-MM-dd');
-              const dayEvents = events.filter((e) => isSameDay(e.date, day));
-              const stickerEmoji = stickers[dateKey];
+              const dayEvents = events?.filter((e) => isSameDay(new Date(e.date), day));
+              const stickerEmoji = stickers?.find(s => s.id === dateKey)?.emoji;
               
               return (
                 <Popover
@@ -284,7 +307,7 @@ export default function CalendarPage() {
                         </span>
                       )}
                       <div className="mt-1 flex flex-col gap-1 overflow-y-auto no-scrollbar">
-                        {dayEvents.map((event) => (
+                        {dayEvents?.map((event) => (
                           <div
                             key={event.id}
                             className="flex items-center gap-1 rounded-sm bg-primary/20 px-1 py-0.5 text-xs"

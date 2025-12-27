@@ -101,7 +101,7 @@ export default function LoginForm() {
         </CardContent>
         <CardFooter className="justify-center">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Only Mine
+            &copy; {new Date().getFullYear()} Amorem Duo
           </p>
         </CardFooter>
       </Card>

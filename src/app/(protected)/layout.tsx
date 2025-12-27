@@ -27,12 +27,10 @@ import {
   ShieldCheck,
   LogOut,
   Heart,
-  PanelLeft,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 
@@ -121,11 +119,11 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
 
 function MainAppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
-      <AppWithSidebar>
-        {children}
-      </AppWithSidebar>
-    </SidebarProvider>
+      <SidebarProvider>
+        <AppWithSidebar>
+          {children}
+        </AppWithSidebar>
+      </SidebarProvider>
   );
 }
 

@@ -7,8 +7,15 @@ import {
   useState,
   useEffect,
   type ReactNode,
+  useCallback
 } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFirebase } from '@/firebase/provider';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth';
 
 export type User = 'Him' | 'Her';
 
@@ -21,49 +28,65 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// This is a simplified, non-persistent auth system for demonstration.
-// In a real app, you'd use a proper authentication service.
-const MAGIC_WORDS: { [key in User]: string } = {
+const roleEmails: Record<User, string> = {
+  Him: 'him@amoremduo.app',
+  Her: 'her@amoremduo.app',
+};
+
+const magicWords: Record<User, string> = {
   Him: '070805',
   Her: '210406',
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const { auth, isUserLoading } = useFirebase();
+  const [userRole, setUserRole] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    // Simulate checking for a logged-in user (e.g., from localStorage)
-    const storedUser = localStorage.getItem('amorem-duo-user') as User | null;
-    if (storedUser) {
-      setUser(storedUser);
+    if (!isUserLoading && auth.currentUser) {
+      const email = auth.currentUser.email;
+      if (email === roleEmails.Him) {
+        setUserRole('Him');
+      } else if (email === roleEmails.Her) {
+        setUserRole('Her');
+      }
+    } else if (!isUserLoading) {
+      setUserRole(null);
     }
-    setLoading(false);
-  }, []);
+     setLoading(isUserLoading);
+  }, [auth, isUserLoading]);
 
-  const login = async (selectedUser: User, magicWord: string) => {
-    setLoading(true);
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    if (magicWord === MAGIC_WORDS[selectedUser]) {
-      setUser(selectedUser);
-      localStorage.setItem('amorem-duo-user', selectedUser);
-      router.push('/chat');
-    } else {
-      setLoading(false);
+  const login = useCallback(async (selectedUser: User, magicWord: string) => {
+    if (magicWord !== magicWords[selectedUser]) {
       throw new Error("That's not the right magic word. Try again.");
     }
-  };
+    
+    const email = roleEmails[selectedUser];
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('amorem-duo-user');
+    try {
+      await signInWithEmailAndPassword(auth, email, magicWord);
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found') {
+        try {
+          await createUserWithEmailAndPassword(auth, email, magicWord);
+        } catch (creationError: any) {
+           throw new Error('Failed to create account. Please try again.');
+        }
+      } else {
+        throw new Error('An unexpected error occurred during login.');
+      }
+    }
+  }, [auth]);
+
+  const logout = useCallback(async () => {
+    await signOut(auth);
+    setUserRole(null);
     router.push('/');
-  };
-
-  const value = { user, loading, login, logout };
+  }, [auth, router]);
+  
+  const value = { user: userRole, loading, login, logout };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAuth, type User } from '@/context/auth-context';
@@ -6,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Send, Smile, Mic, Play, Pause, X } from 'lucide-react';
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import {
   DropdownMenu,
@@ -18,6 +19,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { useFirebase } from '@/firebase';
+import { useCollection, useDoc } from '@/firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, query, orderBy, limit, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 
 type Mood = {
   mood: string;
@@ -35,35 +40,22 @@ const moodOptions: Mood[] = [
   { mood: 'Tired', emoji: '😴' },
 ];
 
-type Message = {
-  id: number;
-  sender: User;
+export type Message = {
+  id: string;
+  senderId: string;
   text?: string;
   audioUrl?: string;
-  time: string;
-  reactions?: { [emoji: string]: User[] };
+  timestamp: any;
+  reactions?: { [emoji: string]: string[] };
   isEdited?: boolean;
   replyTo?: Message;
 };
 
-const initialMessagesData: Omit<Message, 'replyTo'>[] = [
-  { id: 1, sender: 'Her', text: 'Hey! How was your day? 🥰', time: '5:30 PM', reactions: { '❤️': ['Him'] } },
-  { id: 2, sender: 'Him', text: 'It was good! Just got home. Was thinking about you.', time: '5:31 PM' },
-  { id: 3, sender: 'Him', text: 'What are you up to?', time: '5:31 PM' },
-  { id: 4, sender: 'Her', text: 'Aww, same! Just relaxing. Wanna watch a movie tonight?', time: '5:32 PM' },
-  { id: 5, sender: 'Him', text: 'Absolutely! Pick one. I am getting snacks ready 😝', time: '5:33 PM', reactions: { '🥰': ['Her'] } },
-  { id: 6, sender: 'Her', text: 'Sounds perfect! ❤️', time: '5:34 PM' },
-];
-
-const initialMessages: Message[] = initialMessagesData.map(m => ({...m}));
-const messageToReplyTo = initialMessages.find(m => m.id === 4);
-if (messageToReplyTo) {
-  const messageWithReply = initialMessages.find(m => m.id === 5);
-  if (messageWithReply) {
-    messageWithReply.replyTo = messageToReplyTo;
-  }
+export type UserData = {
+    id: string;
+    role: User;
+    mood: Mood;
 }
-
 
 const reactionEmojis = ['❤️', '😂', '🥰', '😍', '😢', '😮'];
 
@@ -71,16 +63,18 @@ const reactionEmojis = ['❤️', '😂', '🥰', '😍', '😢', '😮'];
 function MoodDisplay({
   user,
   otherUser,
-  moods,
+  currentUserData,
+  otherUserData,
   onMoodChange,
 }: {
   user: User;
   otherUser: User;
-  moods: { [key in User]: Mood };
+  currentUserData?: UserData | null;
+  otherUserData?: UserData | null;
   onMoodChange: (newMood: Mood) => void;
 }) {
-  const currentUserMood = moods[user];
-  const otherUserMood = moods[otherUser];
+  const currentUserMood = currentUserData?.mood || { mood: 'Happy', emoji: '😊' };
+  const otherUserMood = otherUserData?.mood || { mood: 'Happy', emoji: '😊' };
 
   return (
     <div className="flex justify-between items-center p-4 border-b bg-card rounded-t-lg">
@@ -216,9 +210,9 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
 
 
 export default function ChatPage() {
-  const { user } = useAuth();
+  const { user: currentUser, loading: isAuthLoading } = useAuth();
+  const { firestore, user: firebaseUser } = useFirebase();
   const { toast } = useToast();
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [newMessage, setNewMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -230,38 +224,46 @@ export default function ChatPage() {
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timer | null>(null);
 
-  const [moods, setMoods] = useState<{ [key in User]: Mood }>({
-    Him: { mood: 'Happy', emoji: '😊' },
-    Her: { mood: 'Love u', emoji: '🥰' },
-  });
-
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [editedText, setEditedText] = useState('');
 
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  
+  const otherUser = currentUser === 'Him' ? 'Her' : 'Him';
+
+  const userIds = useMemo(() => ({ Him: 'him', Her: 'her' }), []);
+
+  const currentUserDocRef = useMemo(() => firebaseUser ? doc(firestore, 'users', firebaseUser.uid) : null, [firestore, firebaseUser]);
+  const otherUserDocRef = useMemo(() => {
+    if (!currentUser || !userIds) return null;
+    const otherUserId = currentUser === 'Him' ? userIds.Her : userIds.Him;
+    // This is a simplification. In a real app, you'd get the other user's UID.
+    // For this app, we'll assume we can't directly reference the other user's doc this way
+    // without knowing their UID. Let's fetch both user docs and filter.
+    return null;
+  }, [currentUser, userIds]);
+  
+  const { data: usersData } = useCollection<UserData>(collection(firestore, 'users'));
+
+  const currentUserData = useMemo(() => usersData?.find(u => u.role === currentUser), [usersData, currentUser]);
+  const otherUserData = useMemo(() => usersData?.find(u => u.role === otherUser), [usersData, otherUser]);
+
+  const messagesQuery = useMemo(() => query(collection(firestore, 'chats', 'chatId', 'messages'), orderBy('timestamp', 'asc'), limit(50)), [firestore]);
+  const { data: messages, isLoading: messagesLoading } = useCollection<Message>(messagesQuery);
+
 
   useEffect(() => {
     navigator.permissions.query({ name: 'microphone' as PermissionName }).then((result) => {
-        if (result.state === 'granted') {
-            setHasMicPermission(true);
-        } else if (result.state === 'denied') {
-            setHasMicPermission(false);
-        } else {
-            setHasMicPermission(null); 
-        }
+        setHasMicPermission(result.state === 'granted');
     });
   }, []);
 
   const handleMoodChange = (newMood: Mood) => {
-    if (user) {
-      setMoods((prevMoods) => ({
-        ...prevMoods,
-        [user]: newMood,
-      }));
+    if (currentUserData) {
+      const userDoc = doc(firestore, 'users', currentUserData.id);
+      updateDocumentNonBlocking(userDoc, { mood: newMood });
     }
   };
-
-  const otherUser = user === 'Him' ? 'Her' : 'Him';
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
@@ -273,26 +275,21 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  const addMessage = (message: Omit<Message, 'id' | 'time'>) => {
-     if (!user) return;
-     const newMessageData: Message = {
-      id: Date.now(),
-      sender: user,
-      time: new Date().toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: 'numeric',
-        hour12: true,
-      }),
-      ...message,
-    };
-    setMessages((prev) => [...prev, newMessageData]);
+  const addMessage = (message: Omit<Message, 'id' | 'timestamp' | 'senderId'>) => {
+     if (!firebaseUser) return;
+     const messagesCol = collection(firestore, 'chats', 'chatId', 'messages');
+     addDocumentNonBlocking(messagesCol, {
+        ...message,
+        senderId: firebaseUser.uid,
+        timestamp: serverTimestamp(),
+     });
   }
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === '' || !user) return;
+    if (newMessage.trim() === '' || !firebaseUser) return;
 
-    let message: Omit<Message, 'id' | 'time'> = { text: newMessage.trim() };
+    let message: any = { text: newMessage.trim() };
     if (replyingTo) {
       message = { ...message, replyTo: replyingTo };
     }
@@ -304,28 +301,33 @@ export default function ChatPage() {
     setShowEmojiPicker(false);
   };
 
-  const handleReaction = (messageId: number, emoji: string) => {
-    if (!user) return;
-    setMessages(messages.map(msg => {
-      if (msg.id === messageId) {
-        const reactions = { ...msg.reactions };
-        
-        if (reactions[emoji] && reactions[emoji].includes(user)) {
-          reactions[emoji] = reactions[emoji].filter(u => u !== user);
-          if (reactions[emoji].length === 0) {
-            delete reactions[emoji];
-          }
+  const handleReaction = (messageId: string, emoji: string) => {
+    if (!firebaseUser) return;
+    const messageRef = doc(firestore, 'chats', 'chatId', 'messages', messageId);
+    const message = messages?.find(m => m.id === messageId);
+    if (!message) return;
+
+    const currentReactions = message.reactions || {};
+    const usersForEmoji = currentReactions[emoji] || [];
+
+    if (usersForEmoji.includes(firebaseUser.uid)) {
+        // User is removing their reaction
+        const updatedUsers = usersForEmoji.filter(uid => uid !== firebaseUser.uid);
+        if (updatedUsers.length === 0) {
+            delete currentReactions[emoji];
         } else {
-          reactions[emoji] = [...(reactions[emoji] || []), user];
+            currentReactions[emoji] = updatedUsers;
         }
-        return { ...msg, reactions };
-      }
-      return msg;
-    }));
+    } else {
+        // User is adding a reaction
+        currentReactions[emoji] = [...usersForEmoji, firebaseUser.uid];
+    }
+    updateDocumentNonBlocking(messageRef, { reactions: currentReactions });
   };
 
-  const handleUnsend = (messageId: number) => {
-    setMessages(messages.filter(msg => msg.id !== messageId));
+  const handleUnsend = (messageId: string) => {
+    const messageRef = doc(firestore, 'chats', 'chatId', 'messages', messageId);
+    deleteDocumentNonBlocking(messageRef);
   };
   
   const handleEdit = (message: Message) => {
@@ -339,11 +341,9 @@ export default function ChatPage() {
 
   const submitEdit = () => {
     if (!editingMessage) return;
-    setMessages(messages.map(msg => 
-      msg.id === editingMessage.id 
-        ? { ...msg, text: editedText, isEdited: true } 
-        : msg
-    ));
+    const messageRef = doc(firestore, 'chats', 'chatId', 'messages', editingMessage.id);
+    updateDocumentNonBlocking(messageRef, { text: editedText, isEdited: true });
+
     setEditingMessage(null);
     setEditedText('');
   };
@@ -406,8 +406,10 @@ export default function ChatPage() {
             if (audioChunks.length > 0) {
               const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
               const audioUrl = URL.createObjectURL(audioBlob);
-              let message: Omit<Message, 'id' | 'time'> = { audioUrl };
+              // TODO: Upload to Firebase Storage and get URL
+              let message: Omit<Message, 'id' | 'timestamp' | 'senderId'> = { audioUrl };
               if (replyingTo) {
+                // @ts-ignore
                 message = { ...message, replyTo: replyingTo };
               }
               addMessage(message);
@@ -451,10 +453,10 @@ export default function ChatPage() {
     }
   };
   
-  if (!user) {
+  if (!currentUser || !firebaseUser || !usersData) {
     return null;
   }
-
+  
   const showSendButton = newMessage.trim() !== '';
 
   return (
@@ -478,9 +480,10 @@ export default function ChatPage() {
       </Dialog>
       <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-transparent rounded-lg shadow-md border-0">
         <MoodDisplay
-          user={user}
+          user={currentUser}
           otherUser={otherUser}
-          moods={moods}
+          currentUserData={currentUserData}
+          otherUserData={otherUserData}
           onMoodChange={handleMoodChange}
         />
         <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 chat-bg-pattern no-scrollbar" style={{scrollBehavior: 'smooth'}}>
@@ -492,8 +495,10 @@ export default function ChatPage() {
               </AlertDescription>
             </Alert>
           )}
-          {messages.map((msg) => {
-            const isSender = msg.sender === user;
+          {messages?.map((msg) => {
+            const senderData = usersData.find(u => u.id === msg.senderId);
+            const senderRole = senderData?.role;
+            const isSender = firebaseUser.uid === msg.senderId;
             const messageReactions = msg.reactions ? Object.entries(msg.reactions) : [];
 
             return (
@@ -518,11 +523,14 @@ export default function ChatPage() {
                             >
                               {msg.replyTo && (
                                 <div
+                                  // @ts-ignore
                                   onClick={() => handleScrollToMessage(msg.replyTo!.id)}
                                   className="block cursor-pointer"
                                 >
                                   <div className={cn("p-2 text-sm rounded-t-2xl", isSender ? 'bg-black/5' : 'bg-white/10')}>
-                                    <p className={cn("font-semibold text-xs", isSender ? 'text-primary' : 'text-accent-foreground')}>{msg.replyTo.sender}</p>
+                                    {/* @ts-ignore */}
+                                    <p className={cn("font-semibold text-xs", isSender ? 'text-primary' : 'text-accent-foreground')}>{usersData.find(u=>u.id === msg.replyTo!.senderId)?.role}</p>
+                                    {/* @ts-ignore */}
                                     <p className={cn("truncate text-xs", isSender ? 'text-primary/80' : 'text-accent-foreground/80')}>{msg.replyTo.text || 'Voice Note'}</p>
                                   </div>
                                 </div>
@@ -548,7 +556,7 @@ export default function ChatPage() {
                                       : 'text-accent-foreground/70',
                                     'text-right'
                                   )}>
-                                    {msg.time}
+                                    {msg.timestamp?.toDate().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit'})}
                                   </p>
                                  </div>
                                </div>
@@ -595,7 +603,7 @@ export default function ChatPage() {
                 <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => setReplyingTo(null)}>
                   <X className="h-4 w-4" />
                 </Button>
-                <p className="font-semibold text-primary">Replying to {replyingTo.sender}</p>
+                <p className="font-semibold text-primary">Replying to {usersData.find(u=>u.id === replyingTo.senderId)?.role}</p>
                 <p className="text-muted-foreground truncate">{replyingTo.text || 'Voice Note'}</p>
             </div>
           )}

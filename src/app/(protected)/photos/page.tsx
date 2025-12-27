@@ -3,10 +3,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Plus } from 'lucide-react';
+import { Image as ImageIcon, Plus, Lock } from 'lucide-react';
 import Image from 'next/image';
-import { PlaceHolderImages, type ImagePlaceholder } from '@/lib/placeholder-images';
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -27,13 +26,31 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useFirebase } from '@/firebase';
+import { useCollection } from '@/firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, query, where, orderBy, doc } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+
+type Photo = {
+  id: string;
+  url: string;
+  description: string;
+  uploaderId: string;
+  isPrivate: boolean;
+  order: number;
+  timestamp: any;
+};
 
 function SortablePhoto({ 
   photo,
   onDescriptionChange,
+  isOwner,
 }: { 
-  photo: ImagePlaceholder,
+  photo: Photo,
   onDescriptionChange: (id: string, newDescription: string) => void;
+  isOwner: boolean;
 }) {
   const {
     attributes,
@@ -55,13 +72,16 @@ function SortablePhoto({
   };
 
   const handleDescriptionClick = () => {
+    if (!isOwner) return;
     setIsEditing(true);
     setTimeout(() => inputRef.current?.focus(), 0);
   };
   
   const handleDescriptionBlur = () => {
     setIsEditing(false);
-    onDescriptionChange(photo.id, description);
+    if (description !== photo.description) {
+      onDescriptionChange(photo.id, description);
+    }
   };
   
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -84,15 +104,19 @@ function SortablePhoto({
     >
       <div {...attributes} {...listeners} className="h-full w-full cursor-grab">
         <Image
-          src={photo.imageUrl}
+          src={photo.url}
           alt={photo.description}
           width={800}
           height={600}
-          data-ai-hint={photo.imageHint}
           className="h-full w-full object-cover transition-transform group-hover:scale-105 pointer-events-none"
           priority
         />
       </div>
+      {photo.isPrivate && (
+        <div className="absolute top-2 right-2 bg-black/50 p-1.5 rounded-full">
+            <Lock className="h-4 w-4 text-white" />
+        </div>
+      )}
       <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-white opacity-0 transition-opacity group-hover:opacity-100">
         {isEditing ? (
           <Input
@@ -106,7 +130,7 @@ function SortablePhoto({
             maxLength={30}
           />
         ) : (
-          <p className="text-xs truncate cursor-pointer" onClick={handleDescriptionClick}>
+          <p className={cn("text-xs truncate", isOwner && "cursor-pointer")} onClick={handleDescriptionClick}>
             {photo.description}
           </p>
         )}
@@ -117,8 +141,21 @@ function SortablePhoto({
 
 
 export default function PhotosPage() {
-  const [photos, setPhotos] = useState<ImagePlaceholder[]>(PlaceHolderImages);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { firestore, user: firebaseUser } = useFirebase();
+  const [activeTab, setActiveTab] = useState('shared');
+  const [isUploadModalOpen, setUploadModalOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadIsPrivate, setUploadIsPrivate] = useState(false);
+  
+  const photosQuery = useMemo(() => {
+      const q = activeTab === 'shared' 
+          ? query(collection(firestore, 'photos'), where('isPrivate', '==', false), orderBy('order', 'asc'))
+          : query(collection(firestore, 'photos'), where('uploaderId', '==', firebaseUser?.uid), where('isPrivate', '==', true), orderBy('order', 'asc'));
+      return q;
+  }, [firestore, firebaseUser, activeTab]);
+
+  const { data: photos, isLoading } = useCollection<Photo>(photosQuery);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -133,60 +170,92 @@ export default function PhotosPage() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    if (!over || active.id === over.id || !photos) return;
 
-    if (over && active.id !== over.id) {
-      setPhotos((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-  };
+    const oldIndex = photos.findIndex((p) => p.id === active.id);
+    const newIndex = photos.findIndex((p) => p.id === over.id);
+    
+    const newOrder = arrayMove(photos, oldIndex, newIndex);
 
-  const handleAddPhotoClick = () => {
-    fileInputRef.current?.click();
+    // Update the 'order' field in Firestore for all affected photos
+    newOrder.forEach((photo, index) => {
+        if (photo.order !== index) {
+            const photoRef = doc(firestore, 'photos', photo.id);
+            updateDocumentNonBlocking(photoRef, { order: index });
+        }
+    });
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const newPhoto: ImagePlaceholder = {
-          id: `local-${Date.now()}`,
-          description: file.name,
-          imageUrl: e.target?.result as string,
-          imageHint: 'custom upload',
-        };
-        setPhotos((prevPhotos) => [newPhoto, ...prevPhotos]);
-      };
-      reader.readAsDataURL(file);
+      setUploadFile(file);
+      setUploadDescription(file.name.split('.').slice(0, -1).join('.')); // Use filename without extension
+      setUploadModalOpen(true);
+      event.target.value = ''; // Reset file input
     }
   };
 
-  const handleDescriptionChange = (id: string, newDescription: string) => {
-    setPhotos(photos => photos.map(photo => 
-      photo.id === id ? { ...photo, description: newDescription } : photo
-    ));
+  const handleUpload = () => {
+    if (!uploadFile || !firebaseUser || !photos) return;
+
+    // In a real app, you would upload the file to Firebase Storage first
+    // and then save the URL to Firestore.
+    // For this example, we'll use a data URL as a placeholder.
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageUrl = e.target?.result as string;
+
+      addDocumentNonBlocking(collection(firestore, 'photos'), {
+        url: imageUrl,
+        description: uploadDescription,
+        uploaderId: firebaseUser.uid,
+        isPrivate: uploadIsPrivate,
+        order: photos.length, // Append to the end
+        timestamp: new Date(),
+      });
+      
+      setUploadModalOpen(false);
+      setUploadFile(null);
+      setUploadDescription('');
+      setUploadIsPrivate(false);
+    };
+    reader.readAsDataURL(uploadFile);
   };
 
+
+  const handleDescriptionChange = (id: string, newDescription: string) => {
+    const photoRef = doc(firestore, 'photos', id);
+    updateDocumentNonBlocking(photoRef, { description: newDescription });
+  };
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const renderedPhotos = photos || [];
 
   return (
     <div className="flex h-full items-start justify-center p-4 md:p-8">
       <Card className="w-full max-w-6xl">
-        <CardHeader className="relative border-b pb-4">
-          <CardTitle className="flex items-center justify-center gap-2 text-2xl font-headline">
+        <CardHeader className="relative border-b pb-4 flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-2xl font-headline">
             <ImageIcon className="h-8 w-8 text-primary" />
-            Our Photo Album
+            Photos
           </CardTitle>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="absolute right-4 top-1/2 -translate-y-1/2"
-            onClick={handleAddPhotoClick}
-          >
-            <Plus className="h-6 w-6" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList>
+                    <TabsTrigger value="shared">Shared Album</TabsTrigger>
+                    <TabsTrigger value="private">My Eyes Only</TabsTrigger>
+                </TabsList>
+            </Tabs>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Plus className="h-6 w-6" />
+            </Button>
+          </div>
           <input
             type="file"
             ref={fileInputRef}
@@ -196,9 +265,36 @@ export default function PhotosPage() {
           />
         </CardHeader>
         <CardContent className="pt-6">
-          {photos.length === 0 ? (
+            <Dialog open={isUploadModalOpen} onOpenChange={setUploadModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Upload a new photo</DialogTitle>
+                        <DialogDescription>Add a description and choose if this photo should be private.</DialogDescription>
+                    </DialogHeader>
+                    {uploadFile && <Image src={URL.createObjectURL(uploadFile)} alt="Preview" width={400} height={300} className="rounded-md object-contain mx-auto max-h-60" />}
+                    <div className="grid gap-4 py-4">
+                        <Input 
+                            placeholder="Description"
+                            value={uploadDescription}
+                            onChange={e => setUploadDescription(e.target.value)}
+                        />
+                        <div className="flex items-center space-x-2">
+                           <input type="checkbox" id="is-private" checked={uploadIsPrivate} onChange={e => setUploadIsPrivate(e.target.checked)} />
+                           <label htmlFor="is-private" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                Add to "My Eyes Only"
+                            </label>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setUploadModalOpen(false)}>Cancel</Button>
+                        <Button onClick={handleUpload} disabled={!uploadDescription}>Upload</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+          {renderedPhotos.length === 0 ? (
             <p className="text-muted-foreground text-center mb-4">
-              Your photo album is empty. Click the '+' to add your first memory!
+              This album is empty. Click the '+' to add a memory!
             </p>
           ) : (
             <DndContext
@@ -207,13 +303,14 @@ export default function PhotosPage() {
               onDragEnd={handleDragEnd}
               modifiers={[restrictToParentElement]}
             >
-              <SortableContext items={photos} strategy={rectSortingStrategy}>
+              <SortableContext items={renderedPhotos.map(p => p.id)} strategy={rectSortingStrategy}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {photos.map((photo) => (
+                  {renderedPhotos.map((photo) => (
                     <SortablePhoto 
                       key={photo.id} 
                       photo={photo}
                       onDescriptionChange={handleDescriptionChange}
+                      isOwner={photo.uploaderId === firebaseUser?.uid}
                     />
                   ))}
                 </div>

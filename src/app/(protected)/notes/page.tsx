@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,39 +9,18 @@ import { NotebookText, Edit, Save, ChevronLeft, ChevronRight } from 'lucide-reac
 import { isFuture, isSameMonth, isToday, format, add, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useFirebase } from '@/firebase';
+import { useCollection } from '@/firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, serverTimestamp, collection, where, query } from 'firebase/firestore';
 
 type Note = {
-  content: string;
-  lastUpdated: string;
+  id: string;
+  authorId: string;
+  date: string;
+  text: string;
+  timestamp: any;
 };
-
-type DailyNotes = {
-  [key in User]?: Note;
-};
-
-type AllNotes = {
-  [date: string]: DailyNotes;
-};
-
-const initialNotes: AllNotes = {
-  [format(new Date(), 'yyyy-MM-dd')]: {
-    Her: {
-      content: 'Started our shared journal today! So excited to fill this with memories. 💕',
-      lastUpdated: '10:15 AM',
-    },
-    Him: {
-      content: 'What a great idea! Can\'t wait to write here with you.',
-      lastUpdated: '10:20 AM',
-    },
-  },
-  [format(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')]: {
-    Him: {
-      content: 'Remember that little coffee shop we found? We should go back this weekend.',
-      lastUpdated: 'Yesterday 3:30 PM',
-    }
-  }
-};
-
 
 const NoteEditor = ({
   noteUser,
@@ -50,6 +29,7 @@ const NoteEditor = ({
   onSave,
   colorClass,
   canEdit,
+  selectedDate,
 }: {
   noteUser: User;
   currentUser: User;
@@ -57,14 +37,16 @@ const NoteEditor = ({
   onSave: (content: string) => void;
   colorClass: string;
   canEdit: boolean;
+  selectedDate: Date;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [text, setText] = useState(note?.content || '');
+  const [text, setText] = useState(note?.text || '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    setText(note?.content || '');
-  }, [note]);
+    setText(note?.text || '');
+    setIsEditing(false); 
+  }, [note, selectedDate]);
   
   const autoResizeTextarea = () => {
     const textarea = textareaRef.current;
@@ -132,11 +114,11 @@ const NoteEditor = ({
         ) : (
           <div className="flex flex-col flex-1 min-h-[80px]">
             <div className="whitespace-pre-wrap p-2 font-body text-sm flex-1 break-words">
-              {note?.content || <p className="text-muted-foreground italic">No note yet.</p>}
+              {note?.text || <p className="text-muted-foreground italic">No note yet.</p>}
             </div>
-            {note && (
+            {note?.timestamp && (
                 <p className="self-end px-2 text-xs text-muted-foreground">
-                    Last updated: {note.lastUpdated}
+                    Last updated: {note.timestamp.toDate().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit'})}
                 </p>
             )}
           </div>
@@ -153,7 +135,7 @@ const NotesCalendar = ({
 }: {
   selectedDate: Date;
   onDateSelect: (date: Date) => void;
-  notes: AllNotes;
+  notes: Note[] | null;
 }) => {
   const [currentDate, setCurrentDate] = useState(selectedDate);
 
@@ -177,7 +159,7 @@ const NotesCalendar = ({
 
   const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-  const noteDates = Object.keys(notes).map(dateStr => new Date(dateStr.replace(/-/g, '/')));
+  const noteDates = useMemo(() => notes?.map(note => new Date(note.date.replace(/-/g, '/'))) || [], [notes]);
 
   return (
     <Card className="w-full">
@@ -189,7 +171,7 @@ const NotesCalendar = ({
           <Button variant="outline" size="icon" className="h-7 w-7" onClick={prevMonth}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon" className="h-7 w-7" onClick={nextMonth} disabled={isFuture(firstDayOfMonth)}>
+          <Button variant="outline" size="icon" className="h-7 w-7" onClick={nextMonth} disabled={isSameMonth(new Date(), currentDate)}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -229,40 +211,59 @@ const NotesCalendar = ({
 
 
 export default function NotesPage() {
-  const { user } = useAuth();
+  const { user: currentUser } = useAuth();
+  const { firestore, user: firebaseUser } = useFirebase();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [notes, setNotes] = useState<AllNotes>(initialNotes);
 
-  const dateString = format(selectedDate, 'yyyy-MM-dd');
-  const dailyNotes = notes[dateString] || {};
+  const notesQuery = useMemo(() => {
+    if (!firebaseUser) return null;
+    return query(collection(firestore, 'users', firebaseUser.uid, 'notes'));
+  }, [firestore, firebaseUser]);
   
-  const handleSaveNote = (userToSave: User) => (content: string) => {
-    if (!user) return;
-    const dateKey = format(selectedDate, 'yyyy-MM-dd');
+  const { data: notes } = useCollection<Note>(notesQuery);
+
+  const otherUserNotesQuery = useMemo(() => {
+    // This is a placeholder. In a real app with secure rules, 
+    // you would fetch the other user's notes differently, likely via a shared collection
+    // or by having their UID. For now, we only fetch the current user's notes.
+    return null;
+  }, []);
+  const { data: otherUserNotes } = useCollection<Note>(otherUserNotesQuery);
+
+
+  const dailyNotes = useMemo(() => {
+    const dateString = format(selectedDate, 'yyyy-MM-dd');
+    const allNotes = [...(notes || []), ...(otherUserNotes || [])];
+    return allNotes.filter(n => n.date === dateString);
+  }, [notes, otherUserNotes, selectedDate]);
+
+  
+  const handleSaveNote = (userToSave: User) => (text: string) => {
+    if (!firebaseUser || !currentUser) return;
     
-    const newNote: Note = {
-      content,
-      lastUpdated: new Date().toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: 'numeric',
-        hour12: true,
-      }),
+    const dateKey = format(selectedDate, 'yyyy-MM-dd');
+    const noteId = `${dateKey}-${userToSave}`;
+    const noteRef = doc(firestore, 'users', firebaseUser.uid, 'notes', noteId);
+
+    const newNote = {
+      authorId: firebaseUser.uid,
+      date: dateKey,
+      text,
+      timestamp: serverTimestamp(),
     };
 
-    setNotes(prev => ({
-      ...prev,
-      [dateKey]: {
-        ...prev[dateKey],
-        [userToSave]: newNote,
-      },
-    }));
+    setDocumentNonBlocking(noteRef, newNote, { merge: true });
   };
 
-  if (!user) return null;
+  if (!currentUser || !firebaseUser) return null;
 
-  const otherUser = user === 'Him' ? 'Her' : 'Him';
+  const otherUser = currentUser === 'Him' ? 'Her' : 'Him';
   
   const canEditSelectedDate = isToday(selectedDate);
+  
+  const currentUserNote = dailyNotes.find(n => n.authorId === firebaseUser?.uid);
+  // This logic is simplified; in a real scenario, you would need the other user's ID
+  const otherUserNote = dailyNotes.find(n => n.authorId !== firebaseUser?.uid);
 
   return (
     <div className="flex h-full flex-col p-4 md:flex-row md:gap-8 md:p-8">
@@ -284,20 +285,22 @@ export default function NotesPage() {
         </h2>
         <div className="grid flex-1 items-start gap-4 md:grid-cols-2">
           <NoteEditor
-            noteUser={user}
-            currentUser={user}
-            note={dailyNotes[user]}
-            onSave={handleSaveNote(user)}
+            noteUser={currentUser}
+            currentUser={currentUser}
+            note={currentUserNote}
+            onSave={handleSaveNote(currentUser)}
             colorClass="bg-card text-card-foreground"
             canEdit={canEditSelectedDate}
+            selectedDate={selectedDate}
           />
           <NoteEditor
             noteUser={otherUser}
-            currentUser={user}
-            note={dailyNotes[otherUser]}
-            onSave={handleSaveNote(otherUser)}
+            currentUser={currentUser}
+            note={otherUserNote}
+            onSave={()=>{}} // Users cannot save notes for others
             colorClass="bg-accent text-accent-foreground"
             canEdit={false}
+            selectedDate={selectedDate}
           />
         </div>
       </div>
