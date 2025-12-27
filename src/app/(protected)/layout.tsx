@@ -144,7 +144,7 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
               className="p-0 h-auto hover:bg-transparent"
               onClick={toggleSidebar}
             >
-              <Logo className="text-3xl" />
+              <Logo className="text-3xl" text="Pyar" />
             </Button>
           </div>
         )}
@@ -193,4 +193,3 @@ export default function ProtectedLayout({
 
   return <MainAppLayout>{children}</MainAppLayout>;
 }
-
