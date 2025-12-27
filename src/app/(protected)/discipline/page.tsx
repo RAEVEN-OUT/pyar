@@ -103,7 +103,7 @@ const UserColumn = ({
                 <label
                   htmlFor={`${displayedUser}-${activity.id}`}
                   className={cn(
-                    'text-base font-medium flex-1 break-words',
+                    'text-base font-medium flex-1 break-all',
                     checked[displayedUser][activity.id] && 'line-through text-muted-foreground'
                   )}
                 >
