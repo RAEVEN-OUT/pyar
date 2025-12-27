@@ -94,6 +94,7 @@ const NoteEditor = ({
     setIsEditing(true);
     setTimeout(() => {
       textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(text.length, text.length);
       autoResizeTextarea();
     }, 0);
   }
@@ -130,7 +131,7 @@ const NoteEditor = ({
           />
         ) : (
           <div className="flex flex-col flex-1 min-h-[80px]">
-            <div className="whitespace-pre-wrap p-2 font-body text-sm flex-1">
+            <div className="whitespace-pre-wrap p-2 font-body text-sm flex-1 break-words">
               {note?.content || <p className="text-muted-foreground italic">No note yet.</p>}
             </div>
             {note && (
@@ -277,7 +278,7 @@ export default function NotesPage() {
         />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 mt-4 md:mt-0">
         <h2 className="text-xl font-headline text-primary">
           {format(selectedDate, 'MMMM d, yyyy')}
         </h2>
