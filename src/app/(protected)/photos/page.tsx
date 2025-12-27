@@ -179,29 +179,27 @@ export default function PhotosPage() {
     <div className="flex h-full flex-col p-4 md:p-8">
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
         <DialogContent
-          className="flex items-center justify-center bg-transparent border-0 shadow-none p-0 w-auto h-auto"
+          className="p-4 bg-background/80 backdrop-blur-sm border-white/10 rounded-xl shadow-2xl w-auto inline-block"
           onInteractOutside={closeViewer}
         >
+          <DialogTitle className="sr-only">
+              {viewingPhoto ? `Viewing photo: ${viewingPhoto.description}` : 'Photo viewer'}
+          </DialogTitle>
           {viewingPhoto && (
-            <>
-              <DialogTitle className="sr-only">
-                Viewing photo: {viewingPhoto.description}
-              </DialogTitle>
-              <div className="relative w-auto h-auto">
-                <Image
-                  src={viewingPhoto.url}
-                  alt={viewingPhoto.description}
-                  width={2000}
-                  height={2000}
-                  className="object-contain rounded-lg shadow-2xl max-w-[90vw] max-h-[90vh]"
-                  priority
-                />
-              </div>
-              <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-[90vw]">
-                <div className="flex items-center justify-center gap-2 p-3 rounded-full bg-card/80 backdrop-blur-sm shadow-xl border border-white/10">
-                  <p className="text-sm font-semibold text-card-foreground text-center truncate px-2">
-                    {viewingPhoto.description}
-                  </p>
+            <div className="relative">
+              <Image
+                src={viewingPhoto.url}
+                alt={viewingPhoto.description}
+                width={2000}
+                height={2000}
+                className="object-contain rounded-lg max-w-[90vw] max-h-[90vh]"
+                priority
+              />
+              <div className="mt-4 flex items-center justify-between gap-4">
+                <p className="text-sm font-semibold text-card-foreground text-left truncate">
+                  {viewingPhoto.description}
+                </p>
+                <div className="flex items-center gap-2">
                   {isViewingPhotoOwner && (
                     <Button
                       variant="ghost"
@@ -222,7 +220,7 @@ export default function PhotosPage() {
                   </Button>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -266,6 +264,7 @@ export default function PhotosPage() {
                     {uploadFile && <Image src={URL.createObjectURL(uploadFile)} alt="Preview" width={400} height={300} className="rounded-md object-contain mx-auto max-h-60" />}
                     <div className="grid gap-4 py-4">
                         <Input 
+                            id="upload-description"
                             placeholder="Description"
                             value={uploadDescription}
                             onChange={e => setUploadDescription(e.target.value)}
@@ -287,7 +286,7 @@ export default function PhotosPage() {
             <Dialog open={isPasswordDialogOpen} onOpenChange={setPasswordDialogOpen}>
               <DialogContent className="max-w-xs">
                 <DialogHeader>
-                  <DialogTitle className="text-center">Enter PIN</DialogTitle>
+                  <DialogTitle>Enter PIN</DialogTitle>
                   <DialogDescription className="text-center">
                     This album is locked.
                   </DialogDescription>
@@ -367,3 +366,5 @@ export default function PhotosPage() {
     </div>
   );
 }
+
+    
