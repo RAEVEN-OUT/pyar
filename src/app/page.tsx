@@ -18,8 +18,8 @@ export default function LoginPage() {
     }
   }, [user, loading, router]);
 
-  // While checking auth, show the main app loader.
-  // Or if the user is logged in, show the loader while redirecting.
+  // While checking auth, or if the user is logged in and we are redirecting,
+  // show the main app loader.
   if (loading || user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
