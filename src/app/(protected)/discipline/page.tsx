@@ -81,7 +81,7 @@ const UserColumn = ({
               <div
                 key={`${displayedUser}-${activity.id}`}
                 className={cn(
-                  'flex items-center gap-4 rounded-lg p-3 transition-colors group',
+                  'flex items-center gap-4 rounded-lg p-3 transition-colors group overflow-hidden',
                   isCurrentUser ? 'bg-background/50' : 'bg-background/20'
                 )}
               >
