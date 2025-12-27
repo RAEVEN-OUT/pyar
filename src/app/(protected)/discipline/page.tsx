@@ -50,13 +50,13 @@ const UserColumn = ({
   onNewActivityChange,
 }: UserColumnProps) => {
     const isCurrentUser = displayedUser === currentUser;
-    const userColorClass = displayedUser === 'Him' ? 'bg-card text-primary' : 'bg-accent text-accent-foreground';
+    const userColorClass = displayedUser === 'Him' ? 'bg-card text-card-foreground' : 'bg-accent text-accent-foreground';
     
     return (
        <Card className={cn("w-full flex flex-col", userColorClass)}>
           <CardHeader className="items-center text-center">
              <Avatar className="h-16 w-16 mb-2 border-2">
-                <AvatarFallback className={cn("text-3xl", userColorClass, isCurrentUser ? 'border-primary' : 'border-accent')}>
+                <AvatarFallback className={cn("text-3xl", userColorClass, isCurrentUser ? 'border-primary' : 'border-accent-foreground')}>
                   {displayedUser.slice(0, 1)}
                 </AvatarFallback>
               </Avatar>
@@ -74,7 +74,7 @@ const UserColumn = ({
                 key={`${displayedUser}-${activity.id}`}
                 className={cn(
                   'flex items-center gap-4 rounded-lg p-3 transition-colors group overflow-hidden',
-                  isCurrentUser ? 'bg-background/50' : 'bg-background/20'
+                  'bg-background/50'
                 )}
               >
                 {isCurrentUser ? (
@@ -100,6 +100,7 @@ const UserColumn = ({
                   htmlFor={`${displayedUser}-${activity.id}`}
                   className={cn(
                     'text-base font-medium flex-1 break-all',
+                     displayedUser === 'Him' ? 'text-card-foreground' : 'text-accent-foreground',
                     activity.checks[displayedUser] && 'line-through text-muted-foreground'
                   )}
                 >
