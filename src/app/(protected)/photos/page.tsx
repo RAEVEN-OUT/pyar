@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Plus, Lock, Trash2, X } from 'lucide-react';
+import { Image as ImageIcon, Plus, Lock, Trash2, X, Delete } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import {
@@ -292,7 +292,7 @@ export default function PhotosPage() {
     setPasswordInput(prev => prev.slice(0, -1));
   }, []);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -444,7 +444,7 @@ export default function PhotosPage() {
                            0
                          </Button>
                          <Button type="button" variant="outline" size="icon" className="h-14" onClick={handlePinPadBackspace}>
-                           <X className="h-6 w-6" />
+                           <Delete className="h-6 w-6" />
                          </Button>
                     </div>
                   </div>
