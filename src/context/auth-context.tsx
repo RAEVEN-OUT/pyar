@@ -34,22 +34,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Check for saved user session in local storage for persistence
-    const savedUser = localStorage.getItem('amorem_duo_user') as User | null;
-    if (savedUser) {
-      setUserRole(savedUser);
+    try {
+      const savedUser = localStorage.getItem('amorem_duo_user') as User | null;
+      if (savedUser) {
+        setUserRole(savedUser);
+      }
+    } catch (e) {
+      console.error("Could not access local storage:", e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const login = useCallback(async (selectedUser: User, magicWord: string) => {
     setLoading(true);
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
+    
     if (MAGIC_WORDS[selectedUser] === magicWord) {
       setUserRole(selectedUser);
-      localStorage.setItem('amorem_duo_user', selectedUser);
-      router.push('/chat'); // This was missing
+      try {
+        localStorage.setItem('amorem_duo_user', selectedUser);
+      } catch(e) {
+        console.error("Could not access local storage:", e);
+      }
+      router.push('/chat');
+      // No need to set loading to false here, as the page will redirect and the state will be fresh.
     } else {
       setLoading(false);
       throw new Error('That\'s not the right magic word. Please try again.');
@@ -58,7 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     setUserRole(null);
-    localStorage.removeItem('amorem_duo_user');
+    try {
+      localStorage.removeItem('amorem_duo_user');
+    } catch (e) {
+      console.error("Could not access local storage:", e);
+    }
     router.push('/');
   }, [router]);
   
