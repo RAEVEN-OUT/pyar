@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { db, storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import {
   collection,
   addDoc,
@@ -56,6 +56,7 @@ export type Message = {
   sender: User;
   text?: string;
   audioUrl?: string;
+  storagePath?: string; // Path in Firebase Storage
   timestamp: Timestamp;
   reactions?: { [emoji: string]: string[] };
   isEdited?: boolean;
@@ -358,7 +359,22 @@ export default function ChatPage() {
   };
 
   const handleUnsend = async (messageId: string) => {
+    const message = messages.find(m => m.id === messageId);
+    if (!message) return;
+
     try {
+      // If it's a voice note, delete from Storage first
+      if (message.audioUrl && message.storagePath && message.senderId === user?.toLowerCase()) {
+        try {
+          const storageRef = ref(storage, message.storagePath);
+          await deleteObject(storageRef);
+        } catch (storageError) {
+          console.error('Error deleting voice note from storage:', storageError);
+          // Continue with Firestore deletion even if storage deletion fails
+        }
+      }
+
+      // Delete from Firestore
       await deleteDoc(doc(db, 'messages', messageId));
       toast({ title: 'Message deleted' });
     } catch (error) {
@@ -465,16 +481,17 @@ export default function ChatPage() {
             const storageRef = ref(storage, fileName);
 
             // 1. Upload to Storage
-            await uploadBytes(storageRef, audioBlob); // [web:21]
+            await uploadBytes(storageRef, audioBlob);
 
             // 2. Get public download URL
-            const audioUrl = await getDownloadURL(storageRef); // [web:24][web:18]
+            const audioUrl = await getDownloadURL(storageRef);
 
             // 3. Save Firestore message with Storage URL
             await addDoc(collection(db, 'messages'), {
               senderId: user.toLowerCase(),
               sender: user,
               audioUrl,
+              storagePath: fileName, // Store the path for easier deletion
               timestamp: serverTimestamp(),
               reactions: {},
               replyTo: replyingTo
@@ -586,9 +603,9 @@ export default function ChatPage() {
                 <div className="relative">
                   <Popover>
                     <PopoverTrigger asChild>
-                      <div
+                      <button
                         className={cn(
-                          'max-w-xs md:max-w-md rounded-2xl p-0.5 shadow-sm cursor-pointer',
+                          'max-w-xs md:max-w-md rounded-2xl p-0.5 shadow-sm cursor-pointer border-0 focus:outline-none focus-visible:ring-0',
                           isSender
                             ? 'bg-card'
                             : 'bg-accent'
@@ -630,7 +647,7 @@ export default function ChatPage() {
                             </p>
                           </div>
                         </div>
-                      </div>
+                      </button>
                     </PopoverTrigger>
                     <PopoverContent className="p-1 w-auto">
                       <div className="flex items-center gap-1">
@@ -640,9 +657,9 @@ export default function ChatPage() {
                           </Button>
                         ))}
                         <Button variant="ghost" size="sm" onClick={() => handleReply(msg)}>Reply</Button>
-                        {isSender && msg.text && (
+                        {isSender && (
                           <>
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(msg)}>Edit</Button>
+                            {msg.text && <Button variant="ghost" size="sm" onClick={() => handleEdit(msg)}>Edit</Button>}
                             <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleUnsend(msg.id)}>Unsend</Button>
                           </>
                         )}
