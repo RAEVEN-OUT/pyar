@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -15,6 +16,7 @@ export type User = 'Him' | 'Her';
 
 interface AuthContextType {
   user: User | null;
+  firebaseUser: FirebaseUser | null;
   loading: boolean;
   login: (user: User, magicWord: string) => Promise<void>;
   logout: () => void;
@@ -29,14 +31,15 @@ const roleEmails = {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const { auth, isUserLoading, user: fbUser } = useFirebase();
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { auth, isUserLoading, user: firebaseUser } = useFirebase();
+
 
   useEffect(() => {
     if(!isUserLoading) {
-      if (firebaseUser) {
-        const role = firebaseUser.email === roleEmails.Him ? 'Him' : 'Her';
+      if (fbUser) {
+        const role = fbUser.email === roleEmails.Him ? 'Him' : 'Her';
         setUser(role);
         localStorage.setItem('amorem-duo-user', role);
       } else {
@@ -45,40 +48,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setLoading(false);
     }
-  }, [firebaseUser, isUserLoading]);
+  }, [fbUser, isUserLoading]);
 
   const login = async (selectedUser: User, magicWord: string) => {
+    if (!auth) throw new Error("Auth service not available");
     setLoading(true);
     const email = roleEmails[selectedUser];
     try {
       await signInWithEmailAndPassword(auth, email, magicWord);
-      // Auth state change will be handled by onAuthStateChanged
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
         try {
           await createUserWithEmailAndPassword(auth, email, magicWord);
-        } catch (createError) {
-          console.error("Could not create user:", createError);
+        } catch (createError: any) {
+           throw createError;
         }
       } else {
-        console.error('Could not log in user:', error);
+        throw error;
       }
     } finally {
-      // Don't set loading to false here, wait for onAuthStateChanged
+       // setLoading will be handled by the useEffect watching the firebase user
     }
   };
 
   const logout = async () => {
+    if (!auth) return;
     try {
       await signOut(auth);
-      // Auth state change will be handled by onAuthStateChanged
       router.push('/');
     } catch (error) {
       console.error('Could not log out user:', error);
     }
   };
 
-  const value = { user, loading, login, logout };
+  const value = { user, firebaseUser: fbUser, loading, login, logout };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -90,5 +93,3 @@ export function useAuth() {
   }
   return context;
 }
-
-    

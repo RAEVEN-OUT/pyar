@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -27,7 +28,16 @@ export default function LoginForm() {
       return;
     }
     setError('');
-    await login(selectedUser, magicWord);
+    try {
+      await login(selectedUser, magicWord);
+    } catch (err: any) {
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+        setError('Invalid magic word. Please try again.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+        console.error(err);
+      }
+    }
   };
 
   return (
