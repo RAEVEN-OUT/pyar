@@ -53,13 +53,11 @@ function SortablePhoto({
   photo,
   onDescriptionChange,
   isOwner,
-  onDelete,
   onPhotoClick,
 }: { 
   photo: Photo,
   onDescriptionChange: (id: string, newDescription: string) => void;
   isOwner: boolean;
-  onDelete: (id: string) => void;
   onPhotoClick: (photo: Photo) => void;
 }) {
   const {
@@ -112,17 +110,6 @@ function SortablePhoto({
         isDragging && 'opacity-75'
       )}
     >
-      {isOwner && (
-        <Button
-          variant="destructive"
-          size="icon"
-          className="absolute top-2 left-2 z-10 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => onDelete(photo.id)}
-          aria-label="Delete photo"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      )}
       <div {...attributes} {...listeners} onClick={() => onPhotoClick(photo)} className="h-full w-full cursor-pointer">
         <Image
           src={photo.url}
@@ -459,7 +446,6 @@ export default function PhotosPage() {
                       photo={photo}
                       onDescriptionChange={handleDescriptionChange}
                       isOwner={photo.uploader === user}
-                      onDelete={handleDeletePhoto}
                       onPhotoClick={setViewingPhoto}
                     />
                   ))}
@@ -472,5 +458,3 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-    
