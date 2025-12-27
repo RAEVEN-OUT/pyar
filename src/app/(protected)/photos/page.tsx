@@ -140,12 +140,6 @@ export default function PhotosPage() {
     return photos.filter(p => p.isPrivate && p.uploader === user);
   }, [photos, activeTab, user, isPrivateAlbumLocked]);
 
-  useEffect(() => {
-    if (activeTab !== 'private') {
-      setPrivateAlbumLocked(true);
-    }
-  }, [activeTab]);
-
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -293,6 +287,7 @@ export default function PhotosPage() {
             <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
               <DialogContent 
                 className="bg-transparent border-0 shadow-none p-0 max-w-none w-full h-full"
+                onInteractOutside={() => setViewingPhoto(null)}
               >
                  {viewingPhoto && (
                   <>
@@ -301,12 +296,10 @@ export default function PhotosPage() {
                     <DialogDescription>A photo uploaded by {viewingPhoto.uploader}.</DialogDescription>
                   </DialogHeader>
                   <div 
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
-                    onClick={() => setViewingPhoto(null)}
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
                   >
                     <div 
                       className="relative w-full h-auto bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-w-4xl max-h-[90vh]"
-                      onClick={(e) => e.stopPropagation()}
                     >
                       <div className="relative aspect-video flex-1">
                          <Image
@@ -425,4 +418,3 @@ export default function PhotosPage() {
     </div>
   );
 }
- 
