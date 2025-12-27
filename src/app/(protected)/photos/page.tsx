@@ -27,20 +27,25 @@ import { cn } from '@/lib/utils';
 import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useFirebase, useCollection } from '@/firebase';
-import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, query, where, orderBy, doc } from 'firebase/firestore';
+import { useAuth } from '@/context/auth-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 type Photo = {
   id: string;
   url: string;
   description: string;
-  uploaderId: string;
+  uploader: string; // In a real app, this would be a user ID
   isPrivate: boolean;
-  order: number;
-  timestamp: any;
 };
+
+const initialPhotos: Photo[] = PlaceHolderImages.map(p => ({
+    id: p.id,
+    url: p.imageUrl,
+    description: p.description,
+    uploader: Math.random() > 0.5 ? 'Him' : 'Her',
+    isPrivate: false,
+}))
 
 function SortablePhoto({ 
   photo,
@@ -140,21 +145,13 @@ function SortablePhoto({
 
 
 export default function PhotosPage() {
-  const { firestore, user: firebaseUser } = useFirebase();
+  const { user } = useAuth();
+  const [photos, setPhotos] = useState(initialPhotos);
   const [activeTab, setActiveTab] = useState('shared');
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploadIsPrivate, setUploadIsPrivate] = useState(false);
-  
-  const photosQuery = useMemo(() => {
-      const q = activeTab === 'shared' 
-          ? query(collection(firestore, 'photos'), where('isPrivate', '==', false), orderBy('order', 'asc'))
-          : query(collection(firestore, 'photos'), where('uploaderId', '==', firebaseUser?.uid), where('isPrivate', '==', true), orderBy('order', 'asc'));
-      return q;
-  }, [firestore, firebaseUser, activeTab]);
-
-  const { data: photos, isLoading } = useCollection<Photo>(photosQuery);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -167,53 +164,55 @@ export default function PhotosPage() {
     })
   );
 
+  const displayedPhotos = useMemo(() => {
+    if (activeTab === 'shared') {
+      return photos.filter(p => !p.isPrivate);
+    }
+    return photos.filter(p => p.isPrivate && p.uploader === user);
+  }, [photos, activeTab, user]);
+  
+  const [orderedPhotos, setOrderedPhotos] = useState(displayedPhotos);
+
+  useEffect(() => {
+    setOrderedPhotos(displayedPhotos);
+  }, [displayedPhotos]);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id || !photos) return;
-
-    const oldIndex = photos.findIndex((p) => p.id === active.id);
-    const newIndex = photos.findIndex((p) => p.id === over.id);
-    
-    const newOrder = arrayMove(photos, oldIndex, newIndex);
-
-    // Update the 'order' field in Firestore for all affected photos
-    newOrder.forEach((photo, index) => {
-        if (photo.order !== index) {
-            const photoRef = doc(firestore, 'photos', photo.id);
-            updateDocumentNonBlocking(photoRef, { order: index });
-        }
-    });
+    if (over && active.id !== over.id) {
+      setOrderedPhotos((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setUploadFile(file);
-      setUploadDescription(file.name.split('.').slice(0, -1).join('.')); // Use filename without extension
+      setUploadDescription(file.name.split('.').slice(0, -1).join('.'));
       setUploadModalOpen(true);
-      event.target.value = ''; // Reset file input
+      event.target.value = '';
     }
   };
 
   const handleUpload = () => {
-    if (!uploadFile || !firebaseUser || !photos) return;
+    if (!uploadFile || !user) return;
 
-    // In a real app, you would upload the file to Firebase Storage first
-    // and then save the URL to Firestore.
-    // For this example, we'll use a data URL as a placeholder.
     const reader = new FileReader();
     reader.onload = (e) => {
       const imageUrl = e.target?.result as string;
-
-      addDocumentNonBlocking(collection(firestore, 'photos'), {
+      const newPhoto: Photo = {
+        id: new Date().toISOString(),
         url: imageUrl,
         description: uploadDescription,
-        uploaderId: firebaseUser.uid,
+        uploader: user,
         isPrivate: uploadIsPrivate,
-        order: photos.length, // Append to the end
-        timestamp: new Date(),
-      });
-      
+      };
+
+      setPhotos(prev => [...prev, newPhoto]);
       setUploadModalOpen(false);
       setUploadFile(null);
       setUploadDescription('');
@@ -224,13 +223,12 @@ export default function PhotosPage() {
 
 
   const handleDescriptionChange = (id: string, newDescription: string) => {
-    const photoRef = doc(firestore, 'photos', id);
-    updateDocumentNonBlocking(photoRef, { description: newDescription });
+    setPhotos(prev => prev.map(p => p.id === id ? { ...p, description: newDescription } : p));
   };
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const renderedPhotos = photos || [];
+  if (!user) return null;
 
   return (
     <div className="flex h-full items-start justify-center p-4 md:p-8">
@@ -291,7 +289,7 @@ export default function PhotosPage() {
                 </DialogContent>
             </Dialog>
 
-          {renderedPhotos.length === 0 ? (
+          {orderedPhotos.length === 0 ? (
             <p className="text-muted-foreground text-center mb-4">
               This album is empty. Click the '+' to add a memory!
             </p>
@@ -302,14 +300,14 @@ export default function PhotosPage() {
               onDragEnd={handleDragEnd}
               modifiers={[restrictToParentElement]}
             >
-              <SortableContext items={renderedPhotos.map(p => p.id)} strategy={rectSortingStrategy}>
+              <SortableContext items={orderedPhotos.map(p => p.id)} strategy={rectSortingStrategy}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {renderedPhotos.map((photo) => (
+                  {orderedPhotos.map((photo) => (
                     <SortablePhoto 
                       key={photo.id} 
                       photo={photo}
                       onDescriptionChange={handleDescriptionChange}
-                      isOwner={photo.uploaderId === firebaseUser?.uid}
+                      isOwner={photo.uploader === user}
                     />
                   ))}
                 </div>
@@ -321,5 +319,3 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-    

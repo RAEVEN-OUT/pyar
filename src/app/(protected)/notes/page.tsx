@@ -9,16 +9,13 @@ import { NotebookText, Edit, Save, ChevronLeft, ChevronRight } from 'lucide-reac
 import { isFuture, isSameMonth, isToday, format, add, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useFirebase, useCollection } from '@/firebase';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { doc, serverTimestamp, collection, where, query } from 'firebase/firestore';
 
 type Note = {
-  id: string;
-  authorId: string;
-  date: string;
+  id: string; // "yyyy-MM-dd-Him" or "yyyy-MM-dd-Her"
+  author: User;
+  date: string; // 'yyyy-MM-dd'
   text: string;
-  timestamp: any;
+  lastUpdated: string;
 };
 
 const NoteEditor = ({
@@ -115,9 +112,9 @@ const NoteEditor = ({
             <div className="whitespace-pre-wrap p-2 font-body text-sm flex-1 break-words">
               {note?.text || <p className="text-muted-foreground italic">No note yet.</p>}
             </div>
-            {note?.timestamp && (
+            {note?.lastUpdated && (
                 <p className="self-end px-2 text-xs text-muted-foreground">
-                    Last updated: {note.timestamp.toDate().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit'})}
+                    Last updated: {note.lastUpdated}
                 </p>
             )}
           </div>
@@ -134,7 +131,7 @@ const NotesCalendar = ({
 }: {
   selectedDate: Date;
   onDateSelect: (date: Date) => void;
-  notes: Note[] | null;
+  notes: Note[];
 }) => {
   const [currentDate, setCurrentDate] = useState(selectedDate);
 
@@ -158,7 +155,7 @@ const NotesCalendar = ({
 
   const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-  const noteDates = useMemo(() => notes?.map(note => new Date(note.date.replace(/-/g, '/'))) || [], [notes]);
+  const noteDates = useMemo(() => notes.map(note => new Date(note.date.replace(/-/g, '/'))), [notes]);
 
   return (
     <Card className="w-full">
@@ -211,58 +208,52 @@ const NotesCalendar = ({
 
 export default function NotesPage() {
   const { user: currentUser } = useAuth();
-  const { firestore, user: firebaseUser } = useFirebase();
+  const [notes, setNotes] = useState<Note[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-
-  const notesQuery = useMemo(() => {
-    if (!firebaseUser) return null;
-    return query(collection(firestore, 'users', firebaseUser.uid, 'notes'));
-  }, [firestore, firebaseUser]);
-  
-  const { data: notes } = useCollection<Note>(notesQuery);
-
-  const otherUserNotesQuery = useMemo(() => {
-    // This is a placeholder. In a real app with secure rules, 
-    // you would fetch the other user's notes differently, likely via a shared collection
-    // or by having their UID. For now, we only fetch the current user's notes.
-    return null;
-  }, []);
-  const { data: otherUserNotes } = useCollection<Note>(otherUserNotesQuery);
-
 
   const dailyNotes = useMemo(() => {
     const dateString = format(selectedDate, 'yyyy-MM-dd');
-    const allNotes = [...(notes || []), ...(otherUserNotes || [])];
-    return allNotes.filter(n => n.date === dateString);
-  }, [notes, otherUserNotes, selectedDate]);
+    return notes.filter(n => n.date === dateString);
+  }, [notes, selectedDate]);
 
   
   const handleSaveNote = (userToSave: User) => (text: string) => {
-    if (!firebaseUser || !currentUser) return;
+    if (!currentUser) return;
     
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
     const noteId = `${dateKey}-${userToSave}`;
-    const noteRef = doc(firestore, 'users', firebaseUser.uid, 'notes', noteId);
+    const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
-    const newNote = {
-      authorId: firebaseUser.uid,
-      date: dateKey,
-      text,
-      timestamp: serverTimestamp(),
-    };
-
-    setDocumentNonBlocking(noteRef, newNote, { merge: true });
+    setNotes(prevNotes => {
+      const existingNoteIndex = prevNotes.findIndex(n => n.id === noteId);
+      
+      if (existingNoteIndex > -1) {
+        // Update existing note
+        return prevNotes.map((note, index) => 
+          index === existingNoteIndex ? { ...note, text, lastUpdated: now } : note
+        );
+      } else {
+        // Add new note
+        const newNote: Note = {
+          id: noteId,
+          author: userToSave,
+          date: dateKey,
+          text,
+          lastUpdated: now,
+        };
+        return [...prevNotes, newNote];
+      }
+    });
   };
 
-  if (!currentUser || !firebaseUser) return null;
+  if (!currentUser) return null;
 
   const otherUser = currentUser === 'Him' ? 'Her' : 'Him';
   
   const canEditSelectedDate = isToday(selectedDate);
   
-  const currentUserNote = dailyNotes.find(n => n.authorId === firebaseUser?.uid);
-  // This logic is simplified; in a real scenario, you would need the other user's ID
-  const otherUserNote = dailyNotes.find(n => n.authorId !== firebaseUser?.uid);
+  const currentUserNote = dailyNotes.find(n => n.author === currentUser);
+  const otherUserNote = dailyNotes.find(n => n.author === otherUser);
 
   return (
     <div className="flex h-full flex-col p-4 md:flex-row md:gap-8 md:p-8">
@@ -296,9 +287,9 @@ export default function NotesPage() {
             noteUser={otherUser}
             currentUser={currentUser}
             note={otherUserNote}
-            onSave={()=>{}} // Users cannot save notes for others
+            onSave={handleSaveNote(otherUser)}
             colorClass="bg-accent text-accent-foreground"
-            canEdit={false}
+            canEdit={false} // Only the current user can edit their own note
             selectedDate={selectedDate}
           />
         </div>
@@ -306,5 +297,3 @@ export default function NotesPage() {
     </div>
   );
 }
-
-    

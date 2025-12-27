@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,20 +11,20 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebase, useCollection } from '@/firebase';
-import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, doc, query, where, getDocs, writeBatch } from 'firebase/firestore';
-import { format, startOfDay } from 'date-fns';
 
 type Activity = {
-  id: string;
+  id: number;
   label: string;
-  date: string; // 'yyyy-MM-dd'
   checks: {
     [key in User]?: boolean;
   };
-  creatorId: string;
 };
+
+const initialActivities: Activity[] = [
+  { id: 1, label: 'Workout', checks: { Him: true, Her: false } },
+  { id: 2, label: 'Read 10 pages', checks: { Him: false, Her: true } },
+  { id: 3, label: 'No social media after 10 PM', checks: { Him: true, Her: true } },
+];
 
 type UserColumnProps = {
   displayedUser: User;
@@ -32,8 +32,8 @@ type UserColumnProps = {
   activities: Activity[];
   score: number;
   newActivity: string;
-  onCheckChange: (user: User, activityId: string, currentState: boolean) => void;
-  onDeleteActivity: (activityId: string) => void;
+  onCheckChange: (user: User, activityId: number, currentState: boolean) => void;
+  onDeleteActivity: (activityId: number) => void;
   onAddActivity: (e: React.FormEvent) => void;
   onNewActivityChange: (value: string) => void;
 };
@@ -140,23 +140,17 @@ const UserColumn = ({
 
 export default function DisciplinePage() {
   const { user: currentUserRole } = useAuth();
-  const { firestore, user: firebaseUser } = useFirebase();
   const { toast } = useToast();
+  const [activities, setActivities] = useState<Activity[]>(initialActivities);
   const [newActivity, setNewActivity] = useState('');
-  const todayString = format(startOfDay(new Date()), 'yyyy-MM-dd');
-
-  const activitiesQuery = useMemo(() => 
-    query(collection(firestore, 'discipline-activities'), where('date', '==', todayString)),
-    [firestore, todayString]
-  );
-  const { data: activities, isLoading } = useCollection<Activity>(activitiesQuery);
   
   const prevActivitiesRef = useRef<Activity[]>();
+  
   const otherUser = currentUserRole === 'Him' ? 'Her' : 'Him';
 
   useEffect(() => {
-    if (!activities || !prevActivitiesRef.current || !currentUserRole || !otherUser) {
-      prevActivitiesRef.current = activities || [];
+    if (!activities || !prevActivitiesRef.current || !currentUserRole) {
+      prevActivitiesRef.current = activities;
       return;
     }
 
@@ -184,44 +178,45 @@ export default function DisciplinePage() {
   }, [activities, currentUserRole, otherUser, toast]);
 
 
-  if (!currentUserRole || !firebaseUser || isLoading) {
+  if (!currentUserRole) {
     return null; // Or a loading spinner
   }
 
-  const handleCheckChange = (checkedUser: User, activityId: string, isChecked: boolean) => {
-    const activity = activities?.find(a => a.id === activityId);
-    if (!activity) return;
-    
-    const activityRef = doc(firestore, 'discipline-activities', activityId);
-    const updatedChecks = { ...activity.checks, [checkedUser]: isChecked };
-    
-    updateDocumentNonBlocking(activityRef, { checks: updatedChecks });
+  const handleCheckChange = (checkedUser: User, activityId: number, isChecked: boolean) => {
+    setActivities(prev =>
+      prev.map(activity => {
+        if (activity.id === activityId) {
+          const updatedChecks = { ...activity.checks, [checkedUser]: isChecked };
+          return { ...activity, checks: updatedChecks };
+        }
+        return activity;
+      })
+    );
   };
 
   const handleAddActivity = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newActivity.trim() === '' || !firebaseUser) return;
+    if (newActivity.trim() === '') return;
     
-    const newActivityData = {
+    const newActivityData: Activity = {
+      id: Date.now(),
       label: newActivity.trim(),
-      date: todayString,
-      checks: { Him: false, Her: false },
-      creatorId: firebaseUser.uid,
+      checks: {},
     };
     
-    addDocumentNonBlocking(collection(firestore, 'discipline-activities'), newActivityData);
+    setActivities(prev => [...prev, newActivityData]);
     setNewActivity('');
   };
 
-  const handleDeleteActivity = (activityId: string) => {
-    deleteDocumentNonBlocking(doc(firestore, 'discipline-activities', activityId));
+  const handleDeleteActivity = (activityId: number) => {
+    setActivities(prev => prev.filter(a => a.id !== activityId));
   };
   
-  const userScore = activities?.filter(a => a.checks[currentUserRole]).length || 0;
-  const otherUserScore = activities?.filter(a => a.checks[otherUser]).length || 0;
+  const userScore = activities.filter(a => a.checks[currentUserRole]).length;
+  const otherUserScore = activities.filter(a => a.checks[otherUser]).length;
 
-  const userActivities = activities || [];
-  const otherUserActivities = activities || [];
+  const userActivities = activities;
+  const otherUserActivities = activities;
   
   return (
     <div className="flex h-full flex-col items-center justify-center p-4 md:p-8">
@@ -258,5 +253,3 @@ export default function DisciplinePage() {
     </div>
   );
 }
-
-    

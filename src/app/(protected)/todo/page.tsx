@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,73 +10,73 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ListChecks, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, isBefore, startOfToday } from 'date-fns';
-import { useFirebase, useCollection } from '@/firebase';
-import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, query, orderBy, doc, serverTimestamp } from 'firebase/firestore';
 
 export type Task = {
-  id: string;
+  id: number;
   text: string;
-  completedAt: string | null;
-  assigneeId: string; // The UID of the user who is assigned the task
-  creatorRole: User; // 'Him' or 'Her'
-  createdAt: any;
+  completedAt: string | null; // Date string 'yyyy-MM-dd'
+  assignee: User;
+  creator: User;
+  createdAt: string; // Date string 'yyyy-MM-dd'
 };
+
+const initialTasks: Task[] = [
+    { id: 1, text: 'Buy groceries for dinner', completedAt: null, assignee: 'Her', creator: 'Him', createdAt: format(new Date(), 'yyyy-MM-dd') },
+    { id: 2, text: 'Book flights for vacation', completedAt: '2024-05-20', assignee: 'Him', creator: 'Him', createdAt: '2024-05-18' },
+    { id: 3, text: 'Call the plumber about the leaky faucet', completedAt: null, assignee: 'Him', creator: 'Her', createdAt: format(new Date(), 'yyyy-MM-dd') },
+];
+
 
 export default function TodoPage() {
   const { user: currentUserRole } = useAuth();
-  const { firestore, user: firebaseUser } = useFirebase();
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [newTaskText, setNewTaskText] = useState('');
-
-  const tasksQuery = useMemo(() => 
-    query(collection(firestore, 'todo_tasks'), orderBy('createdAt', 'desc')), 
-    [firestore]
-  );
-  const { data: tasks } = useCollection<Task>(tasksQuery);
   
   const [visibleTasks, setVisibleTasks] = useState<Task[]>([]);
 
   useEffect(() => {
-    if (tasks) {
-      const today = startOfToday();
-      const filteredTasks = tasks.filter(task => {
-        if (!task.completedAt) {
-          return true; 
-        }
-        const completedDate = new Date(task.completedAt);
-        return !isBefore(completedDate, today);
-      });
-      setVisibleTasks(filteredTasks);
-    }
+    const today = startOfToday();
+    const filteredTasks = tasks.filter(task => {
+      if (!task.completedAt) {
+        return true; 
+      }
+      const completedDate = new Date(task.completedAt);
+      return !isBefore(completedDate, today);
+    });
+    setVisibleTasks(filteredTasks.sort((a,b) => b.id - a.id));
   }, [tasks]);
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTaskText.trim() || !firebaseUser || !currentUserRole) return;
+    if (!newTaskText.trim() || !currentUserRole) return;
 
-    const newTask = {
+    const newTask: Task = {
+      id: Date.now(),
       text: newTaskText.trim(),
       completedAt: null,
-      assigneeId: firebaseUser.uid,
-      creatorRole: currentUserRole,
-      createdAt: serverTimestamp(),
+      assignee: currentUserRole,
+      creator: currentUserRole,
+      createdAt: format(new Date(), 'yyyy-MM-dd'),
     };
     
-    addDocumentNonBlocking(collection(firestore, 'todo_tasks'), newTask);
+    setTasks(prev => [newTask, ...prev]);
     setNewTaskText('');
   };
 
-  const handleToggleTask = (taskId: string) => {
-    const task = tasks?.find(t => t.id === taskId);
-    if (!task) return;
-
-    const taskRef = doc(firestore, 'todo_tasks', taskId);
-    updateDocumentNonBlocking(taskRef, {
-      completedAt: task.completedAt ? null : new Date().toISOString().split('T')[0],
-    });
+  const handleToggleTask = (taskId: number) => {
+    setTasks(prev =>
+      prev.map(task =>
+        task.id === taskId
+          ? {
+              ...task,
+              completedAt: task.completedAt ? null : format(new Date(), 'yyyy-MM-dd'),
+            }
+          : task
+      )
+    );
   };
   
-  if (!currentUserRole || !firebaseUser) return null;
+  if (!currentUserRole) return null;
 
   return (
     <div className="flex h-full items-start justify-center p-4 md:p-8">
@@ -105,13 +105,13 @@ export default function TodoPage() {
             {visibleTasks.length > 0 ? (
               visibleTasks.map(task => {
                 const isCompleted = !!task.completedAt;
-                const canToggle = task.assigneeId === firebaseUser.uid;
+                const canToggle = task.assignee === currentUserRole;
                 return (
                 <div
                   key={task.id}
                   className={cn(
                     'flex items-center gap-4 rounded-lg p-3 transition-colors',
-                     task.creatorRole === 'Him'
+                     task.creator === 'Him'
                       ? 'bg-card text-primary'
                       : 'bg-accent text-accent-foreground',
                     isCompleted ? 'opacity-60' : 'opacity-100'
@@ -124,7 +124,7 @@ export default function TodoPage() {
                       onCheckedChange={() => handleToggleTask(task.id)}
                       className={cn(
                           "h-5 w-5",
-                          task.creatorRole === 'Him' 
+                          task.creator === 'Him' 
                             ? 'border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
                             : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
                       )}
@@ -144,10 +144,10 @@ export default function TodoPage() {
                     </label>
                      <p className={cn(
                         'text-xs mt-1',
-                         task.creatorRole === 'Him' ? 'text-primary/70' : 'text-accent-foreground/70',
+                         task.creator === 'Him' ? 'text-primary/70' : 'text-accent-foreground/70',
                          isCompleted && 'line-through'
                       )}>
-                      {task.createdAt?.toDate().toLocaleDateString()}
+                      {task.createdAt}
                     </p>
                   </div>
                 </div>
@@ -163,5 +163,3 @@ export default function TodoPage() {
     </div>
   );
 }
-
-    

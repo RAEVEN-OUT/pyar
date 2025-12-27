@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input';
 
 export default function LoginForm() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [magicWord, setMagicWord] = useState('');
   const [error, setError] = useState('');
   const { login, loading } = useAuth();
 
@@ -23,13 +22,9 @@ export default function LoginForm() {
       setError('Please select "Him" or "Her".');
       return;
     }
-    if (!magicWord) {
-      setError('Please enter the magic word.');
-      return;
-    }
     setError('');
     try {
-      await login(selectedUser, magicWord);
+      await login(selectedUser);
     } catch (err: any) {
        setError(err.message || 'An unexpected error occurred. Please try again.');
     }
@@ -73,27 +68,10 @@ export default function LoginForm() {
                 </Button>
               </div>
             </div>
-            
-            <div className="space-y-2">
-               <Label htmlFor="magic-word" className="text-center block">
-                What's the magic word?
-              </Label>
-              <div className="relative">
-                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="magic-word"
-                  type="password"
-                  value={magicWord}
-                  onChange={(e) => setMagicWord(e.target.value)}
-                  placeholder="••••••"
-                  className="pl-10 text-center h-12 text-lg tracking-widest"
-                />
-              </div>
-            </div>
 
             {error && <p className="text-sm font-medium text-destructive text-center">{error}</p>}
 
-            <Button type="submit" className="w-full h-12 text-lg" disabled={loading || !selectedUser || !magicWord}>
+            <Button type="submit" className="w-full h-12 text-lg" disabled={loading || !selectedUser}>
               {loading ? 'Entering...' : 'Enter'}
               <Heart className="ml-2 h-5 w-5 fill-current" />
             </Button>
