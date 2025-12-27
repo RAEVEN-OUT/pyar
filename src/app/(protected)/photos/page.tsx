@@ -338,8 +338,13 @@ export default function PhotosPage() {
         <CardContent className="pt-6">
             <Dialog open={!!viewingPhoto} onOpenChange={(isOpen) => !isOpen && setViewingPhoto(null)}>
               <DialogContent className="max-w-4xl p-0">
-                <div className="relative">
-                  {viewingPhoto && (
+                {viewingPhoto && (
+                  <>
+                  <DialogHeader className="sr-only">
+                    <DialogTitle>{viewingPhoto.description}</DialogTitle>
+                    <DialogDescription>Uploaded by {viewingPhoto.uploader}</DialogDescription>
+                  </DialogHeader>
+                  <div className="relative">
                     <Image
                       src={viewingPhoto.url}
                       alt={viewingPhoto.description}
@@ -347,19 +352,20 @@ export default function PhotosPage() {
                       height={900}
                       className="rounded-t-lg object-contain"
                     />
-                  )}
-                  {isViewingPhotoOwner && (
-                    <div className="absolute top-4 right-14">
-                      <Button variant="destructive" size="icon" onClick={() => handleDeletePhoto(viewingPhoto!.id)}>
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  )}
-                  <div className="p-4">
-                    <p className="font-semibold">{viewingPhoto?.description}</p>
-                    <p className="text-sm text-muted-foreground">Uploaded by {viewingPhoto?.uploader}</p>
+                    {isViewingPhotoOwner && (
+                      <div className="absolute top-4 right-14">
+                        <Button variant="destructive" size="icon" onClick={() => handleDeletePhoto(viewingPhoto!.id)}>
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                </div>
+                  <div className="p-4 pt-2">
+                    <p className="font-semibold">{viewingPhoto.description}</p>
+                    <p className="text-sm text-muted-foreground">Uploaded by {viewingPhoto.uploader}</p>
+                  </div>
+                  </>
+                )}
               </DialogContent>
             </Dialog>
 
