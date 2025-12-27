@@ -43,7 +43,7 @@ export default function TodoPage() {
 
   return (
     <div className="flex h-full items-start justify-center p-4 md:p-8">
-      <Card className="w-full max-w-2xl bg-card">
+      <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle className="flex items-center justify-center gap-2 text-2xl font-headline text-primary">
             <ListChecks className="h-8 w-8" />
@@ -57,7 +57,7 @@ export default function TodoPage() {
               placeholder="What needs to be done?"
               value={newTaskText}
               onChange={(e) => setNewTaskText(e.target.value)}
-              className="h-11 bg-background"
+              className="h-11 bg-input"
             />
             <Button type="submit" size="icon" className="h-11 w-11 flex-shrink-0">
               <Plus className="h-5 w-5" />
@@ -74,9 +74,9 @@ export default function TodoPage() {
                   key={task.id}
                   className={cn(
                     'flex items-center gap-4 rounded-lg p-3 transition-colors',
-                     task.creator === 'Her'
-                      ? 'bg-accent text-accent-foreground'
-                      : 'bg-card text-card-foreground',
+                     task.creator === 'Him'
+                      ? 'bg-card text-card-foreground'
+                      : 'bg-accent text-accent-foreground',
                     isCompleted ? 'opacity-60' : 'opacity-100'
                   )}
                 >

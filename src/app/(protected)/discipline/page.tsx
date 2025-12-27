@@ -218,6 +218,10 @@ export default function DisciplinePage() {
 
   const userActivities = activities;
   const otherUserActivities = activities;
+
+  // Determine which user is displayed on the left and which is on the right
+  const leftUser = currentUserRole === 'Him' ? 'Him' : 'Her';
+  const rightUser = currentUserRole === 'Him' ? 'Her' : 'Him';
   
   return (
     <div className="flex h-full flex-col items-center justify-center p-4 md:p-8">
@@ -228,10 +232,10 @@ export default function DisciplinePage() {
           </div>
           <div className="grid w-full grid-cols-1 md:grid-cols-2 gap-8 items-start">
             <UserColumn 
-              displayedUser={currentUserRole}
+              displayedUser={leftUser}
               currentUser={currentUserRole}
               activities={userActivities}
-              score={userScore}
+              score={leftUser === currentUserRole ? userScore : otherUserScore}
               newActivity={newActivity}
               onCheckChange={handleCheckChange}
               onDeleteActivity={handleDeleteActivity}
@@ -239,10 +243,10 @@ export default function DisciplinePage() {
               onNewActivityChange={setNewActivity}
             />
             <UserColumn 
-              displayedUser={otherUser}
+              displayedUser={rightUser}
               currentUser={currentUserRole}
               activities={otherUserActivities}
-              score={otherUserScore}
+              score={rightUser === currentUserRole ? userScore : otherUserScore}
               newActivity={''} // Not used for other user
               onCheckChange={() => {}} // Not used
               onDeleteActivity={() => {}} // Not used
