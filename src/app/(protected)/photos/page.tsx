@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Plus, Lock, Trash2 } from 'lucide-react';
+import { Image as ImageIcon, Plus, Lock, Trash2, X } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
@@ -179,41 +179,45 @@ export default function PhotosPage() {
     <div className="flex h-full flex-col p-4 md:p-8">
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
          <DialogContent
-            className="p-0 bg-transparent border-0 shadow-none w-auto inline-block"
+            className="p-4 bg-transparent border-0 shadow-none w-full h-full flex items-center justify-center"
             onInteractOutside={closeViewer}
           >
           {viewingPhoto && (
-            <div className="rounded-lg shadow-xl flex flex-col overflow-hidden bg-card/80 backdrop-blur-sm">
-                <DialogHeader className="sr-only">
-                    <DialogTitle>Viewing Photo: {viewingPhoto.description}</DialogTitle>
-                </DialogHeader>
-                
-                <div className="relative w-[90vw] h-[90vh]">
-                   <Image
-                      src={viewingPhoto.url}
-                      alt={viewingPhoto.description}
-                      fill
-                      className="object-contain"
-                      priority
-                    />
+            <>
+              <Image
+                src={viewingPhoto.url}
+                alt={viewingPhoto.description}
+                width={2000}
+                height={2000}
+                className="w-auto h-auto max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                priority
+              />
+               <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-[90vw]">
+                    <div className="flex items-center justify-center gap-4 p-3 rounded-full bg-card/80 backdrop-blur-sm shadow-xl border border-white/10">
+                        <p className="text-sm font-semibold text-card-foreground text-center">
+                            {viewingPhoto.description}
+                        </p>
+                        {isViewingPhotoOwner && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeletePhoto(viewingPhoto.id)}
+                            className="flex-shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8 rounded-full"
+                        >
+                            <Trash2 className="h-5 w-5" />
+                        </Button>
+                        )}
+                         <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={closeViewer}
+                            className="flex-shrink-0 text-card-foreground hover:bg-white/20 h-8 w-8 rounded-full"
+                        >
+                            <X className="h-5 w-5" />
+                        </Button>
+                    </div>
                 </div>
-
-                 <div className="flex items-center justify-between gap-4 p-3">
-                    <p className="flex-1 text-sm font-semibold text-card-foreground truncate">
-                        {viewingPhoto.description}
-                    </p>
-                    {isViewingPhotoOwner && (
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeletePhoto(viewingPhoto.id)}
-                        className="flex-shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8"
-                    >
-                        <Trash2 className="h-5 w-5" />
-                    </Button>
-                    )}
-                </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
