@@ -50,9 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     const credentials = USER_CREDENTIALS[selectedUser];
     
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     if (credentials.magicWord === magicWord) {
       setUser(selectedUser);
       try {
