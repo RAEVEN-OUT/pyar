@@ -357,20 +357,19 @@ export default function PhotosPage() {
         </CardHeader>
         <CardContent className="pt-6">
             <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
-               {viewingPhoto && (
-                <DialogContent 
-                  className="bg-transparent border-0 shadow-none p-0 max-w-4xl w-full"
-                  onClick={() => setViewingPhoto(null)}
-                >
+              {viewingPhoto && (
+                  <DialogContent 
+                    className="bg-transparent border-0 shadow-none p-0 max-w-4xl w-full"
+                    onClick={() => setViewingPhoto(null)}
+                  >
+                     <DialogHeader className="sr-only">
+                        <DialogTitle>{viewingPhoto.description}</DialogTitle>
+                        <DialogDescription>A photo uploaded by {viewingPhoto.uploader}.</DialogDescription>
+                    </DialogHeader>
                     <div 
                       className="relative w-full h-auto bg-card rounded-lg shadow-xl flex flex-col overflow-hidden"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <DialogHeader className="sr-only">
-                        <DialogTitle>{viewingPhoto.description}</DialogTitle>
-                        <DialogDescription>A photo uploaded by {viewingPhoto.uploader}.</DialogDescription>
-                      </DialogHeader>
-
                       <div className="relative aspect-video flex-1">
                          <Image
                             src={viewingPhoto.url}
@@ -389,7 +388,7 @@ export default function PhotosPage() {
                           )}
                        </div>
                     </div>
-                </DialogContent>
+                  </DialogContent>
               )}
             </Dialog>
 
@@ -407,7 +406,7 @@ export default function PhotosPage() {
                             onChange={e => setUploadDescription(e.target.value)}
                         />
                          <div className="flex items-center space-x-2">
-                           <Checkbox id="is-private" checked={uploadIsPrivate} onCheckedChange={(checked) => setUploadIsPrivate(!!checked)} />
+                            <Checkbox id="is-private" checked={uploadIsPrivate} onCheckedChange={(checked) => setUploadIsPrivate(!!checked)} />
                            <Label htmlFor="is-private" className="text-sm font-medium leading-none">
                                 Add to "My Eyes Only"
                             </Label>
@@ -496,4 +495,5 @@ export default function PhotosPage() {
   );
 }
  
+
     
