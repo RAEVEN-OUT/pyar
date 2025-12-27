@@ -154,7 +154,6 @@ export default function PhotosPage() {
       }
   }, [isPasswordDialogOpen, handlePinPadClick, handlePinPadBackspace]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Using handleKeyDown which is not a dependency
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => {
@@ -172,19 +171,19 @@ export default function PhotosPage() {
     <div className="flex h-full flex-col p-4 md:p-8">
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
         <DialogContent
-          className="p-4 bg-transparent border-0 shadow-none w-screen h-screen flex items-center justify-center"
-          onInteractOutside={() => setViewingPhoto(null)}
+          className="p-0 bg-transparent border-0 shadow-none w-screen h-screen flex items-center justify-center"
         >
-          <DialogTitle className="sr-only">Viewing Photo: {viewingPhoto?.description}</DialogTitle>
           {viewingPhoto && (
-            <div className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-w-[95vw] max-h-[95vh]">
+             <div className="relative inline-block bg-card rounded-lg shadow-xl flex-col overflow-hidden">
+                <DialogTitle className="sr-only">Viewing Photo: {viewingPhoto?.description}</DialogTitle>
                 <div className="relative flex-shrink-0">
                     <Image
                         src={viewingPhoto.url}
                         alt={viewingPhoto.description}
                         width={1920}
                         height={1080}
-                        className="object-contain w-auto h-auto max-w-full max-h-[calc(95vh-52px)]"
+                        className="object-contain"
+                        style={{ maxWidth: '95vw', maxHeight: '95vh'}}
                     />
                 </div>
                 <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t h-[52px]">
@@ -282,7 +281,9 @@ export default function PhotosPage() {
                          <Button key="0" type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick('0')}>
                            0
                          </Button>
-                         <div />
+                         <Button type="button" variant="outline" className="h-14 text-xl" onClick={handlePinPadBackspace}>
+                           <Trash2 className="h-5 w-5" />
+                         </Button>
                     </div>
                   </div>
                   <DialogFooter className="sm:justify-center mt-2">
@@ -339,5 +340,3 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-    
