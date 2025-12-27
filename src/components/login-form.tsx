@@ -20,7 +20,7 @@ export default function LoginForm() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) {
-      setError('Please select "Him" or "Her".');
+      setError('Please select "Raveen" or "Priya".');
       return;
     }
     if (!magicWord) {
@@ -51,25 +51,25 @@ export default function LoginForm() {
               <div className="grid grid-cols-2 gap-4">
                 <Button
                   type="button"
-                  variant={selectedUser === 'Him' ? 'default' : 'outline'}
-                  onClick={() => setSelectedUser('Him')}
+                  variant={selectedUser === 'Raveen' ? 'default' : 'outline'}
+                  onClick={() => setSelectedUser('Raveen')}
                   className={cn(
                     'h-12 text-lg',
-                    selectedUser === 'Him' && 'bg-primary text-primary-foreground'
+                    selectedUser === 'Raveen' && 'bg-primary text-primary-foreground'
                   )}
                 >
-                  Him
+                  Raveen
                 </Button>
                 <Button
                   type="button"
-                  variant={selectedUser === 'Her' ? 'default' : 'outline'}
-                  onClick={() => setSelectedUser('Her')}
+                  variant={selectedUser === 'Priya' ? 'default' : 'outline'}
+                  onClick={() => setSelectedUser('Priya')}
                   className={cn(
                     'h-12 text-lg',
-                    selectedUser === 'Her' && 'bg-primary text-primary-foreground'
+                    selectedUser === 'Priya' && 'bg-primary text-primary-foreground'
                   )}
                 >
-                  Her
+                  Priya
                 </Button>
               </div>
             </div>
@@ -106,3 +106,5 @@ export default function LoginForm() {
     </main>
   );
 }
+
+    

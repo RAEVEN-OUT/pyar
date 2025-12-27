@@ -53,7 +53,7 @@ function NavMenuItems() {
   const { tasks } = useTasks();
   const pathname = usePathname();
 
-  const otherUser = user === 'Him' ? 'Her' : 'Him';
+  const otherUser = user === 'Raveen' ? 'Priya' : 'Raveen';
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   const otherUserHasNoteToday = notes.some(
     (note) =>
@@ -193,3 +193,5 @@ export default function ProtectedLayout({
 
   return <MainAppLayout>{children}</MainAppLayout>;
 }
+
+    

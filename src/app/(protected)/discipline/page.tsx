@@ -21,9 +21,9 @@ type Activity = {
 };
 
 const initialActivities: Activity[] = [
-  { id: 1, label: 'Workout', checks: { Him: true, Her: false } },
-  { id: 2, label: 'Read 10 pages', checks: { Him: false, Her: true } },
-  { id: 3, label: 'No social media after 10 PM', checks: { Him: true, Her: true } },
+  { id: 1, label: 'Workout', checks: { Raveen: true, Priya: false } },
+  { id: 2, label: 'Read 10 pages', checks: { Raveen: false, Priya: true } },
+  { id: 3, label: 'No social media after 10 PM', checks: { Raveen: true, Priya: true } },
 ];
 
 type UserColumnProps = {
@@ -50,7 +50,7 @@ const UserColumn = ({
   onNewActivityChange,
 }: UserColumnProps) => {
     const isCurrentUser = displayedUser === currentUser;
-    const userColorClass = displayedUser === 'Him' ? 'bg-card text-card-foreground' : 'bg-accent text-accent-foreground';
+    const userColorClass = displayedUser === 'Raveen' ? 'bg-card text-card-foreground' : 'bg-accent text-accent-foreground';
     
     return (
        <Card className={cn("w-full flex flex-col", userColorClass)}>
@@ -84,7 +84,7 @@ const UserColumn = ({
                     onCheckedChange={(isChecked) => onCheckChange(displayedUser, activity.id, !!isChecked)}
                     className={cn(
                         "h-6 w-6",
-                        displayedUser === 'Him' 
+                        displayedUser === 'Raveen' 
                           ? 'border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
                           : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
                     )}
@@ -92,7 +92,7 @@ const UserColumn = ({
                 ) : (
                   <div className={cn(
                       "h-6 w-6 flex-shrink-0 border-2 rounded-sm",
-                       activity.checks[displayedUser] ? (displayedUser === 'Him' ? 'bg-primary border-primary' : 'bg-accent-foreground border-accent-foreground') : 'border-muted-foreground/50'
+                       activity.checks[displayedUser] ? (displayedUser === 'Raveen' ? 'bg-primary border-primary' : 'bg-accent-foreground border-accent-foreground') : 'border-muted-foreground/50'
                     )}
                   />
                 )}
@@ -100,7 +100,7 @@ const UserColumn = ({
                   htmlFor={`${displayedUser}-${activity.id}`}
                   className={cn(
                     'text-base font-medium flex-1 break-all',
-                     displayedUser === 'Him' ? 'text-card-foreground' : 'text-accent-foreground',
+                     displayedUser === 'Raveen' ? 'text-card-foreground' : 'text-accent-foreground',
                     activity.checks[displayedUser] && 'line-through text-muted-foreground'
                   )}
                 >
@@ -147,7 +147,7 @@ export default function DisciplinePage() {
   
   const prevActivitiesRef = useRef<Activity[]>();
   
-  const otherUser = currentUserRole === 'Him' ? 'Her' : 'Him';
+  const otherUser = currentUserRole === 'Raveen' ? 'Priya' : 'Raveen';
 
   useEffect(() => {
     if (!activities || !prevActivitiesRef.current || !currentUserRole) {
@@ -171,7 +171,7 @@ export default function DisciplinePage() {
       if (completedActivity) {
         toast({
           title: `${otherUser} completed a task! 🎉`,
-          description: `${otherUser === 'Her' ? 'She' : 'He'} finished '${completedActivity.label}'. Way to go!`,
+          description: `${otherUser === 'Priya' ? 'She' : 'He'} finished '${completedActivity.label}'. Way to go!`,
         });
       }
     }
@@ -220,8 +220,8 @@ export default function DisciplinePage() {
   const otherUserActivities = activities;
 
   // Determine which user is displayed on the left and which is on the right
-  const leftUser = currentUserRole === 'Him' ? 'Him' : 'Her';
-  const rightUser = currentUserRole === 'Him' ? 'Her' : 'Him';
+  const leftUser = currentUserRole === 'Raveen' ? 'Raveen' : 'Priya';
+  const rightUser = currentUserRole === 'Raveen' ? 'Priya' : 'Raveen';
   
   return (
     <div className="flex h-full flex-col items-center justify-center p-4 md:p-8">
@@ -258,3 +258,5 @@ export default function DisciplinePage() {
     </div>
   );
 }
+
+    

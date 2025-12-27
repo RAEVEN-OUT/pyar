@@ -12,7 +12,7 @@ import { type User } from './auth-context';
 import { format } from 'date-fns';
 
 export type Note = {
-  id: string; // "yyyy-MM-dd-Him" or "yyyy-MM-dd-Her"
+  id: string; // "yyyy-MM-dd-Raveen" or "yyyy-MM-dd-Priya"
   author: User;
   date: string; // 'yyyy-MM-dd'
   text: string;
@@ -68,3 +68,5 @@ export function useNotes() {
   }
   return context;
 }
+
+    

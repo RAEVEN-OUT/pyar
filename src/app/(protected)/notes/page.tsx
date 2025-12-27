@@ -76,7 +76,7 @@ const NoteEditor = ({
     <Card className={cn('flex flex-col', colorClass)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-headline">
-          {noteUser === 'Him' ? 'His Note' : 'Her Note'}
+          {noteUser === 'Raveen' ? "Raveen's Note" : "Priya's Note"}
         </CardTitle>
         {showEditButton && (
             isEditing ? (
@@ -219,8 +219,8 @@ export default function NotesPage() {
   
   const canEditSelectedDate = isToday(selectedDate);
   
-  const hisNote = dailyNotes.find(n => n.author === 'Him');
-  const herNote = dailyNotes.find(n => n.author === 'Her');
+  const hisNote = dailyNotes.find(n => n.author === 'Raveen');
+  const herNote = dailyNotes.find(n => n.author === 'Priya');
 
   return (
     <div className="flex h-full flex-col p-4 md:flex-row md:gap-8 md:p-8">
@@ -242,19 +242,19 @@ export default function NotesPage() {
         </h2>
         <div className="grid flex-1 items-start gap-4 md:grid-cols-2">
           <NoteEditor
-            noteUser="Him"
+            noteUser="Raveen"
             currentUser={currentUser}
             note={hisNote}
-            onSave={handleSaveNote("Him")}
+            onSave={handleSaveNote("Raveen")}
             colorClass="bg-card text-card-foreground"
             canEdit={canEditSelectedDate}
             selectedDate={selectedDate}
           />
           <NoteEditor
-            noteUser="Her"
+            noteUser="Priya"
             currentUser={currentUser}
             note={herNote}
-            onSave={handleSaveNote("Her")}
+            onSave={handleSaveNote("Priya")}
             colorClass="bg-accent text-accent-foreground"
             canEdit={canEditSelectedDate}
             selectedDate={selectedDate}
@@ -264,3 +264,5 @@ export default function NotesPage() {
     </div>
   );
 }
+
+    

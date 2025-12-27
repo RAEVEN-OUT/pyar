@@ -48,10 +48,10 @@ export type Message = {
 };
 
 const initialMessages: Message[] = [
-  { id: 1, sender: 'Her', text: "Hey! How's your day going?", timestamp: '10:30 AM' },
-  { id: 2, sender: 'Him', text: "It's going well, thanks! Just finishing up some work. You?", timestamp: '10:31 AM' },
-  { id: 3, sender: 'Her', text: "Pretty good! Thinking about what to make for dinner tonight.", timestamp: '10:32 AM' },
-  { id: 4, sender: 'Him', text: 'Ooh, any ideas? I was thinking maybe we could order in?', timestamp: '10:33 AM', replyTo: { id: 3, sender: 'Her', text: "Pretty good! Thinking about what to make for dinner tonight.", timestamp: '10:32 AM'}},
+  { id: 1, sender: 'Priya', text: "Hey! How's your day going?", timestamp: '10:30 AM' },
+  { id: 2, sender: 'Raveen', text: "It's going well, thanks! Just finishing up some work. You?", timestamp: '10:31 AM' },
+  { id: 3, sender: 'Priya', text: "Pretty good! Thinking about what to make for dinner tonight.", timestamp: '10:32 AM' },
+  { id: 4, sender: 'Raveen', text: 'Ooh, any ideas? I was thinking maybe we could order in?', timestamp: '10:33 AM', replyTo: { id: 3, sender: 'Priya', text: "Pretty good! Thinking about what to make for dinner tonight.", timestamp: '10:32 AM'}},
 ];
 
 
@@ -420,7 +420,7 @@ export default function ChatPage() {
     return null;
   }
   
-  const otherUser = user === 'Him' ? 'Her' : 'Him';
+  const otherUser = user === 'Raveen' ? 'Priya' : 'Raveen';
   const showSendButton = newMessage.trim() !== '';
 
   return (
@@ -606,3 +606,5 @@ export default function ChatPage() {
     </div>
   );
 }
+
+    

@@ -74,7 +74,7 @@ export default function TodoPage() {
                   key={task.id}
                   className={cn(
                     'flex items-center gap-4 rounded-lg p-3 transition-colors',
-                     task.creator === 'Him'
+                     task.creator === 'Raveen'
                       ? 'bg-card text-card-foreground'
                       : 'bg-accent text-accent-foreground',
                     isCompleted ? 'opacity-60' : 'opacity-100'
@@ -87,7 +87,7 @@ export default function TodoPage() {
                       onCheckedChange={() => toggleTask(task.id)}
                       className={cn(
                           "h-5 w-5",
-                          task.assignee === 'Him' 
+                          task.assignee === 'Raveen' 
                             ? 'border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
                             : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
                       )}
@@ -95,7 +95,7 @@ export default function TodoPage() {
                   ) : (
                      <div className={cn(
                       "h-5 w-5 flex-shrink-0 border-2 rounded-sm",
-                       task.completedAt ? (task.assignee === 'Him' ? 'bg-primary border-primary' : 'bg-accent-foreground border-accent-foreground') : 'border-muted-foreground/50'
+                       task.completedAt ? (task.assignee === 'Raveen' ? 'bg-primary border-primary' : 'bg-accent-foreground border-accent-foreground') : 'border-muted-foreground/50'
                     )}
                   />
                   )}
@@ -111,7 +111,7 @@ export default function TodoPage() {
                     </label>
                      <p className={cn(
                         'text-xs mt-1',
-                         task.creator === 'Him' ? 'text-card-foreground/70' : 'text-accent-foreground/70',
+                         task.creator === 'Raveen' ? 'text-card-foreground/70' : 'text-accent-foreground/70',
                          isCompleted && 'line-through'
                       )}>
                       Created by {task.creator} on {task.createdAt}
@@ -130,3 +130,5 @@ export default function TodoPage() {
     </div>
   );
 }
+
+    

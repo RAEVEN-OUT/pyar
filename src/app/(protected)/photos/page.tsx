@@ -44,7 +44,7 @@ const initialPhotos: Photo[] = PlaceHolderImages.map(p => ({
     id: p.id,
     url: p.imageUrl,
     description: p.description,
-    uploader: Math.random() > 0.5 ? 'Him' : 'Her',
+    uploader: Math.random() > 0.5 ? 'Raveen' : 'Priya',
     isPrivate: false,
 }))
 
@@ -411,3 +411,5 @@ export default function PhotosPage() {
     </div>
   );
 }
+
+    

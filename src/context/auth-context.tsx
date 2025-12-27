@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 
-export type User = 'Him' | 'Her';
+export type User = 'Raveen' | 'Priya';
 
 interface AuthContextType {
   user: User | null;
@@ -23,8 +23,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const MAGIC_WORDS: Record<User, string> = {
-  Him: '070805',
-  Her: '210406',
+  Raveen: '070805',
+  Priya: '210406',
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check for saved user session in local storage for persistence
     try {
-      const savedUser = localStorage.getItem('amorem_duo_user') as User | null;
+      const savedUser = localStorage.getItem('only_mine_user') as User | null;
       if (savedUser) {
         setUserRole(savedUser);
       }
@@ -52,12 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (MAGIC_WORDS[selectedUser] === magicWord) {
       setUserRole(selectedUser);
       try {
-        localStorage.setItem('amorem_duo_user', selectedUser);
+        localStorage.setItem('only_mine_user', selectedUser);
       } catch(e) {
         console.error("Could not access local storage:", e);
       }
       router.push('/chat');
-      // Set loading to false after initiating redirect
       setLoading(false);
     } else {
       setLoading(false);
@@ -68,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     setUserRole(null);
     try {
-      localStorage.removeItem('amorem_duo_user');
+      localStorage.removeItem('only_mine_user');
     } catch (e) {
       console.error("Could not access local storage:", e);
     }
@@ -87,3 +86,5 @@ export function useAuth() {
   }
   return context;
 }
+
+    

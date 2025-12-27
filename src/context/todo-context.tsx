@@ -21,9 +21,9 @@ export type Task = {
 };
 
 const initialTasks: Task[] = [
-    { id: 1, text: 'Buy groceries for dinner', completedAt: null, assignee: 'Her', creator: 'Him', createdAt: format(new Date(), 'yyyy-MM-dd') },
-    { id: 2, text: 'Book flights for vacation', completedAt: '2024-05-20', assignee: 'Him', creator: 'Him', createdAt: '2024-05-18' },
-    { id: 3, text: 'Call the plumber about the leaky faucet', completedAt: null, assignee: 'Him', creator: 'Her', createdAt: format(new Date(), 'yyyy-MM-dd') },
+    { id: 1, text: 'Buy groceries for dinner', completedAt: null, assignee: 'Priya', creator: 'Raveen', createdAt: format(new Date(), 'yyyy-MM-dd') },
+    { id: 2, text: 'Book flights for vacation', completedAt: '2024-05-20', assignee: 'Raveen', creator: 'Raveen', createdAt: '2024-05-18' },
+    { id: 3, text: 'Call the plumber about the leaky faucet', completedAt: null, assignee: 'Raveen', creator: 'Priya', createdAt: format(new Date(), 'yyyy-MM-dd') },
 ];
 
 interface TasksContextType {
@@ -74,3 +74,5 @@ export function useTasks() {
   }
   return context;
 }
+
+    
