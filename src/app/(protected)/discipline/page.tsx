@@ -31,6 +31,117 @@ type CheckedState = {
   };
 };
 
+type UserColumnProps = {
+  displayedUser: User;
+  currentUser: User;
+  activities: Activity[];
+  checked: CheckedState;
+  score: number;
+  newActivity: string;
+  onCheckChange: (user: User, activityId: string) => void;
+  onDeleteActivity: (activityId: string) => void;
+  onAddActivity: (e: React.FormEvent) => void;
+  onNewActivityChange: (value: string) => void;
+};
+
+
+const UserColumn = ({ 
+  displayedUser, 
+  currentUser, 
+  activities,
+  checked,
+  score,
+  newActivity,
+  onCheckChange,
+  onDeleteActivity,
+  onAddActivity,
+  onNewActivityChange,
+}: UserColumnProps) => {
+    const isCurrentUser = displayedUser === currentUser;
+    const userColorClass = displayedUser === 'Him' ? 'bg-card text-primary' : 'bg-accent text-accent-foreground';
+    
+    return (
+       <Card className={cn("w-full flex flex-col", userColorClass)}>
+          <CardHeader className="items-center text-center">
+             <Avatar className="h-16 w-16 mb-2 border-2">
+                <AvatarFallback className={cn("text-3xl", userColorClass, isCurrentUser ? 'border-primary' : 'border-accent')}>
+                  {displayedUser.slice(0, 1)}
+                </AvatarFallback>
+              </Avatar>
+            <CardTitle className="text-2xl font-headline flex items-center gap-2">
+               {displayedUser}
+            </CardTitle>
+            <p className="flex items-center gap-2 text-lg font-bold">
+              <Award className="h-5 w-5" />
+              {score} Points
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4 flex-1">
+            {activities.map((activity) => (
+              <div
+                key={`${displayedUser}-${activity.id}`}
+                className={cn(
+                  'flex items-center gap-4 rounded-lg p-3 transition-colors group',
+                  isCurrentUser ? 'bg-background/50' : 'bg-background/20'
+                )}
+              >
+                {isCurrentUser ? (
+                  <Checkbox
+                    id={`${displayedUser}-${activity.id}`}
+                    checked={!!checked[displayedUser][activity.id]}
+                    onCheckedChange={() => onCheckChange(displayedUser, activity.id)}
+                    className={cn(
+                        "h-6 w-6",
+                        displayedUser === 'Him' 
+                          ? 'border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
+                          : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
+                    )}
+                  />
+                ) : (
+                  <div className="h-6 w-6 flex-shrink-0" />
+                )}
+                <label
+                  htmlFor={`${displayedUser}-${activity.id}`}
+                  className={cn(
+                    'text-base font-medium flex-1',
+                    checked[displayedUser][activity.id] && 'line-through text-muted-foreground'
+                  )}
+                >
+                  {activity.label}
+                </label>
+                {isCurrentUser && (
+                   <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => onDeleteActivity(activity.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </CardContent>
+          {isCurrentUser && (
+            <CardFooter>
+              <form onSubmit={onAddActivity} className="flex gap-2 w-full">
+                <Input
+                  type="text"
+                  placeholder="New activity..."
+                  value={newActivity}
+                  onChange={(e) => onNewActivityChange(e.target.value)}
+                  className="h-10 bg-background/50"
+                />
+                <Button type="submit" size="icon" className="h-10 w-10 flex-shrink-0">
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </form>
+            </CardFooter>
+          )}
+        </Card>
+    );
+  };
+
 export default function DisciplinePage() {
   const { user } = useAuth();
   const [activities, setActivities] = useState<Activity[]>(initialActivities);
@@ -79,93 +190,6 @@ export default function DisciplinePage() {
 
   const userScore = Object.values(checked[user]).filter(Boolean).length;
   const otherUserScore = Object.values(checked[otherUser]).filter(Boolean).length;
-
-  const UserColumn = ({ displayedUser }: { displayedUser: User }) => {
-    const isCurrentUser = displayedUser === user;
-    const score = isCurrentUser ? userScore : otherUserScore;
-    const userColorClass = displayedUser === 'Him' ? 'bg-card text-primary' : 'bg-accent text-accent-foreground';
-    
-    return (
-       <Card className={cn("w-full flex flex-col", userColorClass)}>
-          <CardHeader className="items-center text-center">
-             <Avatar className="h-16 w-16 mb-2 border-2">
-                <AvatarFallback className={cn("text-3xl", userColorClass, isCurrentUser ? 'border-primary' : 'border-accent')}>
-                  {displayedUser.slice(0, 1)}
-                </AvatarFallback>
-              </Avatar>
-            <CardTitle className="text-2xl font-headline flex items-center gap-2">
-               {displayedUser}
-            </CardTitle>
-            <p className="flex items-center gap-2 text-lg font-bold">
-              <Award className="h-5 w-5" />
-              {score} Points
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4 flex-1">
-            {activities.map((activity) => (
-              <div
-                key={`${displayedUser}-${activity.id}`}
-                className={cn(
-                  'flex items-center gap-4 rounded-lg p-3 transition-colors group',
-                  isCurrentUser ? 'bg-background/50' : 'bg-background/20'
-                )}
-              >
-                {isCurrentUser ? (
-                  <Checkbox
-                    id={`${displayedUser}-${activity.id}`}
-                    checked={!!checked[displayedUser][activity.id]}
-                    onCheckedChange={() => handleCheckChange(displayedUser, activity.id)}
-                    className={cn(
-                        "h-6 w-6",
-                        displayedUser === 'Him' 
-                          ? 'border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
-                          : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
-                    )}
-                  />
-                ) : (
-                  <div className="h-6 w-6 flex-shrink-0" />
-                )}
-                <label
-                  htmlFor={`${displayedUser}-${activity.id}`}
-                  className={cn(
-                    'text-base font-medium flex-1',
-                    checked[displayedUser][activity.id] && 'line-through text-muted-foreground'
-                  )}
-                >
-                  {activity.label}
-                </label>
-                {isCurrentUser && (
-                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => handleDeleteActivity(activity.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
-          </CardContent>
-          {isCurrentUser && (
-            <CardFooter>
-              <form onSubmit={handleAddActivity} className="flex gap-2 w-full">
-                <Input
-                  type="text"
-                  placeholder="New activity..."
-                  value={newActivity}
-                  onChange={(e) => setNewActivity(e.target.value)}
-                  className="h-10 bg-background/50"
-                />
-                <Button type="submit" size="icon" className="h-10 w-10 flex-shrink-0">
-                  <Plus className="h-5 w-5" />
-                </Button>
-              </form>
-            </CardFooter>
-          )}
-        </Card>
-    );
-  };
   
   return (
     <div className="flex h-full flex-col items-start justify-start p-4 md:p-8">
@@ -175,8 +199,30 @@ export default function DisciplinePage() {
             Discipline Tracker
           </div>
           <div className="grid w-full grid-cols-1 md:grid-cols-2 gap-8 items-start">
-            <UserColumn displayedUser={user} />
-            <UserColumn displayedUser={otherUser} />
+            <UserColumn 
+              displayedUser={user}
+              currentUser={user}
+              activities={activities}
+              checked={checked}
+              score={userScore}
+              newActivity={newActivity}
+              onCheckChange={handleCheckChange}
+              onDeleteActivity={handleDeleteActivity}
+              onAddActivity={handleAddActivity}
+              onNewActivityChange={setNewActivity}
+            />
+            <UserColumn 
+              displayedUser={otherUser}
+              currentUser={user}
+              activities={activities}
+              checked={checked}
+              score={otherUserScore}
+              newActivity={newActivity}
+              onCheckChange={handleCheckChange}
+              onDeleteActivity={handleDeleteActivity}
+              onAddActivity={handleAddActivity}
+              onNewActivityChange={setNewActivity}
+            />
           </div>
         </div>
     </div>
