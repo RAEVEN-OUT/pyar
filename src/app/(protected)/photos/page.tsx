@@ -50,7 +50,7 @@ function SortablePhoto({ photo }: { photo: ImagePlaceholder }) {
       {...attributes}
       {...listeners}
       className={cn(
-        'overflow-hidden rounded-lg shadow-md aspect-video relative',
+        'overflow-hidden rounded-lg shadow-md aspect-video relative group',
         isDragging && 'opacity-75'
       )}
     >
@@ -60,9 +60,12 @@ function SortablePhoto({ photo }: { photo: ImagePlaceholder }) {
         width={800}
         height={600}
         data-ai-hint={photo.imageHint}
-        className="h-full w-full object-cover transition-transform hover:scale-105"
+        className="h-full w-full object-cover transition-transform group-hover:scale-105"
         priority
       />
+      <div className="absolute bottom-0 left-0 right-0 bg-black/50 p-2 text-white opacity-0 transition-opacity group-hover:opacity-100">
+        <p className="text-xs truncate">{photo.description}</p>
+      </div>
     </div>
   );
 }
