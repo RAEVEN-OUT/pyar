@@ -17,7 +17,6 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose
 } from '@/components/ui/dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Label } from '@/components/ui/label';
@@ -189,13 +188,13 @@ export default function PhotosPage() {
                     <DialogTitle>Viewing Photo: {viewingPhoto.description}</DialogTitle>
                 </DialogHeader>
 
-                <div className="flex-shrink-0">
+                <div className="max-w-[90vw] max-h-[90vh] flex items-center justify-center">
                     <Image
                       src={viewingPhoto.url}
                       alt={viewingPhoto.description}
                       width={1920}
                       height={1080}
-                      className="object-contain max-w-[95vw] max-h-[95vh] h-auto w-auto"
+                      className="object-contain h-auto w-auto max-w-full max-h-full"
                       priority
                     />
                 </div>
