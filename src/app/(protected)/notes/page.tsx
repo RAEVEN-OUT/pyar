@@ -118,7 +118,7 @@ const NoteEditor = ({
             )
         )}
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-2">
+      <CardContent className="flex flex-col flex-1 gap-2">
         {isEditing ? (
           <Textarea
             ref={textareaRef}
