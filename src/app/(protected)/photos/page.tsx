@@ -103,7 +103,7 @@ function SortablePhoto({
             onBlur={handleDescriptionBlur}
             onKeyDown={handleKeyDown}
             className="w-full h-auto p-0 m-0 bg-transparent border-0 text-xs text-white focus-visible:ring-0 focus-visible:ring-offset-0"
-            maxLength={20}
+            maxLength={25}
           />
         ) : (
           <p className="text-xs truncate cursor-pointer" onClick={handleDescriptionClick}>
