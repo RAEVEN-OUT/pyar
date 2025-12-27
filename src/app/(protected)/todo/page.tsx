@@ -2,14 +2,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/auth-context';
+import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ListChecks, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, isBefore, startOfToday } from 'date-fns';
+import { isBefore, startOfToday } from 'date-fns';
 import { useTasks, type Task } from '@/context/todo-context';
 
 
@@ -74,9 +74,9 @@ export default function TodoPage() {
                   key={task.id}
                   className={cn(
                     'flex items-center gap-4 rounded-lg p-3 transition-colors',
-                     task.creator === 'Raveen'
-                      ? 'bg-card text-card-foreground'
-                      : 'bg-accent text-accent-foreground',
+                     task.creator === 'Priya'
+                      ? 'bg-accent text-accent-foreground'
+                      : 'bg-card text-card-foreground',
                     isCompleted ? 'opacity-60' : 'opacity-100'
                   )}
                 >
@@ -95,7 +95,9 @@ export default function TodoPage() {
                   ) : (
                      <div className={cn(
                       "h-5 w-5 flex-shrink-0 border-2 rounded-sm",
-                       task.completedAt ? (task.assignee === 'Raveen' ? 'bg-primary border-primary' : 'bg-accent-foreground border-accent-foreground') : 'border-muted-foreground/50'
+                       task.completedAt 
+                         ? (task.assignee === 'Priya' ? 'bg-accent-foreground border-accent-foreground' : 'bg-primary border-primary') 
+                         : 'border-muted-foreground/50'
                     )}
                   />
                   )}
@@ -111,7 +113,7 @@ export default function TodoPage() {
                     </label>
                      <p className={cn(
                         'text-xs mt-1',
-                         task.creator === 'Raveen' ? 'text-card-foreground/70' : 'text-accent-foreground/70',
+                         task.creator === 'Priya' ? 'text-accent-foreground/70' : 'text-card-foreground/70',
                          isCompleted && 'line-through'
                       )}>
                       Created by {task.creator} on {task.createdAt}
@@ -130,5 +132,3 @@ export default function TodoPage() {
     </div>
   );
 }
-
-    
