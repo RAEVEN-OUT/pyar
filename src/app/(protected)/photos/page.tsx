@@ -287,6 +287,14 @@ export default function PhotosPage() {
             <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
               <DialogContent 
                 className="bg-transparent border-0 shadow-none p-0 max-w-none w-full h-full"
+                onInteractOutside={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (target.closest('[data-photo-frame]')) {
+                    e.preventDefault();
+                  } else {
+                    setViewingPhoto(null);
+                  }
+                }}
               >
                  {viewingPhoto && (
                   <>
@@ -294,13 +302,10 @@ export default function PhotosPage() {
                     <DialogTitle>{viewingPhoto.description}</DialogTitle>
                     <DialogDescription>A photo uploaded by {viewingPhoto.uploader}.</DialogDescription>
                   </DialogHeader>
-                   <div 
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-                    onClick={() => setViewingPhoto(null)}
-                  >
+                   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
                     <div 
-                      className="relative w-full h-auto bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-w-4xl max-h-[90vh]"
-                      onClick={(e) => e.stopPropagation()}
+                      data-photo-frame
+                      className="relative w-full bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-w-4xl max-h-[90vh]"
                     >
                       <div className="relative aspect-video flex-1">
                          <Image
@@ -419,3 +424,5 @@ export default function PhotosPage() {
     </div>
   );
 }
+
+    
