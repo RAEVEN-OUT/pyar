@@ -16,6 +16,7 @@ import {
   createUserWithEmailAndPassword,
   signOut,
 } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 export type User = 'Him' | 'Her';
 
@@ -33,13 +34,15 @@ const roleEmails: Record<User, string> = {
   Her: 'her@amoremduo.app',
 };
 
+// These are used to sign in, but also to create the account if it doesn't exist.
+// Firebase requires passwords to be at least 6 characters.
 const magicWords: Record<User, string> = {
   Him: '070805',
   Her: '210406',
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { auth, isUserLoading } = useFirebase();
+  const { auth, firestore, isUserLoading } = useFirebase();
   const [userRole, setUserRole] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -66,19 +69,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const email = roleEmails[selectedUser];
 
     try {
-      await signInWithEmailAndPassword(auth, email, magicWord);
+      // First, try to sign in.
+      const userCredential = await signInWithEmailAndPassword(auth, email, magicWord);
+      // After successful sign in, ensure the user document exists
+      const userDocRef = doc(firestore, 'users', userCredential.user.uid);
+      await setDoc(userDocRef, { id: userCredential.user.uid, role: selectedUser }, { merge: true });
+
     } catch (error: any) {
+      // If the user doesn't exist, create the account.
       if (error.code === 'auth/user-not-found') {
         try {
-          await createUserWithEmailAndPassword(auth, email, magicWord);
+          const newUserCredential = await createUserWithEmailAndPassword(auth, email, magicWord);
+          // Also create the user document in Firestore upon creation
+          const userDocRef = doc(firestore, 'users', newUserCredential.user.uid);
+          await setDoc(userDocRef, { id: newUserCredential.user.uid, role: selectedUser });
+
         } catch (creationError: any) {
-           throw new Error('Failed to create account. Please try again.');
+           // Handle specific creation errors, like weak password
+           if (creationError.code === 'auth/weak-password') {
+             throw new Error('The magic word is too weak. Please contact support.');
+           }
+           throw new Error('Failed to create your account. Please try again.');
         }
+      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        // Handle incorrect password for an existing user
+        throw new Error("That's not the right magic word. Please try again.");
+      } else if (error.code === 'auth/too-many-requests') {
+        throw new Error('Too many failed login attempts. Please try again later.');
       } else {
-        throw new Error('An unexpected error occurred during login.');
+        // Handle other errors
+        console.error('Firebase login error:', error);
+        throw new Error('An unexpected error occurred. Please try again.');
       }
     }
-  }, [auth]);
+  }, [auth, firestore]);
 
   const logout = useCallback(async () => {
     await signOut(auth);
