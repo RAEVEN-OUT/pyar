@@ -39,12 +39,6 @@ const initialPhotos: Photo[] = PlaceHolderImages.map(p => ({
     isPrivate: false,
 }));
 
-type ImageDimensions = {
-  width: number;
-  height: number;
-};
-
-
 export default function PhotosPage() {
   const { user } = useAuth();
   const [photos, setPhotos] = useState(initialPhotos);
@@ -61,8 +55,6 @@ export default function PhotosPage() {
   const [passwordError, setPasswordError] = useState('');
 
   const [viewingPhoto, setViewingPhoto] = useState<Photo | null>(null);
-  const [viewingPhotoDimensions, setViewingPhotoDimensions] = useState<ImageDimensions | null>(null);
-
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -176,7 +168,6 @@ export default function PhotosPage() {
   
   const closeViewer = () => {
     setViewingPhoto(null);
-    setViewingPhotoDimensions(null);
   };
 
 
@@ -185,71 +176,45 @@ export default function PhotosPage() {
   const pinDisplay = '●'.repeat(passwordInput.length).padEnd(4, '○');
   const isViewingPhotoOwner = viewingPhoto?.uploader === user;
 
-  const isPortrait = viewingPhotoDimensions ? viewingPhotoDimensions.height > viewingPhotoDimensions.width : false;
-
-
   return (
     <div className="flex h-full flex-col p-4 md:p-8">
-       <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
+      <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
         <DialogContent
-          className="p-0 bg-transparent border-0 shadow-none w-screen h-screen flex items-center justify-center"
+          className="p-0 bg-transparent border-0 shadow-none inline-block w-auto"
           onInteractOutside={closeViewer}
         >
           {viewingPhoto && (
-            <div
-              className="relative inline-block bg-card rounded-lg shadow-xl flex-col overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <DialogHeader>
-                <DialogTitle className="sr-only">
-                  Viewing Photo: {viewingPhoto?.description}
-                </DialogTitle>
-              </DialogHeader>
+            <div className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden">
+                <DialogHeader className="sr-only">
+                    <DialogTitle>Viewing Photo: {viewingPhoto.description}</DialogTitle>
+                </DialogHeader>
 
-              <div className="relative">
-                <Image
-                  src={viewingPhoto.url}
-                  alt={viewingPhoto.description}
-                  width={1920}
-                  height={1080}
-                  onLoad={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    setViewingPhotoDimensions({
-                      width: target.naturalWidth,
-                      height: target.naturalHeight,
-                    });
-                  }}
-                  className={cn(
-                    'object-contain transition-opacity duration-300',
-                    !viewingPhotoDimensions && 'opacity-0', // Hide until loaded
-                    isPortrait ? 'h-[95vh] w-auto' : 'w-[95vw] h-auto'
-                  )}
-                  priority
-                />
-                {!viewingPhotoDimensions && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-card">
-                     <ImageIcon className="h-16 w-16 text-muted-foreground animate-pulse" />
-                  </div>
-                )}
-              </div>
-              
-              {viewingPhotoDimensions && (
-                <div className="flex h-[52px] items-center justify-between border-t bg-card/80 p-3 backdrop-blur-sm">
-                  <p className="truncate pr-4 text-sm font-semibold text-card-foreground">
-                    {viewingPhoto.description}
-                  </p>
-                  {isViewingPhotoOwner && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeletePhoto(viewingPhoto.id)}
-                      className="flex-shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
-                  )}
+                <div className="relative">
+                    <Image
+                    src={viewingPhoto.url}
+                    alt={viewingPhoto.description}
+                    width={1920}
+                    height={1080}
+                    className="object-contain transition-opacity duration-300 w-auto h-auto max-w-[95vw] max-h-[95vh]"
+                    priority
+                    />
                 </div>
-              )}
+                
+                <div className="flex h-[52px] items-center justify-between border-t bg-card/80 p-3 backdrop-blur-sm">
+                    <p className="truncate pr-4 text-sm font-semibold text-card-foreground">
+                    {viewingPhoto.description}
+                    </p>
+                    {isViewingPhotoOwner && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeletePhoto(viewingPhoto.id)}
+                        className="flex-shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                        <Trash2 className="h-5 w-5" />
+                    </Button>
+                    )}
+                </div>
             </div>
           )}
         </DialogContent>
@@ -395,5 +360,3 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-  
