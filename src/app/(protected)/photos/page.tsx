@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Plus, Lock, Trash2 } from 'lucide-react';
+import { Image as ImageIcon, Plus, Lock, Trash2, Delete } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+
 
 type Photo = {
   id: string;
@@ -62,7 +63,7 @@ export default function PhotosPage() {
     }
     return photos.filter(p => p.isPrivate && p.uploader === user);
   }, [photos, activeTab, user, isPrivateAlbumLocked]);
-
+  
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -96,27 +97,23 @@ export default function PhotosPage() {
     reader.readAsDataURL(uploadFile);
   };
 
-  const handleDescriptionChange = (id: string, newDescription: string) => {
-    setPhotos(prev => prev.map(p => p.id === id ? { ...p, description: newDescription } : p));
-  };
-
   const handleDeletePhoto = (id: string) => {
     setPhotos(prev => prev.filter(p => p.id !== id));
     setViewingPhoto(null);
   };
   
-  const handleTabChange = (value: string) => {
-     if (value === 'private' && isPrivateAlbumLocked) {
+  const handleTabChange = useCallback((value: string) => {
+    if (value === 'private' && isPrivateAlbumLocked) {
       setPasswordDialogOpen(true);
     } else {
       setActiveTab(value);
     }
-     if (value !== 'private') {
+    if (value !== 'private') {
       setPrivateAlbumLocked(true);
     }
-  };
+  }, [isPrivateAlbumLocked]);
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (passwordInput === SPECIAL_PIN) {
       setPrivateAlbumLocked(false);
@@ -128,19 +125,19 @@ export default function PhotosPage() {
       setPasswordError('Incorrect PIN. Please try again.');
       setPasswordInput('');
     }
-  };
+  }, [passwordInput]);
   
-  const handlePinPadClick = (value: string) => {
+  const handlePinPadClick = useCallback((value: string) => {
     setPasswordError('');
     if (passwordInput.length < 4) {
       setPasswordInput(prev => prev + value);
     }
-  };
+  }, [passwordInput]);
 
-  const handlePinPadBackspace = () => {
+  const handlePinPadBackspace = useCallback(() => {
     setPasswordError('');
     setPasswordInput(prev => prev.slice(0, -1));
-  };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -151,6 +148,7 @@ export default function PhotosPage() {
       } else if (e.key === 'Backspace') {
         handlePinPadBackspace();
       } else if (e.key === 'Enter') {
+        // Create a synthetic event to submit the form
         const form = document.querySelector('form[data-form-id="pin-form"]');
         if(form) {
             form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
@@ -162,7 +160,7 @@ export default function PhotosPage() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isPasswordDialogOpen]);
+  }, [isPasswordDialogOpen, handlePinPadClick, handlePinPadBackspace, handlePasswordSubmit]);
 
 
   if (!user) return null;
@@ -172,26 +170,22 @@ export default function PhotosPage() {
 
   return (
     <div className="flex h-full flex-col p-4 md:p-8">
-       {/* Photo Viewer Dialog */}
-      <Dialog open={!!viewingPhoto} onOpenChange={setViewingPhoto}>
-        <DialogPortal>
-          <DialogOverlay />
-          <DialogContent 
-            className="p-0 bg-transparent border-0 shadow-none max-w-4xl w-full"
-            onInteractOutside={() => setViewingPhoto(null)}
-          >
-             {viewingPhoto && (
-              <div className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-h-[90vh] mx-auto">
-                {/* Image */}
+      <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
+        <DialogContent 
+          className="p-0 bg-transparent border-0 shadow-none max-w-4xl w-full"
+        >
+            <DialogTitle className="sr-only">Viewing Photo: {viewingPhoto?.description}</DialogTitle>
+            <DialogDescription className="sr-only">An enlarged view of the selected photo.</DialogDescription>
+            {viewingPhoto && (
+            <div className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-h-[90vh] mx-auto">
                 <div className="relative aspect-video flex-1">
-                   <Image
-                      src={viewingPhoto.url}
-                      alt={viewingPhoto.description}
-                      fill
-                      className="object-contain"
-                   />
+                    <Image
+                        src={viewingPhoto.url}
+                        alt={viewingPhoto.description}
+                        fill
+                        className="object-contain"
+                    />
                 </div>
-                {/* Footer with Description and Delete Button */}
                 <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t">
                     <p className="font-semibold text-card-foreground text-sm truncate pr-4">{viewingPhoto.description}</p>
                     {isViewingPhotoOwner && (
@@ -199,11 +193,10 @@ export default function PhotosPage() {
                             <Trash2 className="h-5 w-5" />
                         </Button>
                     )}
-                 </div>
-              </div>
-             )}
-          </DialogContent>
-        </DialogPortal>
+                </div>
+            </div>
+            )}
+        </DialogContent>
       </Dialog>
     
       <Card className="w-full max-w-6xl mx-auto flex-1 flex flex-col">
