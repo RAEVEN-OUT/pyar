@@ -63,7 +63,7 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <Label className="text-center block">Who are you?</Label>
+              {/* <Label className="text-center block">Who are you?</Label> */}
               <div className="grid grid-cols-2 gap-4">
                 <Button
                   type="button"
@@ -115,7 +115,7 @@ export default function LoginPage() {
         </CardContent>
         <CardFooter className="justify-center">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Only Mine
+            I Chose You. I Choose You. Always.
           </p>
         </CardFooter>
       </Card>

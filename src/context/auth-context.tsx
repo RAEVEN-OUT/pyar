@@ -3,124 +3,108 @@
 import {
   createContext,
   useContext,
-  type ReactNode,
-  useCallback,
   useState,
   useEffect,
+  type ReactNode,
+  useCallback
 } from 'react';
-import { type User } from './auth-context';
-import { db } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 import { 
-  collection, 
-  addDoc, 
-  onSnapshot, 
-  doc, 
-  updateDoc,
-  deleteDoc,
-  getDocs,
-  serverTimestamp,
-  Timestamp,
-  query,
-  orderBy 
-} from 'firebase/firestore';
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged,
+  User as FirebaseUser 
+} from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
-export type Task = {
-  id: string;
-  text: string;
-  completedAt: string | null;
-  assignee: User;
-  creator: User;
-  createdAt: Timestamp;
-};
+export type User = 'Raveen' | 'Priya';
 
-interface TasksContextType {
-  tasks: Task[];
-  addTask: (text: string, currentUser: User) => void;
-  toggleTask: (taskId: string) => void;
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  login: (user: User, password: string) => Promise<void>;
+  logout: () => void;
+  firebaseUser: FirebaseUser | null;
 }
 
-const TasksContext = createContext<TasksContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function TasksProvider({ children }: { children: ReactNode }) {
-  const [tasks, setTasks] = useState<Task[]>([]);
+const USER_CREDENTIALS: Record<User, { email: string; password: string }> = {
+  Raveen: { email: 'raveenkumar785@gmail.com', password: '070805' },
+  Priya: { email: 'jayapriyakalidas@gmail.com', password: '210406' },
+};
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    const checkAndDeleteCompletedTasks = async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const lastCleanupDate = localStorage.getItem('todoLastCleanup');
-
-      if (lastCleanupDate !== today) {
-        console.log('New day detected. Deleting completed tasks.');
-        const tasksQuery = query(collection(db, 'tasks'));
-        const snapshot = await getDocs(tasksQuery);
-        const deletions: Promise<void>[] = [];
-        
-        snapshot.forEach((doc) => {
-          const task = doc.data() as Task;
-          if (task.completedAt) {
-            deletions.push(deleteDoc(doc.ref));
-          }
-        });
-        
-        await Promise.all(deletions);
-        localStorage.setItem('todoLastCleanup', today);
-        console.log('Completed tasks deleted.');
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        // Map Firebase email to User type
+        const email = firebaseUser.email;
+        if (email === USER_CREDENTIALS.Raveen.email) {
+          setUser('Raveen');
+        } else if (email === USER_CREDENTIALS.Priya.email) {
+          setUser('Priya');
+        }
+        setFirebaseUser(firebaseUser);
+      } else {
+        setUser(null);
+        setFirebaseUser(null);
       }
-    };
-
-    checkAndDeleteCompletedTasks();
-
-    const tasksRef = collection(db, 'tasks');
-    const q = query(tasksRef, orderBy('createdAt', 'desc'));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newTasks: Task[] = [];
-      snapshot.forEach((doc) => {
-        newTasks.push({ id: doc.id, ...doc.data() } as Task);
-      });
-      setTasks(newTasks);
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const addTask = useCallback(async (text: string, currentUser: User) => {
-    try {
-      await addDoc(collection(db, 'tasks'), {
-        text,
-        completedAt: null,
-        assignee: currentUser,
-        creator: currentUser,
-        createdAt: serverTimestamp(),
-      });
-    } catch (error) {
-      console.error('Error adding task:', error);
+  const login = useCallback(async (selectedUser: User, password: string) => {
+    setLoading(true);
+    const credentials = USER_CREDENTIALS[selectedUser];
+    
+    if (credentials.password !== password) {
+      setLoading(false);
+      throw new Error("That's not the right magic word. Please try again.");
     }
-  }, []);
-
-  const toggleTask = useCallback(async (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
 
     try {
-      const taskRef = doc(db, 'tasks', taskId);
-      await updateDoc(taskRef, {
-        completedAt: task.completedAt ? null : new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error('Error toggling task:', error);
+      await signInWithEmailAndPassword(auth, credentials.email, password);
+      router.push('/chat');
+    } catch (error: any) {
+      setLoading(false);
+      if (error.code === 'auth/user-not-found') {
+        throw new Error("User account doesn't exist. Please contact support.");
+      } else if (error.code === 'auth/wrong-password') {
+        throw new Error("That's not the right magic word. Please try again.");
+      } else {
+        throw new Error("Login failed. Please try again.");
+      }
     }
-  }, [tasks]);
+  }, [router]);
 
-  const value = { tasks, addTask, toggleTask };
+  const logout = useCallback(async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+      setFirebaseUser(null);
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  }, [router]);
+  
+  const value = { user, loading, login, logout, firebaseUser };
 
-  return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useTasks() {
-  const context = useContext(TasksContext);
+export function useAuth() {
+  const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useTasks must be used within a TasksProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 }

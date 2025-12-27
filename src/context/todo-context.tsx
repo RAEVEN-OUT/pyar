@@ -16,6 +16,8 @@ import {
   onSnapshot, 
   doc, 
   updateDoc,
+  deleteDoc,
+  getDocs,
   serverTimestamp,
   Timestamp,
   query,
@@ -43,6 +45,31 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   useEffect(() => {
+    const checkAndDeleteCompletedTasks = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const lastCleanupDate = localStorage.getItem('todoLastCleanup');
+
+      if (lastCleanupDate !== today) {
+        console.log('New day detected. Deleting completed tasks.');
+        const tasksQuery = query(collection(db, 'tasks'));
+        const snapshot = await getDocs(tasksQuery);
+        const deletions: Promise<void>[] = [];
+        
+        snapshot.forEach((doc) => {
+          const task = doc.data() as Task;
+          if (task.completedAt) {
+            deletions.push(deleteDoc(doc.ref));
+          }
+        });
+        
+        await Promise.all(deletions);
+        localStorage.setItem('todoLastCleanup', today);
+        console.log('Completed tasks deleted.');
+      }
+    };
+
+    checkAndDeleteCompletedTasks();
+
     const tasksRef = collection(db, 'tasks');
     const q = query(tasksRef, orderBy('createdAt', 'desc'));
     
