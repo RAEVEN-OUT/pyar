@@ -3,14 +3,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Plus, Lock, Trash2, Delete } from 'lucide-react';
+import { Image as ImageIcon, Plus, Lock, Trash2 } from 'lucide-react';
 import Image from 'next/image';
-import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/auth-context';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogOverlay, DialogPortal, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -128,19 +128,16 @@ export default function PhotosPage() {
   }, [passwordInput]);
   
   const handlePinPadClick = useCallback((value: string) => {
-    setPasswordError('');
     if (passwordInput.length < 4) {
       setPasswordInput(prev => prev + value);
     }
   }, [passwordInput]);
 
   const handlePinPadBackspace = useCallback(() => {
-    setPasswordError('');
     setPasswordInput(prev => prev.slice(0, -1));
   }, []);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
       if (!isPasswordDialogOpen) return;
 
       if (e.key >= '0' && e.key <= '9') {
@@ -148,19 +145,21 @@ export default function PhotosPage() {
       } else if (e.key === 'Backspace') {
         handlePinPadBackspace();
       } else if (e.key === 'Enter') {
-        // Create a synthetic event to submit the form
+        e.preventDefault();
         const form = document.querySelector('form[data-form-id="pin-form"]');
         if(form) {
             form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
         }
       }
-    };
+  }, [isPasswordDialogOpen, handlePinPadClick, handlePinPadBackspace]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Using handleKeyDown which is not a dependency
+  useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isPasswordDialogOpen, handlePinPadClick, handlePinPadBackspace, handlePasswordSubmit]);
+  }, [handleKeyDown]);
 
 
   if (!user) return null;
@@ -170,8 +169,8 @@ export default function PhotosPage() {
 
   return (
     <div className="flex h-full flex-col p-4 md:p-8">
-      <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
-        <DialogContent 
+       <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
+        <DialogContent
           className="p-0 bg-transparent border-0 shadow-none max-w-4xl w-full"
         >
             <DialogTitle className="sr-only">Viewing Photo: {viewingPhoto?.description}</DialogTitle>
@@ -267,15 +266,20 @@ export default function PhotosPage() {
                 <form onSubmit={handlePasswordSubmit} data-form-id="pin-form">
                   <div className="flex flex-col items-center gap-4 py-4">
                     <div className="flex h-10 items-center justify-center gap-3 text-2xl tracking-widest text-muted-foreground">
-                      {pinDisplay.split('').map((char, i) => <span key={i}>{char}</span>)}
+                       {pinDisplay.split('').map((char, i) => <span key={i}>{char}</span>)}
                     </div>
                     {passwordError && <p className="text-sm text-destructive text-center">{passwordError}</p>}
                     <div className="grid grid-cols-3 gap-2 w-full">
-                        {[ '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].map(digit => (
+                        {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(digit => (
                            <Button key={digit} type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick(digit)}>
                                {digit}
                            </Button>
                         ))}
+                         <div />
+                         <Button key="0" type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick('0')}>
+                           0
+                         </Button>
+                         <div />
                     </div>
                   </div>
                   <DialogFooter className="sm:justify-center mt-2">
