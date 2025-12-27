@@ -31,6 +31,7 @@ import { useAuth } from '@/context/auth-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type Photo = {
   id: string;
@@ -342,10 +343,10 @@ export default function PhotosPage() {
                             onChange={e => setUploadDescription(e.target.value)}
                         />
                         <div className="flex items-center space-x-2">
-                           <input type="checkbox" id="is-private" checked={uploadIsPrivate} onChange={e => setUploadIsPrivate(e.target.checked)} />
-                           <label htmlFor="is-private" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                           <Checkbox id="is-private" checked={uploadIsPrivate} onCheckedChange={(checked) => setUploadIsPrivate(!!checked)} />
+                           <Label htmlFor="is-private" className="text-sm font-medium leading-none">
                                 Add to "My Eyes Only"
-                            </label>
+                            </Label>
                         </div>
                     </div>
                     <DialogFooter>
@@ -430,5 +431,3 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-    
