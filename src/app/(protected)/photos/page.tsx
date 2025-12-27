@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Plus, Lock, Trash2, Delete } from 'lucide-react';
+import { Image as ImageIcon, Plus, Lock, Trash2, Delete, X } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useRef, useMemo, useEffect } from 'react';
 import {
@@ -54,11 +54,13 @@ function SortablePhoto({
   onDescriptionChange,
   isOwner,
   onDelete,
+  onPhotoClick,
 }: { 
   photo: Photo,
   onDescriptionChange: (id: string, newDescription: string) => void;
   isOwner: boolean;
   onDelete: (id: string) => void;
+  onPhotoClick: (photo: Photo) => void;
 }) {
   const {
     attributes,
@@ -121,7 +123,7 @@ function SortablePhoto({
           <Trash2 className="h-4 w-4" />
         </Button>
       )}
-      <div {...attributes} {...listeners} className="h-full w-full cursor-grab">
+      <div {...attributes} {...listeners} onClick={() => onPhotoClick(photo)} className="h-full w-full cursor-pointer">
         <Image
           src={photo.url}
           alt={photo.description}
@@ -173,6 +175,8 @@ export default function PhotosPage() {
   const [isPasswordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+  const [viewingPhoto, setViewingPhoto] = useState<Photo | null>(null);
 
   const SPECIAL_PIN = '2107';
 
@@ -255,6 +259,7 @@ export default function PhotosPage() {
 
   const handleDeletePhoto = (id: string) => {
     setPhotos(prev => prev.filter(p => p.id !== id));
+    setViewingPhoto(null);
   };
   
   const handleTabChange = (value: string) => {
@@ -297,6 +302,8 @@ export default function PhotosPage() {
 
   const pinDisplay = '●'.repeat(passwordInput.length).padEnd(4, '○');
 
+  const isViewingPhotoOwner = viewingPhoto?.uploader === user;
+
   return (
     <div className="flex h-full items-start justify-center p-4 md:p-8">
       <Card className="w-full max-w-6xl">
@@ -329,6 +336,33 @@ export default function PhotosPage() {
           />
         </CardHeader>
         <CardContent className="pt-6">
+            <Dialog open={!!viewingPhoto} onOpenChange={(isOpen) => !isOpen && setViewingPhoto(null)}>
+              <DialogContent className="max-w-4xl p-0">
+                <div className="relative">
+                  {viewingPhoto && (
+                    <Image
+                      src={viewingPhoto.url}
+                      alt={viewingPhoto.description}
+                      width={1600}
+                      height={900}
+                      className="rounded-t-lg object-contain"
+                    />
+                  )}
+                  {isViewingPhotoOwner && (
+                    <div className="absolute top-4 right-14">
+                      <Button variant="destructive" size="icon" onClick={() => handleDeletePhoto(viewingPhoto!.id)}>
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  )}
+                  <div className="p-4">
+                    <p className="font-semibold">{viewingPhoto?.description}</p>
+                    <p className="text-sm text-muted-foreground">Uploaded by {viewingPhoto?.uploader}</p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             <Dialog open={isUploadModalOpen} onOpenChange={setUploadModalOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -342,7 +376,7 @@ export default function PhotosPage() {
                             value={uploadDescription}
                             onChange={e => setUploadDescription(e.target.value)}
                         />
-                        <div className="flex items-center space-x-2">
+                         <div className="flex items-center space-x-2">
                            <Checkbox id="is-private" checked={uploadIsPrivate} onCheckedChange={(checked) => setUploadIsPrivate(!!checked)} />
                            <Label htmlFor="is-private" className="text-sm font-medium leading-none">
                                 Add to "My Eyes Only"
@@ -420,6 +454,7 @@ export default function PhotosPage() {
                       onDescriptionChange={handleDescriptionChange}
                       isOwner={photo.uploader === user}
                       onDelete={handleDeletePhoto}
+                      onPhotoClick={setViewingPhoto}
                     />
                   ))}
                 </div>
@@ -431,3 +466,5 @@ export default function PhotosPage() {
     </div>
   );
 }
+
+    
