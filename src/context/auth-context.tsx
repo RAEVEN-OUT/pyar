@@ -18,15 +18,15 @@ interface AuthContextType {
   user: User | null;
   firebaseUser: FirebaseUser | null;
   loading: boolean;
-  login: (user: User) => Promise<void>;
+  login: (user: User, magicWord: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const userCredentials = {
-  'Him': { email: 'him@amoremduo.app', magicWord: '070805' },
-  'Her': { email: 'her@amoremduo.app', magicWord: '210406' }
+  'Him': { email: 'him@amoremduo.app' },
+  'Her': { email: 'her@amoremduo.app' }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -50,10 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [fbUser, isUserLoading]);
 
-  const login = async (selectedUser: User) => {
+  const login = async (selectedUser: User, magicWord: string) => {
     if (!auth) throw new Error("Auth service not available");
     
-    const { email, magicWord } = userCredentials[selectedUser];
+    const { email } = userCredentials[selectedUser];
     
     try {
       await signInWithEmailAndPassword(auth, email, magicWord);
@@ -62,10 +62,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           await createUserWithEmailAndPassword(auth, email, magicWord);
         } catch (createError: any) {
+           if (createError.code === 'auth/weak-password') {
+             throw new Error('Magic word must be at least 6 characters long.');
+           }
            throw new Error('Could not create account. Please try again.');
         }
       } else if (error.code === 'auth/invalid-credential') {
-        throw new Error('Internal authentication error. Magic words may be misconfigured.');
+        throw new Error('That\'s not the right magic word. Try again.');
       } else {
         throw new Error('An unexpected error occurred. Please try again.');
       }
