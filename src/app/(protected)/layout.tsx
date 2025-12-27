@@ -35,6 +35,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { NotesProvider, useNotes } from '@/context/notes-context';
 import { TasksProvider, useTasks } from '@/context/todo-context';
+import { DisciplineProvider, useDiscipline } from '@/context/discipline-context';
 import { format } from 'date-fns';
 
 
@@ -51,6 +52,7 @@ function NavMenuItems() {
   const { user } = useAuth();
   const { notes } = useNotes();
   const { tasks } = useTasks();
+  const { activities } = useDiscipline();
   const pathname = usePathname();
 
   const otherUser = user === 'Raveen' ? 'Priya' : 'Raveen';
@@ -62,12 +64,19 @@ function NavMenuItems() {
   
   const uncheckedTodoCount = tasks.filter(task => !task.completedAt).length;
 
+  const otherUserDisciplineScore = activities.filter(
+    (a) => a.checks[otherUser]
+  ).length;
+
+
   return (
     <>
       {navItems.map((item) => {
         const showNoteNotification =
           item.href === '/notes' && otherUserHasNoteToday;
         const showTodoBadge = item.href === '/todo' && uncheckedTodoCount > 0;
+         const showDisciplineBadge =
+          item.href === '/discipline' && otherUserDisciplineScore > 0;
         
         return (
           <SidebarMenuItem key={item.href}>
@@ -84,6 +93,9 @@ function NavMenuItems() {
               )}
                {showTodoBadge && (
                 <SidebarMenuBadge>{uncheckedTodoCount}</SidebarMenuBadge>
+              )}
+              {showDisciplineBadge && (
+                <SidebarMenuBadge>{otherUserDisciplineScore}</SidebarMenuBadge>
               )}
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -159,9 +171,11 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
       <SidebarProvider>
         <NotesProvider>
           <TasksProvider>
-            <AppWithSidebar>
-              {children}
-            </AppWithSidebar>
+            <DisciplineProvider>
+              <AppWithSidebar>
+                {children}
+              </AppWithSidebar>
+            </DisciplineProvider>
           </TasksProvider>
         </NotesProvider>
       </SidebarProvider>

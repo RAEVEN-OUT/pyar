@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
+import { useDiscipline, type Activity } from '@/context/discipline-context';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ShieldCheck, Award, Trash2, Plus } from 'lucide-react';
@@ -11,20 +12,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-
-type Activity = {
-  id: number;
-  label: string;
-  checks: {
-    [key in User]?: boolean;
-  };
-};
-
-const initialActivities: Activity[] = [
-  { id: 1, label: 'Workout', checks: { Raveen: true, Priya: false } },
-  { id: 2, label: 'Read 10 pages', checks: { Raveen: false, Priya: true } },
-  { id: 3, label: 'No social media after 10 PM', checks: { Raveen: true, Priya: true } },
-];
 
 type UserColumnProps = {
   displayedUser: User;
@@ -141,8 +128,8 @@ const UserColumn = ({
 
 export default function DisciplinePage() {
   const { user: currentUserRole } = useAuth();
+  const { activities, addActivity, toggleActivity, deleteActivity } = useDiscipline();
   const { toast } = useToast();
-  const [activities, setActivities] = useState<Activity[]>(initialActivities);
   const [newActivity, setNewActivity] = useState('');
   
   const prevActivitiesRef = useRef<Activity[]>();
@@ -183,34 +170,16 @@ export default function DisciplinePage() {
     return null; // Or a loading spinner
   }
 
-  const handleCheckChange = (checkedUser: User, activityId: number, isChecked: boolean) => {
-    setActivities(prev =>
-      prev.map(activity => {
-        if (activity.id === activityId) {
-          const updatedChecks = { ...activity.checks, [checkedUser]: isChecked };
-          return { ...activity, checks: updatedChecks };
-        }
-        return activity;
-      })
-    );
+  const handleCheckChange = (checkedUser: User, activityId: number) => {
+    toggleActivity(activityId, checkedUser);
   };
 
   const handleAddActivity = (e: React.FormEvent) => {
     e.preventDefault();
     if (newActivity.trim() === '') return;
     
-    const newActivityData: Activity = {
-      id: Date.now(),
-      label: newActivity.trim(),
-      checks: {},
-    };
-    
-    setActivities(prev => [...prev, newActivityData]);
+    addActivity(newActivity.trim());
     setNewActivity('');
-  };
-
-  const handleDeleteActivity = (activityId: number) => {
-    setActivities(prev => prev.filter(a => a.id !== activityId));
   };
   
   const userScore = activities.filter(a => a.checks[currentUserRole]).length;
@@ -238,7 +207,7 @@ export default function DisciplinePage() {
               score={leftUser === currentUserRole ? userScore : otherUserScore}
               newActivity={newActivity}
               onCheckChange={handleCheckChange}
-              onDeleteActivity={handleDeleteActivity}
+              onDeleteActivity={deleteActivity}
               onAddActivity={handleAddActivity}
               onNewActivityChange={setNewActivity}
             />
@@ -258,5 +227,3 @@ export default function DisciplinePage() {
     </div>
   );
 }
-
-    
