@@ -153,7 +153,6 @@ export default function PhotosPage() {
       }
   }, [isPasswordDialogOpen, handlePinPadClick, handlePinPadBackspace]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Using handleKeyDown which is not a dependency
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => {
@@ -171,18 +170,19 @@ export default function PhotosPage() {
     <div className="flex h-full flex-col p-4 md:p-8">
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
         <DialogContent
-          className="p-0 bg-transparent border-0 shadow-none max-w-4xl w-full"
+          className="p-0 bg-transparent border-0 shadow-none max-w-7xl w-full"
+          onInteractOutside={() => setViewingPhoto(null)}
         >
             <DialogTitle className="sr-only">Viewing Photo: {viewingPhoto?.description}</DialogTitle>
-            <DialogDescription className="sr-only">An enlarged view of the selected photo.</DialogDescription>
             {viewingPhoto && (
             <div className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-h-[90vh] mx-auto">
-                <div className="relative aspect-video flex-1">
+                <div className="relative w-full h-auto flex-1">
                     <Image
                         src={viewingPhoto.url}
                         alt={viewingPhoto.description}
-                        fill
-                        className="object-contain"
+                        width={1920}
+                        height={1080}
+                        className="object-contain w-full h-full max-h-[calc(90vh-4rem)]"
                     />
                 </div>
                 <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t">
@@ -232,6 +232,7 @@ export default function PhotosPage() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Upload a new photo</DialogTitle>
+
                         <DialogDescription>Add a description and choose if this photo should be private.</DialogDescription>
                     </DialogHeader>
                     {uploadFile && <Image src={URL.createObjectURL(uploadFile)} alt="Preview" width={400} height={300} className="rounded-md object-contain mx-auto max-h-60" />}
@@ -279,7 +280,6 @@ export default function PhotosPage() {
                          <Button key="0" type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick('0')}>
                            0
                          </Button>
-                         <div />
                     </div>
                   </div>
                   <DialogFooter className="sm:justify-center mt-2">
@@ -336,3 +336,5 @@ export default function PhotosPage() {
     </div>
   );
 }
+
+    
