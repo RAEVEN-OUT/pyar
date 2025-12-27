@@ -15,6 +15,7 @@ import {
   SidebarInset,
   SidebarFooter,
   useSidebar,
+  SidebarMenuBadge,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
@@ -33,8 +34,8 @@ import { usePathname } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { NotesProvider, useNotes } from '@/context/notes-context';
-import { isToday, format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { TasksProvider, useTasks } from '@/context/todo-context';
+import { format } from 'date-fns';
 
 
 const navItems = [
@@ -49,6 +50,7 @@ const navItems = [
 function NavMenuItems() {
   const { user } = useAuth();
   const { notes } = useNotes();
+  const { tasks } = useTasks();
   const pathname = usePathname();
 
   const otherUser = user === 'Him' ? 'Her' : 'Him';
@@ -57,12 +59,16 @@ function NavMenuItems() {
     (note) =>
       note.date === todayKey && note.author === otherUser && note.text.trim() !== ''
   );
+  
+  const uncheckedTodoCount = tasks.filter(task => !task.completedAt).length;
 
   return (
     <>
       {navItems.map((item) => {
-        const showNotification =
+        const showNoteNotification =
           item.href === '/notes' && otherUserHasNoteToday;
+        const showTodoBadge = item.href === '/todo' && uncheckedTodoCount > 0;
+        
         return (
           <SidebarMenuItem key={item.href}>
             <SidebarMenuButton
@@ -73,8 +79,11 @@ function NavMenuItems() {
             >
               <item.icon />
               <span>{item.label}</span>
-              {showNotification && (
+              {showNoteNotification && (
                 <span className="absolute left-2 top-2 h-2 w-2 rounded-full bg-red-500" />
+              )}
+               {showTodoBadge && (
+                <SidebarMenuBadge>{uncheckedTodoCount}</SidebarMenuBadge>
               )}
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -87,7 +96,6 @@ function NavMenuItems() {
 
 function AppWithSidebar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
-  const pathname = usePathname();
   const { toggleSidebar, isMobile } = useSidebar();
   
   return (
@@ -150,9 +158,11 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
   return (
       <SidebarProvider>
         <NotesProvider>
+          <TasksProvider>
             <AppWithSidebar>
               {children}
             </AppWithSidebar>
+          </TasksProvider>
         </NotesProvider>
       </SidebarProvider>
   );

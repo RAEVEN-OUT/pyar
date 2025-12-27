@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth, type User } from '@/context/auth-context';
+import { useAuth } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,26 +10,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ListChecks, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, isBefore, startOfToday } from 'date-fns';
-
-export type Task = {
-  id: number;
-  text: string;
-  completedAt: string | null; // Date string 'yyyy-MM-dd'
-  assignee: User;
-  creator: User;
-  createdAt: string; // Date string 'yyyy-MM-dd'
-};
-
-const initialTasks: Task[] = [
-    { id: 1, text: 'Buy groceries for dinner', completedAt: null, assignee: 'Her', creator: 'Him', createdAt: format(new Date(), 'yyyy-MM-dd') },
-    { id: 2, text: 'Book flights for vacation', completedAt: '2024-05-20', assignee: 'Him', creator: 'Him', createdAt: '2024-05-18' },
-    { id: 3, text: 'Call the plumber about the leaky faucet', completedAt: null, assignee: 'Him', creator: 'Her', createdAt: format(new Date(), 'yyyy-MM-dd') },
-];
+import { useTasks, type Task } from '@/context/todo-context';
 
 
 export default function TodoPage() {
   const { user: currentUserRole } = useAuth();
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const { tasks, addTask, toggleTask } = useTasks();
   const [newTaskText, setNewTaskText] = useState('');
   
   const [visibleTasks, setVisibleTasks] = useState<Task[]>([]);
@@ -49,41 +35,18 @@ export default function TodoPage() {
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskText.trim() || !currentUserRole) return;
-
-    const newTask: Task = {
-      id: Date.now(),
-      text: newTaskText.trim(),
-      completedAt: null,
-      assignee: currentUserRole,
-      creator: currentUserRole,
-      createdAt: format(new Date(), 'yyyy-MM-dd'),
-    };
-    
-    setTasks(prev => [newTask, ...prev]);
+    addTask(newTaskText.trim(), currentUserRole);
     setNewTaskText('');
   };
 
-  const handleToggleTask = (taskId: number) => {
-    setTasks(prev =>
-      prev.map(task =>
-        task.id === taskId
-          ? {
-              ...task,
-              completedAt: task.completedAt ? null : format(new Date(), 'yyyy-MM-dd'),
-            }
-          : task
-      )
-    );
-  };
-  
   if (!currentUserRole) return null;
 
   return (
     <div className="flex h-full items-start justify-center p-4 md:p-8">
-      <Card className="w-full max-w-2xl bg-[#ffc4c4]">
+      <Card className="w-full max-w-2xl bg-card">
         <CardHeader className="text-center">
-          <CardTitle className="flex items-center justify-center gap-2 text-2xl font-headline">
-            <ListChecks className="h-8 w-8 text-primary" />
+          <CardTitle className="flex items-center justify-center gap-2 text-2xl font-headline text-primary">
+            <ListChecks className="h-8 w-8" />
             Our To-Do List
           </CardTitle>
         </CardHeader>
@@ -94,7 +57,7 @@ export default function TodoPage() {
               placeholder="What needs to be done?"
               value={newTaskText}
               onChange={(e) => setNewTaskText(e.target.value)}
-              className="h-11"
+              className="h-11 bg-background"
             />
             <Button type="submit" size="icon" className="h-11 w-11 flex-shrink-0">
               <Plus className="h-5 w-5" />
@@ -111,8 +74,8 @@ export default function TodoPage() {
                   key={task.id}
                   className={cn(
                     'flex items-center gap-4 rounded-lg p-3 transition-colors',
-                     task.creator === 'Her'
-                      ? 'bg-card text-primary'
+                     task.creator === 'Him'
+                      ? 'bg-card text-card-foreground'
                       : 'bg-accent text-accent-foreground',
                     isCompleted ? 'opacity-60' : 'opacity-100'
                   )}
@@ -121,16 +84,20 @@ export default function TodoPage() {
                     <Checkbox
                       id={`task-${task.id}`}
                       checked={isCompleted}
-                      onCheckedChange={() => handleToggleTask(task.id)}
+                      onCheckedChange={() => toggleTask(task.id)}
                       className={cn(
                           "h-5 w-5",
-                          task.creator === 'Her' 
+                          task.creator === 'Him' 
                             ? 'border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
                             : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
                       )}
                     />
                   ) : (
-                    <div className="h-5 w-5 flex-shrink-0"></div>
+                     <div className={cn(
+                      "h-5 w-5 flex-shrink-0 border-2 rounded-sm",
+                       task.completedAt ? (task.creator === 'Him' ? 'bg-primary border-primary' : 'bg-accent-foreground border-accent-foreground') : 'border-muted-foreground/50'
+                    )}
+                  />
                   )}
                   <div className="flex-1 overflow-hidden">
                     <label
@@ -144,10 +111,10 @@ export default function TodoPage() {
                     </label>
                      <p className={cn(
                         'text-xs mt-1',
-                         task.creator === 'Her' ? 'text-primary/70' : 'text-accent-foreground/70',
+                         task.creator === 'Him' ? 'text-card-foreground/70' : 'text-accent-foreground/70',
                          isCompleted && 'line-through'
                       )}>
-                      {task.createdAt}
+                      Created by {task.creator} on {task.createdAt}
                     </p>
                   </div>
                 </div>
