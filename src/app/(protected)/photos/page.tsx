@@ -35,7 +35,7 @@ export default function PhotosPage() {
 
   return (
     <div className="flex h-full items-start justify-center p-4 md:p-8">
-      <Card className="w-full max-w-4xl">
+      <Card className="w-full max-w-6xl">
         <CardHeader className="relative border-b pb-4">
           <CardTitle className="flex items-center justify-center gap-2 text-2xl font-headline">
             <ImageIcon className="h-8 w-8 text-primary" />
@@ -63,7 +63,7 @@ export default function PhotosPage() {
               Your photo album is empty. Click the '+' to add your first memory!
             </p>
           ) : (
-             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {photos.map((photo) => (
                 <div
                   key={photo.id}
