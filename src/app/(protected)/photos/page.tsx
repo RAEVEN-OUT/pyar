@@ -1,4 +1,4 @@
-
+// src/app/(protected)/photos/page.tsx
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,34 +21,35 @@ import {
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { PlaceHolderImages, type ImagePlaceholder } from '@/lib/placeholder-images';
+import { db, storage } from '@/lib/firebase';
+import { 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  doc, 
+  deleteDoc,
+  serverTimestamp,
+  query,
+  orderBy,
+  Timestamp
+} from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 type Photo = {
   id: string;
   url: string;
-  storagePath: string; // This can be a placeholder ID or a real path
+  storagePath: string;
   description: string;
-  uploader: string; // For mock, can be 'Raveen' or 'Priya'
+  uploader: string;
   isPrivate: boolean;
-  createdAt: any;
+  createdAt: Timestamp;
 };
-
-const mockPhotos: Photo[] = PlaceHolderImages.map((img, index) => ({
-    id: img.id,
-    url: img.imageUrl,
-    storagePath: img.id,
-    description: img.description,
-    uploader: index % 2 === 0 ? 'raveen-uid' : 'priya-uid',
-    isPrivate: false,
-    createdAt: { seconds: Date.now()/1000 - (index * 3600) }
-}));
-
 
 export default function PhotosPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const [photos, setPhotos] = useState<Photo[]>(mockPhotos);
+  const [photos, setPhotos] = useState<Photo[]>([]);
 
   const [activeTab, setActiveTab] = useState('shared');
   
@@ -56,6 +57,7 @@ export default function PhotosPage() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploadIsPrivate, setUploadIsPrivate] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
   const [isPrivateAlbumLocked, setPrivateAlbumLocked] = useState(true);
   const [isPasswordDialogOpen, setPasswordDialogOpen] = useState(false);
@@ -68,22 +70,56 @@ export default function PhotosPage() {
 
   const SPECIAL_PIN = '2107';
   
-  const mockUserId = user === 'Raveen' ? 'raveen-uid' : 'priya-uid';
+  const mockUserId = user === 'Raveen' ? 'raveen' : 'priya';
+
+  // Listen to photos from Firestore
+  useEffect(() => {
+    const photosRef = collection(db, 'photos');
+    const q = query(photosRef, orderBy('createdAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newPhotos: Photo[] = [];
+      snapshot.forEach((doc) => {
+        newPhotos.push({ id: doc.id, ...doc.data() } as Photo);
+      });
+      setPhotos(newPhotos);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const displayedPhotos = useMemo(() => {
     if (!photos) return [];
     if (activeTab === 'shared') {
-      return photos.filter(p => !p.isPrivate).sort((a,b) => b.createdAt?.seconds - a.createdAt?.seconds);
+      return photos.filter(p => !p.isPrivate);
     }
     if (isPrivateAlbumLocked) {
       return [];
     }
-    return photos.filter(p => p.isPrivate && p.uploader === mockUserId).sort((a,b) => b.createdAt?.seconds - a.createdAt?.seconds);
+    return photos.filter(p => p.isPrivate && p.uploader === mockUserId);
   }, [photos, activeTab, mockUserId, isPrivateAlbumLocked]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast({
+          variant: 'destructive',
+          title: 'Invalid file type',
+          description: 'Please select an image file.',
+        });
+        return;
+      }
+      
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast({
+          variant: 'destructive',
+          title: 'File too large',
+          description: 'Please select an image smaller than 10MB.',
+        });
+        return;
+      }
+      
       setUploadFile(file);
       setUploadDescription(file.name.split('.').slice(0, -1).join('.'));
       setUploadModalOpen(true);
@@ -92,41 +128,75 @@ export default function PhotosPage() {
   };
 
   const handleUpload = async () => {
-    if (!uploadFile || !user) return;
+    if (!uploadFile || !user || !uploadDescription.trim()) return;
     
+    setIsUploading(true);
     toast({ title: 'Uploading photo...' });
 
-    // Mock upload
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const newPhoto: Photo = {
-            id: new Date().toISOString(),
-            url: e.target?.result as string,
-            storagePath: `mock/${uploadFile.name}`,
-            description: uploadDescription,
-            uploader: mockUserId,
-            isPrivate: uploadIsPrivate,
-            createdAt: { seconds: Date.now() / 1000 },
-        };
-        setPhotos(prev => [newPhoto, ...prev]);
-        toast({ title: 'Upload complete!', description: 'Your photo has been added.'});
+    try {
+      // Upload to Firebase Storage
+      const timestamp = Date.now();
+      const fileExtension = uploadFile.name.split('.').pop();
+      const fileName = `photos/${mockUserId}_${timestamp}.${fileExtension}`;
+      const storageRef = ref(storage, fileName);
+      
+      await uploadBytes(storageRef, uploadFile);
+      const url = await getDownloadURL(storageRef);
 
-        setUploadModalOpen(false);
-        setUploadFile(null);
-        setUploadDescription('');
-        setUploadIsPrivate(false);
-    };
-    reader.readAsDataURL(uploadFile);
+      // Save photo metadata to Firestore
+      await addDoc(collection(db, 'photos'), {
+        url,
+        storagePath: fileName,
+        description: uploadDescription.trim(),
+        uploader: mockUserId,
+        isPrivate: uploadIsPrivate,
+        createdAt: serverTimestamp(),
+      });
+
+      toast({ 
+        title: 'Upload complete!', 
+        description: 'Your photo has been added.'
+      });
+
+      setUploadModalOpen(false);
+      setUploadFile(null);
+      setUploadDescription('');
+      setUploadIsPrivate(false);
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Upload failed',
+        description: 'Failed to upload photo. Please try again.',
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleDeletePhoto = async (photo: Photo) => {
     if (!photo) return;
     
-    toast({title: 'Deleting photo...'});
+    try {
+      toast({ title: 'Deleting photo...' });
 
-    setPhotos(prev => prev.filter(p => p.id !== photo.id));
-    toast({title: 'Photo deleted'});
-    closeViewer();
+      // Delete from Storage
+      const storageRef = ref(storage, photo.storagePath);
+      await deleteObject(storageRef);
+
+      // Delete from Firestore
+      await deleteDoc(doc(db, 'photos', photo.id));
+
+      toast({ title: 'Photo deleted' });
+      closeViewer();
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Delete failed',
+        description: 'Failed to delete photo. Please try again.',
+      });
+    }
   };
   
   const handleTabChange = useCallback((value: string) => {
@@ -272,7 +342,15 @@ export default function PhotosPage() {
                         <DialogTitle>Upload a new photo</DialogTitle>
                         <DialogDescription>Add a description and choose if this photo should be private.</DialogDescription>
                     </DialogHeader>
-                    {uploadFile && <Image src={URL.createObjectURL(uploadFile)} alt="Preview" width={400} height={300} className="rounded-md object-contain mx-auto max-h-60" />}
+                    {uploadFile && (
+                      <Image 
+                        src={URL.createObjectURL(uploadFile)} 
+                        alt="Preview" 
+                        width={400} 
+                        height={300} 
+                        className="rounded-md object-contain mx-auto max-h-60" 
+                      />
+                    )}
                     <div className="grid gap-4 py-4">
                         <Input 
                             id="upload-description"
@@ -281,7 +359,11 @@ export default function PhotosPage() {
                             onChange={e => setUploadDescription(e.target.value)}
                         />
                          <div className="flex items-center space-x-2">
-                            <Checkbox id="is-private" checked={uploadIsPrivate} onCheckedChange={(checked) => setUploadIsPrivate(!!checked)} />
+                            <Checkbox 
+                              id="is-private" 
+                              checked={uploadIsPrivate} 
+                              onCheckedChange={(checked) => setUploadIsPrivate(!!checked)} 
+                            />
                            <Label htmlFor="is-private" className="text-sm font-medium leading-none">
                                 Add to "My Eyes Only"
                             </Label>
@@ -289,7 +371,12 @@ export default function PhotosPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setUploadModalOpen(false)}>Cancel</Button>
-                        <Button onClick={handleUpload} disabled={!uploadDescription}>Upload</Button>
+                        <Button 
+                          onClick={handleUpload} 
+                          disabled={!uploadDescription.trim() || isUploading}
+                        >
+                          {isUploading ? 'Uploading...' : 'Upload'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

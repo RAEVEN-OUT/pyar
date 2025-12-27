@@ -17,19 +17,22 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { db } from '@/lib/firebase';
-import { 
-  collection, 
-  addDoc, 
-  onSnapshot, 
-  query, 
-  orderBy, 
-  doc, 
-  updateDoc, 
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  doc,
+  updateDoc,
   deleteDoc,
   serverTimestamp,
-  Timestamp 
+  Timestamp,
+  setDoc,
 } from 'firebase/firestore';
+
 
 type Mood = {
   mood: string;
@@ -73,14 +76,16 @@ function MoodDisplay({
 
   useEffect(() => {
     const moodsRef = collection(db, 'moods');
-    const unsubscribe = onSnapshot(moodsRef, (snapshot) => {
-      snapshot.docs.forEach((doc) => {
-        const data = doc.data();
-        if (doc.id === user.toLowerCase()) {
-          const mood = moodOptions.find(m => m.emoji === data.emoji) || moodOptions[0];
+    const unsubscribe = onSnapshot(moodsRef, snapshot => {
+      snapshot.docs.forEach(d => {
+        const data = d.data() as { emoji?: string; mood?: string };
+        if (d.id === user.toLowerCase()) {
+          const mood =
+            moodOptions.find(m => m.emoji === data.emoji) || moodOptions[0];
           setCurrentUserMood(mood);
-        } else if (doc.id === otherUser.toLowerCase()) {
-          const mood = moodOptions.find(m => m.emoji === data.emoji) || moodOptions[1];
+        } else if (d.id === otherUser.toLowerCase()) {
+          const mood =
+            moodOptions.find(m => m.emoji === data.emoji) || moodOptions[1];
           setOtherUserMood(mood);
         }
       });
@@ -89,28 +94,27 @@ function MoodDisplay({
     return () => unsubscribe();
   }, [user, otherUser]);
 
+
   const onMoodChange = async (newMood: Mood) => {
     setCurrentUserMood(newMood);
     try {
       const moodRef = doc(db, 'moods', user.toLowerCase());
-      await updateDoc(moodRef, {
-        emoji: newMood.emoji,
-        mood: newMood.mood,
-        updatedAt: serverTimestamp(),
-      }).catch(async () => {
-        // If document doesn't exist, create it
-        await addDoc(collection(db, 'moods'), {
-          userId: user.toLowerCase(),
+
+      await setDoc(
+        moodRef,
+        {
           emoji: newMood.emoji,
           mood: newMood.mood,
           updatedAt: serverTimestamp(),
-        });
-      });
+        },
+        { merge: true }
+      );
     } catch (error) {
       console.error('Error updating mood:', error);
     }
   };
-  
+
+
   return (
     <div className="flex justify-between items-center p-4 border-b bg-card rounded-t-lg">
       <div className="flex items-center gap-3">
@@ -162,7 +166,7 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
     }
     setIsPlaying(!isPlaying);
   };
-  
+
   const handleWaveformClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const audio = audioRef.current;
     const waveform = waveformRef.current;
@@ -172,7 +176,7 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
     const clickPosition = e.clientX - rect.left;
     const clickRatio = clickPosition / rect.width;
     const newTime = clickRatio * duration;
-    
+
     audio.currentTime = newTime;
     setProgress(newTime);
   };
@@ -188,7 +192,7 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
       setProgress(0);
       audio.currentTime = 0;
     };
-    
+
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('durationchange', handleDurationChange);
     audio.addEventListener('ended', handleEnded);
@@ -208,7 +212,7 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
     const sec = floorSeconds % 60;
     return `${min}:${sec.toString().padStart(2, '0')}`;
   };
-  
+
   const togglePlaybackRate = () => {
     const rates = [1, 1.5, 2, 0.5];
     const currentIndex = rates.indexOf(playbackRate);
@@ -217,7 +221,7 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
   };
 
   const progressPercentage = duration ? (progress / duration) * 100 : 0;
-  
+
   const waveColor = isSender ? 'hsl(var(--primary))' : 'hsl(var(--accent-foreground))';
   const waveInactiveColor = isSender ? 'hsl(var(--primary) / 0.3)' : 'hsl(var(--accent-foreground) / 0.3)';
 
@@ -227,16 +231,16 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
       <Button onClick={togglePlay} variant="ghost" size="icon" className={cn("h-8 w-8 rounded-full flex-shrink-0", isSender ? "text-primary hover:text-primary" : "text-accent-foreground hover:text-accent-foreground")}>
         {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
       </Button>
-      <div ref={waveformRef} onClick={handleWaveformClick} className="flex-1 h-8 flex items-center cursor-pointer" style={{'--wave-color': waveColor, '--wave-inactive-color': waveInactiveColor, '--progress': `${progressPercentage}%`} as React.CSSProperties}>
-         <div className="w-full h-full relative bg-gradient-to-r from-[var(--wave-color)] to-[var(--wave-color)] bg-no-repeat bg-left" style={{'backgroundSize': 'var(--progress) 100%'}}>
-             <div className="w-full h-full absolute top-0 left-0 bg-gradient-to-r from-[var(--wave-inactive-color)] to-[var(--wave-inactive-color)] bg-no-repeat bg-left" style={{'mask': `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M2 9.5C2 9.5 2.5 4 4 4C5.5 4 6.5 15 8 15C9.5 15 10.5 4 12 4C13.5 4 14.5 15 16 15C17.5 15 18.5 4 20 4C21.5 4 22.5 15 24 15C25.5 15 26.5 4 28 4C29.5 4 30.5 15 32 15C33.5 15 34.5 4 36 4C37.5 4 38.5 15 40 15C41.5 15 42.5 4 44 4C45.5 4 46.5 15 48 15C49.5 15 50.5 4 52 4C53.5 4 54.5 15 56 15C57.5 15 58.5 4 60 4C61.5 4 62.5 15 64 15C65.5 15 66.5 4 68 4C69.5 4 70.5 15 72 15C73.5 15 74.5 4 76 4C77.5 4 78.5 15 80 15C81.5 15 82.5 4 84 4C85.5 4 86.5 15 88 15C89.5 15 90.5 4 92 4C93.5 4 94.5 15 96 15C97.5 15 98.5 4 100 4' fill='none' stroke='black' stroke-width='2'/%3e%3c/svg%3e")`, 'maskSize': '100% 100%'}}></div>
+      <div ref={waveformRef} onClick={handleWaveformClick} className="flex-1 h-8 flex items-center cursor-pointer" style={{ '--wave-color': waveColor, '--wave-inactive-color': waveInactiveColor, '--progress': `${progressPercentage}%` } as React.CSSProperties}>
+        <div className="w-full h-full relative bg-gradient-to-r from-[var(--wave-color)] to-[var(--wave-color)] bg-no-repeat bg-left" style={{ 'backgroundSize': 'var(--progress) 100%' }}>
+          <div className="w-full h-full absolute top-0 left-0 bg-gradient-to-r from-[var(--wave-inactive-color)] to-[var(--wave-inactive-color)] bg-no-repeat bg-left" style={{ 'mask': `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M2 9.5C2 9.5 2.5 4 4 4C5.5 4 6.5 15 8 15C9.5 15 10.5 4 12 4C13.5 4 14.5 15 16 15C17.5 15 18.5 4 20 4C21.5 4 22.5 15 24 15C25.5 15 26.5 4 28 4C29.5 4 30.5 15 32 15C33.5 15 34.5 4 36 4C37.5 4 38.5 15 40 15C41.5 15 42.5 4 44 4C45.5 4 46.5 15 48 15C49.5 15 50.5 4 52 4C53.5 4 54.5 15 56 15C57.5 15 58.5 4 60 4C61.5 4 62.5 15 64 15C65.5 15 66.5 4 68 4C69.5 4 70.5 15 72 15C73.5 15 74.5 4 76 4C77.5 4 78.5 15 80 15C81.5 15 82.5 4 84 4C85.5 4 86.5 15 88 15C89.5 15 90.5 4 92 4C93.5 4 94.5 15 96 15C97.5 15 98.5 4 100 4' fill='none' stroke='black' stroke-width='2'/%3e%3c/svg%3e")`, 'maskSize': '100% 100%' }}></div>
         </div>
       </div>
       <div className="flex flex-col items-center justify-center w-12 flex-shrink-0">
-          <Button variant="link" size="sm" onClick={togglePlaybackRate} className={cn("h-auto p-0 text-xs", isSender ? "text-primary/80" : "text-accent-foreground/80")}>
-             {playbackRate}x
-          </Button>
-          <span className={cn("text-xs", isSender ? "text-primary/70" : "text-accent-foreground/70")}>{formatTime(duration - progress)}</span>
+        <Button variant="link" size="sm" onClick={togglePlaybackRate} className={cn("h-auto p-0 text-xs", isSender ? "text-primary/80" : "text-accent-foreground/80")}>
+          {playbackRate}x
+        </Button>
+        <span className={cn("text-xs", isSender ? "text-primary/70" : "text-accent-foreground/70")}>{formatTime(duration - progress)}</span>
       </div>
     </div>
   );
@@ -245,12 +249,12 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
 export default function ChatPage() {
   const { user, loading } = useAuth();
   const { toast } = useToast();
-  
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  
+
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
@@ -267,7 +271,7 @@ export default function ChatPage() {
   useEffect(() => {
     const messagesRef = collection(db, 'messages');
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
-    
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const newMessages: Message[] = [];
       snapshot.forEach((doc) => {
@@ -278,10 +282,10 @@ export default function ChatPage() {
 
     return () => unsubscribe();
   }, []);
-  
+
   useEffect(() => {
     navigator.permissions.query({ name: 'microphone' as PermissionName }).then((result) => {
-        setHasMicPermission(result.state === 'granted');
+      setHasMicPermission(result.state === 'granted');
     });
   }, []);
 
@@ -298,7 +302,7 @@ export default function ChatPage() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim() === '' || !user) return;
-    
+
     try {
       await addDoc(collection(db, 'messages'), {
         senderId: user.toLowerCase(),
@@ -366,7 +370,7 @@ export default function ChatPage() {
       });
     }
   };
-  
+
   const handleEdit = (message: Message) => {
     setEditingMessage(message);
     setEditedText(message.text || '');
@@ -378,12 +382,12 @@ export default function ChatPage() {
 
   const submitEdit = async () => {
     if (!editingMessage) return;
-    
+
     try {
       const messageRef = doc(db, 'messages', editingMessage.id);
-      await updateDoc(messageRef, { 
-        text: editedText, 
-        isEdited: true 
+      await updateDoc(messageRef, {
+        text: editedText,
+        isEdited: true
       });
       setEditingMessage(null);
       setEditedText('');
@@ -396,16 +400,16 @@ export default function ChatPage() {
       });
     }
   };
-  
+
   const stopRecording = (send: boolean) => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       if (!send) {
-         if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
-         if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
-         setIsRecording(false);
-         setRecordingTime(0);
-         mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+        if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+        if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
+        setIsRecording(false);
+        setRecordingTime(0);
+        mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
       }
     }
   };
@@ -413,87 +417,100 @@ export default function ChatPage() {
   const handleVoiceMessage = async () => {
     if (!user) return;
     if (isRecording) {
-        stopRecording(true);
-        return;
+      stopRecording(true);
+      return;
     }
 
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        setHasMicPermission(true);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setHasMicPermission(true);
 
-        const mediaRecorder = new MediaRecorder(stream);
-        mediaRecorderRef.current = mediaRecorder;
-        const audioChunks: Blob[] = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      const audioChunks: Blob[] = [];
 
-        mediaRecorder.onstart = () => {
-            setIsRecording(true);
-            setRecordingTime(0);
+      mediaRecorder.onstart = () => {
+        setIsRecording(true);
+        setRecordingTime(0);
 
-            recordingIntervalRef.current = setInterval(() => {
-                setRecordingTime(prevTime => prevTime + 1);
-            }, 1000);
+        recordingIntervalRef.current = setInterval(() => {
+          setRecordingTime(prevTime => prevTime + 1);
+        }, 1000);
 
-            recordingTimeoutRef.current = setTimeout(() => {
-                stopRecording(true);
-                toast({
-                    title: "Recording limit reached",
-                    description: "Voice notes are limited to 60 seconds.",
-                });
-            }, 60000);
-        };
-        
-        mediaRecorder.ondataavailable = (event) => {
-            audioChunks.push(event.data);
-        };
-        
-        mediaRecorder.onstop = async () => {
-            if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
-            if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
-            setIsRecording(false);
-            setRecordingTime(0);
+        recordingTimeoutRef.current = setTimeout(() => {
+          stopRecording(true);
+          toast({
+            title: "Recording limit reached",
+            description: "Voice notes are limited to 60 seconds.",
+          });
+        }, 60000);
+      };
 
-            if (audioChunks.length > 0) {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                const audioUrl = URL.createObjectURL(audioBlob);
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
 
-                // In production, upload to Firebase Storage
-                try {
-                  await addDoc(collection(db, 'messages'), {
-                    senderId: user.toLowerCase(),
-                    sender: user,
-                    audioUrl,
-                    timestamp: serverTimestamp(),
-                    reactions: {},
-                    replyTo: replyingTo ? {
-                      id: replyingTo.id,
-                      sender: replyingTo.sender,
-                      text: replyingTo.text || 'Voice Note',
-                    } : null,
-                  });
-                  setReplyingTo(null);
-                } catch (error) {
-                  console.error('Error sending voice message:', error);
-                  toast({
-                    variant: 'destructive',
-                    title: 'Error',
-                    description: 'Failed to send voice message.',
-                  });
+      mediaRecorder.onstop = async () => {
+        if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+        if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
+        setIsRecording(false);
+        setRecordingTime(0);
+
+        if (audioChunks.length > 0) {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+          try {
+            const timestamp = Date.now();
+            const fileName = `voice_notes/${user.toLowerCase()}_${timestamp}.webm`;
+            const storageRef = ref(storage, fileName);
+
+            // 1. Upload to Storage
+            await uploadBytes(storageRef, audioBlob); // [web:21]
+
+            // 2. Get public download URL
+            const audioUrl = await getDownloadURL(storageRef); // [web:24][web:18]
+
+            // 3. Save Firestore message with Storage URL
+            await addDoc(collection(db, 'messages'), {
+              senderId: user.toLowerCase(),
+              sender: user,
+              audioUrl,
+              timestamp: serverTimestamp(),
+              reactions: {},
+              replyTo: replyingTo
+                ? {
+                  id: replyingTo.id,
+                  sender: replyingTo.sender,
+                  text: replyingTo.text || 'Voice Note',
                 }
-            }
-            
-            stream.getTracks().forEach(track => track.stop());
-        };
-        
-        mediaRecorder.start();
+                : null,
+            });
+
+            setReplyingTo(null);
+          } catch (error) {
+            console.error('Error sending voice message:', error);
+            toast({
+              variant: 'destructive',
+              title: 'Error',
+              description: 'Failed to send voice message.',
+            });
+          }
+        }
+
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+
+      mediaRecorder.start();
 
     } catch (err) {
-        setHasMicPermission(false);
-        console.error("Mic permission denied", err);
-        toast({
-            variant: 'destructive',
-            title: 'Microphone Access Denied',
-            description: 'Please enable microphone permissions in your browser settings to send voice notes.',
-        });
+      setHasMicPermission(false);
+      console.error("Mic permission denied", err);
+      toast({
+        variant: 'destructive',
+        title: 'Microphone Access Denied',
+        description: 'Please enable microphone permissions in your browser settings to send voice notes.',
+      });
     }
   };
 
@@ -517,7 +534,7 @@ export default function ChatPage() {
       }, 1000);
     }
   };
-  
+
   const formatTimestamp = (timestamp: any) => {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
@@ -527,7 +544,7 @@ export default function ChatPage() {
   if (loading || !user) {
     return null;
   }
-  
+
   const otherUser = user === 'Raveen' ? 'Priya' : 'Raveen';
   const showSendButton = newMessage.trim() !== '';
 
@@ -538,7 +555,7 @@ export default function ChatPage() {
           <DialogHeader>
             <DialogTitle>Edit Message</DialogTitle>
           </DialogHeader>
-          <Textarea 
+          <Textarea
             value={editedText}
             onChange={(e) => setEditedText(e.target.value)}
             rows={4}
@@ -552,7 +569,7 @@ export default function ChatPage() {
       </Dialog>
       <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-transparent rounded-lg shadow-md border-0">
         <MoodDisplay user={user} otherUser={otherUser} />
-        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 no-scrollbar" style={{scrollBehavior: 'smooth'}}>
+        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 no-scrollbar" style={{ scrollBehavior: 'smooth' }}>
           {messages && messages.map((msg) => {
             const isSender = msg.sender === user;
             const messageReactions = msg.reactions ? Object.entries(msg.reactions) : [];
@@ -566,85 +583,85 @@ export default function ChatPage() {
                   isSender ? 'justify-end' : 'justify-start'
                 )}
               >
-                 <div className="relative">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                             <div
-                              className={cn(
-                                'max-w-xs md:max-w-md rounded-2xl p-0.5 shadow-sm cursor-pointer',
-                                isSender
-                                  ? 'bg-card'
-                                  : 'bg-accent'
-                              )}
-                            >
-                              {msg.replyTo && (
-                                <div
-                                  onClick={() => handleScrollToMessage(msg.replyTo!.id)}
-                                  className="block cursor-pointer"
-                                >
-                                  <div className={cn("p-2 text-sm rounded-t-2xl", isSender ? 'bg-black/5' : 'bg-white/10')}>
-                                    <p className={cn("font-semibold text-xs", isSender ? 'text-primary' : 'text-accent-foreground')}>{msg.replyTo.sender}</p>
-                                    <p className={cn("truncate text-xs", isSender ? 'text-primary/80' : 'text-accent-foreground/80')}>{msg.replyTo.text || 'Voice Note'}</p>
-                                  </div>
-                                </div>
-                              )}
-                              <div className="p-3">
-                                {msg.text && (
-                                  <p className={cn(
-                                    'text-sm',
-                                    isSender ? 'text-card-foreground' : 'text-accent-foreground'
-                                  )}>
-                                    {msg.text}
-                                  </p>
-                                )}
-                                {msg.audioUrl && (
-                                   <WaveformPlayer src={msg.audioUrl} isSender={isSender} />
-                                )}
-                                 <div className="flex items-center justify-end gap-1.5 mt-1">
-                                  {msg.isEdited && <p className="text-xs text-muted-foreground">Edited</p>}
-                                  <p className={cn(
-                                    'text-xs',
-                                     isSender
-                                      ? 'text-primary/70'
-                                      : 'text-accent-foreground/70',
-                                    'text-right'
-                                  )}>
-                                    {formatTimestamp(msg.timestamp)}
-                                  </p>
-                                 </div>
-                               </div>
+                <div className="relative">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <div
+                        className={cn(
+                          'max-w-xs md:max-w-md rounded-2xl p-0.5 shadow-sm cursor-pointer',
+                          isSender
+                            ? 'bg-card'
+                            : 'bg-accent'
+                        )}
+                      >
+                        {msg.replyTo && (
+                          <div
+                            onClick={() => handleScrollToMessage(msg.replyTo!.id)}
+                            className="block cursor-pointer"
+                          >
+                            <div className={cn("p-2 text-sm rounded-t-2xl", isSender ? 'bg-black/5' : 'bg-white/10')}>
+                              <p className={cn("font-semibold text-xs", isSender ? 'text-primary' : 'text-accent-foreground')}>{msg.replyTo.sender}</p>
+                              <p className={cn("truncate text-xs", isSender ? 'text-primary/80' : 'text-accent-foreground/80')}>{msg.replyTo.text || 'Voice Note'}</p>
                             </div>
-                        </PopoverTrigger>
-                        <PopoverContent className="p-1 w-auto">
-                            <div className="flex items-center gap-1">
-                                {reactionEmojis.map(emoji => (
-                                    <Button key={emoji} variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleReaction(msg.id, emoji)}>
-                                        <span className="text-lg">{emoji}</span>
-                                    </Button>
-                                ))}
-                                <Button variant="ghost" size="sm" onClick={() => handleReply(msg)}>Reply</Button> 
-                                {isSender && msg.text && (
-                                    <>
-                                        <Button variant="ghost" size="sm" onClick={() => handleEdit(msg)}>Edit</Button>
-                                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleUnsend(msg.id)}>Unsend</Button>
-                                    </>
-                                )}
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                    {messageReactions.length > 0 && (
-                        <div className={cn(
-                          "absolute -bottom-3 flex gap-1",
-                          isSender ? "right-2" : "left-2"
-                        )}>
-                            {messageReactions.map(([emoji, users]) => (
-                               <div key={emoji} className="flex items-center bg-card shadow-sm rounded-full px-1.5 py-0.5 text-xs">
-                                   <span>{emoji}</span>
-                                   {users.length > 1 && <span className="ml-1 font-semibold">{users.length}</span>}
-                               </div>
-                            ))}
+                          </div>
+                        )}
+                        <div className="p-3">
+                          {msg.text && (
+                            <p className={cn(
+                              'text-sm',
+                              isSender ? 'text-card-foreground' : 'text-accent-foreground'
+                            )}>
+                              {msg.text}
+                            </p>
+                          )}
+                          {msg.audioUrl && (
+                            <WaveformPlayer src={msg.audioUrl} isSender={isSender} />
+                          )}
+                          <div className="flex items-center justify-end gap-1.5 mt-1">
+                            {msg.isEdited && <p className="text-xs text-muted-foreground">Edited</p>}
+                            <p className={cn(
+                              'text-xs',
+                              isSender
+                                ? 'text-primary/70'
+                                : 'text-accent-foreground/70',
+                              'text-right'
+                            )}>
+                              {formatTimestamp(msg.timestamp)}
+                            </p>
+                          </div>
                         </div>
-                    )}
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-1 w-auto">
+                      <div className="flex items-center gap-1">
+                        {reactionEmojis.map(emoji => (
+                          <Button key={emoji} variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleReaction(msg.id, emoji)}>
+                            <span className="text-lg">{emoji}</span>
+                          </Button>
+                        ))}
+                        <Button variant="ghost" size="sm" onClick={() => handleReply(msg)}>Reply</Button>
+                        {isSender && msg.text && (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(msg)}>Edit</Button>
+                            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleUnsend(msg.id)}>Unsend</Button>
+                          </>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {messageReactions.length > 0 && (
+                    <div className={cn(
+                      "absolute -bottom-3 flex gap-1",
+                      isSender ? "right-2" : "left-2"
+                    )}>
+                      {messageReactions.map(([emoji, users]) => (
+                        <div key={emoji} className="flex items-center bg-card shadow-sm rounded-full px-1.5 py-0.5 text-xs">
+                          <span>{emoji}</span>
+                          {users.length > 1 && <span className="ml-1 font-semibold">{users.length}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -653,24 +670,24 @@ export default function ChatPage() {
         <div className="p-4 border-t bg-card rounded-b-lg">
           {replyingTo && (
             <div className="p-2 mb-2 bg-input rounded-md relative text-sm">
-                <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => setReplyingTo(null)}>
-                  <X className="h-4 w-4" />
-                </Button>
-                <p className="font-semibold text-primary">Replying to {replyingTo.sender}</p>
-                <p className="text-muted-foreground truncate">{replyingTo.text || 'Voice Note'}</p>
+              <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => setReplyingTo(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+              <p className="font-semibold text-primary">Replying to {replyingTo.sender}</p>
+              <p className="text-muted-foreground truncate">{replyingTo.text || 'Voice Note'}</p>
             </div>
           )}
           <form onSubmit={handleSendMessage} className="relative flex items-center h-12">
             {isRecording ? (
-               <div className="flex items-center justify-between w-full h-full rounded-full bg-input px-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                    <p className="text-sm font-mono text-muted-foreground">{formatTime(recordingTime)}</p>
-                  </div>
-                   <Button type="button" size="icon" className="rounded-full w-9 h-9" onClick={() => stopRecording(true)}>
-                     <Send className="h-5 w-5" />
-                   </Button>
-               </div>
+              <div className="flex items-center justify-between w-full h-full rounded-full bg-input px-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                  <p className="text-sm font-mono text-muted-foreground">{formatTime(recordingTime)}</p>
+                </div>
+                <Button type="button" size="icon" className="rounded-full w-9 h-9" onClick={() => stopRecording(true)}>
+                  <Send className="h-5 w-5" />
+                </Button>
+              </div>
             ) : (
               <>
                 <Input
@@ -680,7 +697,7 @@ export default function ChatPage() {
                   onChange={(e) => setNewMessage(e.target.value)}
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
-                   <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                  <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                     <PopoverTrigger asChild>
                       <Button type="button" variant="ghost" size="icon" className="rounded-full">
                         <Smile className="h-5 w-5 text-muted-foreground" />
@@ -692,12 +709,12 @@ export default function ChatPage() {
                   </Popover>
 
                   {showSendButton ? (
-                     <Button type="submit" size="icon" className="rounded-full w-9 h-9">
-                        <Send className="h-5 w-5" />
-                     </Button>
+                    <Button type="submit" size="icon" className="rounded-full w-9 h-9">
+                      <Send className="h-5 w-5" />
+                    </Button>
                   ) : (
-                     <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleVoiceMessage}>
-                       <Mic className="h-5 w-5 text-muted-foreground" />
+                    <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleVoiceMessage}>
+                      <Mic className="h-5 w-5 text-muted-foreground" />
                     </Button>
                   )}
                 </div>
