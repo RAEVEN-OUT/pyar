@@ -40,11 +40,6 @@ const initialPhotos: Photo[] = PlaceHolderImages.map(p => ({
     isPrivate: false,
 }));
 
-type ImageDimensions = {
-  width: number;
-  height: number;
-};
-
 export default function PhotosPage() {
   const { user } = useAuth();
   const [photos, setPhotos] = useState(initialPhotos);
@@ -61,7 +56,6 @@ export default function PhotosPage() {
   const [passwordError, setPasswordError] = useState('');
 
   const [viewingPhoto, setViewingPhoto] = useState<Photo | null>(null);
-  const [imageDimensions, setImageDimensions] = useState<ImageDimensions | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -166,7 +160,6 @@ export default function PhotosPage() {
       }
   }, [isPasswordDialogOpen, handlePinPadClick, handlePinPadBackspace]);
   
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Using handleKeyDown which is not a dependency
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => {
@@ -176,12 +169,10 @@ export default function PhotosPage() {
   
   const closeViewer = () => {
     setViewingPhoto(null);
-    setImageDimensions(null);
   };
 
   if (!user) return null;
   
-  const isLandscape = imageDimensions ? imageDimensions.width > imageDimensions.height : false;
   const pinDisplay = '●'.repeat(passwordInput.length).padEnd(4, '○');
   const isViewingPhotoOwner = viewingPhoto?.uploader === user;
 
@@ -189,10 +180,7 @@ export default function PhotosPage() {
     <div className="flex h-full flex-col p-4 md:p-8">
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
         <DialogContent
-          className={cn(
-            'p-0 bg-transparent border-0 shadow-none w-auto h-auto inline-block duration-500',
-            isLandscape && "rotate-90"
-          )}
+          className="p-0 bg-transparent border-0 shadow-none w-auto inline-block"
           onInteractOutside={closeViewer}
         >
           {viewingPhoto && (
@@ -207,22 +195,12 @@ export default function PhotosPage() {
                       alt={viewingPhoto.description}
                       width={1920}
                       height={1080}
-                      onLoad={({ target }) => {
-                        const { naturalWidth, naturalHeight } = target as HTMLImageElement;
-                        setImageDimensions({ width: naturalWidth, height: naturalHeight });
-                      }}
-                      className={cn(
-                        "object-contain",
-                        isLandscape ? "w-[95vh] h-auto" : "h-[95vh] w-auto"
-                      )}
+                      className="object-contain max-w-[95vw] max-h-[95vh]"
                       priority
                     />
                 </div>
                 
-                <div className={cn(
-                  "flex h-[52px] items-center justify-between border-t bg-card/80 p-3 backdrop-blur-sm",
-                  isLandscape && "-rotate-90"
-                  )}>
+                <div className="flex h-[52px] items-center justify-between border-t bg-card/80 p-3 backdrop-blur-sm">
                     <p className="truncate pr-4 text-sm font-semibold text-card-foreground">
                       {viewingPhoto.description}
                     </p>
