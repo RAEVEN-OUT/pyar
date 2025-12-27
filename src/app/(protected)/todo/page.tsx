@@ -111,7 +111,7 @@ export default function TodoPage() {
                   key={task.id}
                   className={cn(
                     'flex items-center gap-4 rounded-lg p-3 transition-colors',
-                     task.creator === 'Him'
+                     task.creator === 'Her'
                       ? 'bg-card text-primary'
                       : 'bg-accent text-accent-foreground',
                     isCompleted ? 'opacity-60' : 'opacity-100'
@@ -124,7 +124,7 @@ export default function TodoPage() {
                       onCheckedChange={() => handleToggleTask(task.id)}
                       className={cn(
                           "h-5 w-5",
-                          task.creator === 'Him' 
+                          task.creator === 'Her' 
                             ? 'border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
                             : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
                       )}
@@ -144,7 +144,7 @@ export default function TodoPage() {
                     </label>
                      <p className={cn(
                         'text-xs mt-1',
-                         task.creator === 'Him' ? 'text-primary/70' : 'text-accent-foreground/70',
+                         task.creator === 'Her' ? 'text-primary/70' : 'text-accent-foreground/70',
                          isCompleted && 'line-through'
                       )}>
                       {task.createdAt}
