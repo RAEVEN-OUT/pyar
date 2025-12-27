@@ -1,0 +1,210 @@
+/**
+ * Core Philosophy: This ruleset is designed for the Amorem Duo application, which operates on a strict two-person collaborative model.
+ * The security model enforces two primary patterns:
+ * 1. User Ownership: Data that is inherently private to a single user (profiles, moods, personal notes) is stored in user-specific subcollections and is only accessible by the owner.
+ * 2. Shared Access: Data that is collaborative (chat, to-do lists, important dates, shared photos) is stored in top-level collections. Access is granted to any authenticated user, based on the assumption that only the two valid partners will be signed into the application.
+ *
+ * Data Structure: The data is organized into a mix of user-nested subcollections for private data (e.g., `/users/{userId}/notes`) and top-level collections for shared data (e.g., `/to_do_tasks`, `/chat_messages`). This structural segregation simplifies rules and improves query performance.
+ *
+ * Key Security Decisions:
+ * - User Listing is Disallowed: It is not possible for any client to query the top-level `/users` collection to protect user privacy.
+ * - Shared Collections: Most top-level collections allow read and write access to any authenticated user. This is a deliberate choice for this two-person application to simplify collaboration.
+ * - Private Photos: The `/private_photos` collection is intended for owner-only access, but the schema lacks an ownership field. The rules currently block all writes to this collection pending a schema update.
+ * - Destructive operations (update, delete) are always gated by checking for the document's existence first to prevent unintended side effects.
+ *
+ * Denormalization for Authorization: The rules rely on ownership fields like `senderId` and `assignedUserId` being denormalized directly onto documents (`ChatMessage`, `TodoTask`) to perform fast, simple authorization checks without extra database reads.
+ *
+ * Structural Segregation: The use of separate `/shared_photos` and `/private_photos` collections is a key design choice. This allows for simple, performant rules that grant different access levels to each collection without needing to inspect a field within the documents themselves.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------------------------
+    // Helper Functions
+    // ----------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the authenticated user's UID matches the provided userId.
+     * This is the foundation of the ownership model.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * Checks for ownership on an existing document. Used for update/delete.
+     * Ensures operations are not run on non-existent data.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * Validates that the creatorId field is being set correctly on creation.
+     */
+    function hasCorrectCreatorId(userIdField) {
+      return request.resource.data[userIdField] == request.auth.uid;
+    }
+
+    /**
+     * Validates that a critical relational ID is immutable on update.
+     */
+    function isIdImmutable(userIdField) {
+      return request.resource.data[userIdField] == resource.data[userIdField];
+    }
+
+
+    // ----------------------------------------------------------------------
+    // User Data
+    // ----------------------------------------------------------------------
+
+    /**
+     * @description Manages user profiles. Users can create, read, and update their own profile, but cannot see or list other users.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user creating their own profile document, where the document ID matches their UID. e.g., auth.uid = 'user_abc', path = '/users/user_abc'
+     * @deny (list) Any user attempting to list all documents in the `/users` collection.
+     * @principle Restricts access to a user's own data tree and prevents user enumeration.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && hasCorrectCreatorId('id');
+      allow update: if isExistingOwner(userId) && isIdImmutable('id');
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages a user's private mood entries. Only the owner can manage their moods.
+     * @path /users/{userId}/moods/{moodId}
+     * @allow (create) The owner creating a mood document in their own subcollection. e.g., auth.uid = 'user_abc', path = '/users/user_abc/moods/mood_123'
+     * @deny (get) A different user trying to read a mood document. e.g., auth.uid = 'user_xyz', path = '/users/user_abc/moods/mood_123'
+     * @principle Enforces strict data ownership within a user's private data tree.
+     */
+    match /users/{userId}/moods/{moodId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && hasCorrectCreatorId('userId');
+      allow update: if isExistingOwner(userId) && isIdImmutable('userId');
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages a user's private notes. Only the owner can manage their notes.
+     * @path /users/{userId}/notes/{noteId}
+     * @allow (list) The owner listing all notes in their own subcollection. e.g., auth.uid = 'user_abc', path = '/users/user_abc/notes'
+     * @deny (update) A different user trying to update a note. e.g., auth.uid = 'user_xyz', path = '/users/user_abc/notes/note_123'
+     * @principle Enforces strict data ownership within a user's private data tree.
+     */
+    match /users/{userId}/notes/{noteId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && hasCorrectCreatorId('userId');
+      allow update: if isExistingOwner(userId) && isIdImmutable('userId');
+      allow delete: if isExistingOwner(userId);
+    }
+
+    // ----------------------------------------------------------------------
+    // Shared Application Data
+    // ----------------------------------------------------------------------
+
+    /**
+     * @description Manages important dates shared between the two users. Any authenticated user can manage these dates.
+     * @path /important_dates/{dateId}
+     * @allow (create) Any authenticated user creating a new important date. e.g., auth != null
+     * @deny (create) An unauthenticated user attempting to create a date. e.g., auth == null
+     * @principle Allows collaborative access for all authenticated members of the application.
+     */
+    match /important_dates/{dateId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Manages the shared to-do list. Any authenticated user can read tasks. Creation is restricted to the assignee, and deletion is restricted to the original creator.
+     * @path /to_do_tasks/{taskId}
+     * @allow (create) An authenticated user creating a task and assigning it to themselves. e.g., auth.uid = 'user_abc', request.resource.data.assignedUserId = 'user_abc'
+     * @deny (delete) A user trying to delete a task they did not create. e.g., auth.uid = 'user_xyz', resource.data.assignedUserId = 'user_abc'
+     * @principle Enforces document ownership for writes and validates relational integrity.
+     */
+    match /to_do_tasks/{taskId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && hasCorrectCreatorId('assignedUserId');
+      allow update: if isSignedIn() && resource != null && isIdImmutable('assignedUserId');
+      allow delete: if isSignedIn() && resource != null && isOwner(resource.data.assignedUserId);
+    }
+
+    /**
+     * @description Manages live counters for task completions. Any authenticated user can modify them, facilitating the real-time update feature.
+     * @path /completion_counters/{completionCounterId}
+     * @allow (update) Any authenticated user updating the completion count for a task. e.g., auth != null
+     * @deny (create) An unauthenticated user attempting to create a counter. e.g., auth == null
+     * @principle Allows real-time collaborative updates for all authenticated members of the application.
+     */
+    match /completion_counters/{completionCounterId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Manages photos in the shared album. Any authenticated user can add, view, or remove photos.
+     * @path /shared_photos/{photoId}
+     * @allow (create) Any authenticated user uploading a new shared photo. e.g., auth != null
+     * @deny (create) An unauthenticated user attempting to upload a photo. e.g., auth == null
+     * @principle Allows collaborative access for all authenticated members of the application.
+     */
+    match /shared_photos/{photoId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Manages private, "my eyes only" photos. Access should be restricted to the owner.
+     * @path /private_photos/{photoId}
+     * @allow (get) An authenticated user trying to read this data (will fail if no ownership field exists).
+     * @deny (create) Any user trying to create a private photo, as the required ownership field is missing from the data model.
+     * @principle Enforces document ownership for writes. CRITICAL: This rule is currently locked down because the 'Photo' entity is missing an 'ownerId' or 'uploaderId' field, making secure write rules impossible to implement.
+     */
+    match /private_photos/{photoId} {
+      // CRITICAL: Cannot implement owner-only rules. The 'Photo' entity is missing an 'ownerId' or similar field.
+      // Reading is allowed if signed in, but writes are blocked until the schema is fixed.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field. e.g., hasCorrectCreatorId('ownerId')
+      allow update: if false; // TODO: Add owner validation. e.g., isExistingOwner(resource.data.ownerId)
+      allow delete: if false; // TODO: Add owner validation. e.g., isExistingOwner(resource.data.ownerId)
+    }
+
+    /**
+     * @description Manages chat messages. Any authenticated user can read messages. Only the sender can create, update, or delete their own messages.
+     * @path /chat_messages/{messageId}
+     * @allow (create) An authenticated user sending a message where the senderId matches their UID. e.g., auth.uid = 'user_abc', request.resource.data.senderId = 'user_abc'
+     * @deny (delete) A user trying to delete another user's message. e.g., auth.uid = 'user_xyz', resource.data.senderId = 'user_abc'
+     * @principle Enforces document ownership for writes and validates relational integrity.
+     */
+    match /chat_messages/{messageId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && hasCorrectCreatorId('senderId');
+      allow update: if isSignedIn() && resource != null && isOwner(resource.data.senderId) && isIdImmutable('senderId');
+      allow delete: if isSignedIn() && resource != null && isOwner(resource.data.senderId);
+    }
+  }
+}

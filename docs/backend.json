@@ -1,0 +1,407 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user in the Amorem Duo application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role ('Him' or 'Her')."
+        }
+      },
+      "required": [
+        "id",
+        "role"
+      ]
+    },
+    "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatMessage",
+      "type": "object",
+      "description": "Represents a single chat message.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ChatMessage entity."
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N ChatMessage).  The ID of the user who sent the message."
+        },
+        "content": {
+          "type": "string",
+          "description": "The text content of the message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The timestamp of when the message was sent.",
+          "format": "date-time"
+        },
+        "voiceNoteUrl": {
+          "type": "string",
+          "description": "URL of the voice note if the message is a voice note."
+        }
+      },
+      "required": [
+        "id",
+        "senderId",
+        "content",
+        "timestamp"
+      ]
+    },
+    "Mood": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Mood",
+      "type": "object",
+      "description": "Represents a user's current mood.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Mood entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:1 Mood). The ID of the user who set the mood."
+        },
+        "mood": {
+          "type": "string",
+          "description": "The mood of the user (e.g., Happy, Sad, Angry)."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The timestamp of when the mood was set.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "mood",
+        "timestamp"
+      ]
+    },
+    "Note": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Note",
+      "type": "object",
+      "description": "Represents a note, specific to a date and user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Note entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Note). The ID of the user who created the note."
+        },
+        "date": {
+          "type": "string",
+          "description": "The date the note is associated with.",
+          "format": "date"
+        },
+        "content": {
+          "type": "string",
+          "description": "The text content of the note."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The timestamp of when the note was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "date",
+        "content",
+        "timestamp"
+      ]
+    },
+    "ImportantDate": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ImportantDate",
+      "type": "object",
+      "description": "Represents an important date in the calendar.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ImportantDate entity."
+        },
+        "date": {
+          "type": "string",
+          "description": "The date of the event.",
+          "format": "date"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the event."
+        },
+        "description": {
+          "type": "string",
+          "description": "A short description of the event."
+        }
+      },
+      "required": [
+        "id",
+        "date",
+        "title",
+        "description"
+      ]
+    },
+    "TodoTask": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TodoTask",
+      "type": "object",
+      "description": "Represents a task in the shared to-do list.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the TodoTask entity."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the task."
+        },
+        "assignedUserId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N TodoTask). The ID of the user who added the task."
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Indicates whether the task is completed."
+        }
+      },
+      "required": [
+        "id",
+        "description",
+        "assignedUserId",
+        "isCompleted"
+      ]
+    },
+    "Photo": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Photo",
+      "type": "object",
+      "description": "Represents a photo in the shared photo album.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Photo entity."
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL of the photo."
+        },
+        "isPrivate": {
+          "type": "boolean",
+          "description": "Indicates whether the photo is in the 'My Eyes Only' album."
+        },
+        "uploadTimestamp": {
+          "type": "string",
+          "description": "Timestamp of when the photo was uploaded",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "isPrivate",
+        "uploadTimestamp"
+      ]
+    },
+    "CompletionCounter": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CompletionCounter",
+      "type": "object",
+      "description": "Represents a live counter that increments/decrements as either user completes/uncompletes a TodoTask",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CompletionCounter entity."
+        },
+        "taskId": {
+          "type": "string",
+          "description": "Reference to TodoTask. (Relationship: TodoTask 1:1 CompletionCounter). The ID of the task this counter is associated with."
+        },
+        "completionCount": {
+          "type": "number",
+          "description": "Keeps track of how many times task is completed"
+        }
+      },
+      "required": [
+        "id",
+        "taskId",
+        "completionCount"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles, including the 'role' field for authentication.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/moods/{moodId}",
+        "definition": {
+          "entityName": "Mood",
+          "schema": {
+            "$ref": "#/backend/entities/Mood"
+          },
+          "description": "Stores user moods. Enforces path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "moodId",
+              "description": "The unique identifier for the mood entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/notes/{noteId}",
+        "definition": {
+          "entityName": "Note",
+          "schema": {
+            "$ref": "#/backend/entities/Note"
+          },
+          "description": "Stores user notes, organized by date. Enforces path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "noteId",
+              "description": "The unique identifier for the note entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/important_dates/{dateId}",
+        "definition": {
+          "entityName": "ImportantDate",
+          "schema": {
+            "$ref": "#/backend/entities/ImportantDate"
+          },
+          "description": "Stores important dates. Requires a rule that only allows valid users.",
+          "params": [
+            {
+              "name": "dateId",
+              "description": "The unique identifier for the important date entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/to_do_tasks/{taskId}",
+        "definition": {
+          "entityName": "TodoTask",
+          "schema": {
+            "$ref": "#/backend/entities/TodoTask"
+          },
+          "description": "Stores the shared to-do list. Requires a rule that only allows valid users.",
+          "params": [
+            {
+              "name": "taskId",
+              "description": "The unique identifier for the to-do task entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/completion_counters/{completionCounterId}",
+        "definition": {
+          "entityName": "CompletionCounter",
+          "schema": {
+            "$ref": "#/backend/entities/CompletionCounter"
+          },
+          "description": "Stores the live counter for each task, to increment/decrement in real time, as the opposite user checks/unchecks a task.",
+          "params": [
+            {
+              "name": "completionCounterId",
+              "description": "The unique identifier for the completion counter entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/shared_photos/{photoId}",
+        "definition": {
+          "entityName": "Photo",
+          "schema": {
+            "$ref": "#/backend/entities/Photo"
+          },
+          "description": "Stores shared photos. Requires a rule that only allows valid users.",
+          "params": [
+            {
+              "name": "photoId",
+              "description": "The unique identifier for the shared photo entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/private_photos/{photoId}",
+        "definition": {
+          "entityName": "Photo",
+          "schema": {
+            "$ref": "#/backend/entities/Photo"
+          },
+          "description": "Stores private photos. Requires a rule that only allows valid users.",
+          "params": [
+            {
+              "name": "photoId",
+              "description": "The unique identifier for the private photo entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/chat_messages/{messageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores chat messages.",
+          "params": [
+            {
+              "name": "messageId",
+              "description": "The unique identifier for the chat message entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore structure prioritizes security, scalability, and debuggability based on the Amorem Duo application requirements. It adheres to the core design principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). The structure leverages denormalization and structural segregation to simplify security rules and improve performance.\n\n**Authorization Independence:**\nAuthorization is achieved through path-based ownership (`/users/{userId}`) and membership maps where necessary. Specifically, access to user-specific data (mood, notes) is controlled via path-based rules. For shared data (photos, to-do tasks), where collaborative access is required, membership maps (`members`) are used. These maps are denormalized into relevant documents, avoiding `get()` calls in security rules and allowing atomic operations. Note that as only 2 users are allowed, you can assume the existence of the opposite user in all security rules. For example, you can allow writes if `request.auth.uid != resource.data.userId` in most cases. This structure is still not encouraged, and if more users are added, it can cause potential errors. It's better to maintain a list of possible users and validate them during the write operations.\n\n**Clarity of Intent:**\nThe structure is designed to make authorization intent explicit. Path-based ownership clearly defines who owns specific data. The use of dedicated collections for different data types (e.g., `/users/{userId}/notes` for notes, `/shared_photos` for shared photos) segregates data with different security requirements.\n\n**DBAC (Database-Based Access Control):**\nUser roles ('Him' or 'Her') are stored as a field in the `/users/{userId}` document. Security rules use `request.auth.uid` and the `role` field from the user document to determine access. This removes the need for custom claims.\n\n**QAPs (Rules are not Filters):**\nThis structure enables secure `list` operations. Path-based ownership allows listing of user-owned data using rules that check the requested user ID against the authenticated user ID. For shared collections like `/shared_photos`, security rules enforce that only members (as defined in the membership map) can list documents.\n\n**Invariants:**\nThe structure supports the integrity of ownership, timestamps, and denormalized data. Security rules enforce that the `userId` field in documents corresponds to the authenticated user's ID. Timestamps can be validated within security rules to ensure proper ordering and prevent tampering.\n\n**Specific Design Choices:**\n*   `/users/{userId}`: Stores user profiles, including the 'role' field for authentication.\n*   `/users/{userId}/moods/{moodId}`: Stores user moods. This utilizes path-based ownership.\n*   `/users/{userId}/notes/{noteId}`: Stores user notes, organized by date. This uses path-based ownership.\n*   `/important_dates/{dateId}`: Stores important dates. Requires a rule that only allows valid users.\n*   `/to_do_tasks/{taskId}`: Stores the shared to-do list. Requires a rule that only allows valid users.\n*   `/completion_counters/{completionCounterId}`: Stores the live counter for each task, to increment/decrement in real time, as the opposite user checks/unchecks a task.\n*   `/shared_photos/{photoId}`: Stores shared photos. Requires a rule that only allows valid users.\n*   `/private_photos/{photoId}`: Stores private photos. Requires a rule that only allows valid users.\n*   `/chat_messages/{messageId}`: Stores chat messages.\n\nThis structure is highly scalable and maintainable due to its clear separation of concerns and reliance on simple, declarative security rules."
+  }
+}
