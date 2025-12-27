@@ -91,6 +91,11 @@ const NoteEditor = ({
   
   const handleEdit = () => {
     setIsEditing(true);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        autoResizeTextarea(textareaRef.current);
+      }
+    }, 0);
   }
 
   const showEditButton = canEdit && noteUser === currentUser;
@@ -113,23 +118,23 @@ const NoteEditor = ({
             )
         )}
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-2">
+      <CardContent className="flex flex-1 flex-col gap-2">
         {isEditing ? (
           <Textarea
             ref={textareaRef}
             value={text}
             onChange={handleTextChange}
-            className="w-full bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-hidden flex-1 p-2 text-sm whitespace-pre-wrap font-body"
+            className="w-full resize-none overflow-hidden bg-transparent p-2 font-body text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
             placeholder="Write your thoughts..."
             rows={1}
           />
         ) : (
-          <div className="flex-1 flex flex-col">
-            <div className="flex-1 p-2 text-sm whitespace-pre-wrap font-body">
+          <div className="flex min-h-[80px] flex-1 flex-col">
+            <div className="flex-1 whitespace-pre-wrap p-2 font-body text-sm">
               {note?.content || <p className="text-muted-foreground italic">No note yet.</p>}
             </div>
             {note && (
-                <p className="text-xs text-muted-foreground self-end px-2">
+                <p className="self-end px-2 text-xs text-muted-foreground">
                     Last updated: {note.lastUpdated}
                 </p>
             )}
@@ -259,8 +264,8 @@ export default function NotesPage() {
   const canEditSelectedDate = isToday(selectedDate);
 
   return (
-    <div className="flex flex-col md:flex-row h-full p-4 gap-4 md:p-8">
-      <div className="flex flex-col items-center gap-4 md:w-72 flex-shrink-0">
+    <div className="flex h-full flex-col p-4 md:flex-row md:gap-8 md:p-8">
+      <div className="flex w-full flex-col items-center gap-4 md:w-72 md:flex-shrink-0">
         <div className="flex items-center gap-2 text-2xl font-headline text-primary self-start">
            <NotebookText className="h-8 w-8 text-primary" />
            Our Shared Notes
@@ -272,11 +277,11 @@ export default function NotesPage() {
         />
       </div>
 
-      <div className="flex-1 flex flex-col gap-4 min-h-0">
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
         <h2 className="text-xl font-headline text-primary">
           {format(selectedDate, 'MMMM d, yyyy')}
         </h2>
-        <div className="grid md:grid-cols-2 gap-4 items-start flex-1">
+        <div className="grid flex-1 items-stretch gap-4 md:grid-cols-2">
           <NoteEditor
             noteUser={user}
             currentUser={user}
