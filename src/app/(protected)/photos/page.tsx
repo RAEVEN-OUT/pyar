@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Plus, Lock, Trash2, Delete, X } from 'lucide-react';
+import { Image as ImageIcon, Plus, Lock, Trash2, X } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useRef, useMemo, useEffect } from 'react';
 import {
@@ -154,7 +154,7 @@ export default function PhotosPage() {
   const [activeTab, setActiveTab] = useState('shared');
   
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
-  const [uploadFile, setUploadFile = useState<File | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploadIsPrivate, setUploadIsPrivate] = useState(false);
   
@@ -323,38 +323,33 @@ export default function PhotosPage() {
           />
         </CardHeader>
         <CardContent className="pt-6">
-            <Dialog open={!!viewingPhoto} onOpenChange={(isOpen) => !isOpen && setViewingPhoto(null)}>
-                {viewingPhoto && (
-                  <DialogOverlay className="bg-black/90" onClick={() => setViewingPhoto(null)}>
-                    <DialogContent 
-                      className="bg-transparent border-0 shadow-none w-full h-full max-w-none max-h-none p-4 flex items-center justify-center"
-                      onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the image/content
-                      onInteractOutside={(e) => e.preventDefault()}
-                    >
-                        <div className="relative w-full h-full flex items-center justify-center">
-                          <Image
-                            src={viewingPhoto.url}
-                            alt={viewingPhoto.description}
-                            width={1920}
-                            height={1080}
-                            className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
-                          />
-                          <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center bg-black/50 p-3 rounded-lg text-white">
-                            <p className="font-semibold">{viewingPhoto.description}</p>
-                            {isViewingPhotoOwner && (
-                                <Button variant="destructive" size="icon" onClick={() => handleDeletePhoto(viewingPhoto!.id)}>
-                                    <Trash2 className="h-5 w-5" />
-                                </Button>
-                            )}
-                          </div>
-                           <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-white bg-black/50" onClick={() => setViewingPhoto(null)}>
-                              <X className="h-6 w-6" />
-                           </Button>
-                        </div>
-                    </DialogContent>
-                  </DialogOverlay>
-                )}
-            </Dialog>
+            {viewingPhoto && (
+              <div 
+                className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+                onClick={() => setViewingPhoto(null)}
+              >
+                <div className="relative w-full h-full p-4" onClick={(e) => e.stopPropagation()}>
+                   <Image
+                      src={viewingPhoto.url}
+                      alt={viewingPhoto.description}
+                      layout="fill"
+                      objectFit="contain"
+                      className="rounded-lg"
+                   />
+                   <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center text-white">
+                      <p className="font-semibold bg-black/50 p-2 rounded-md">{viewingPhoto.description}</p>
+                      {isViewingPhotoOwner && (
+                          <Button variant="destructive" size="icon" onClick={() => handleDeletePhoto(viewingPhoto!.id)} className="bg-black/50 hover:bg-destructive/80">
+                              <Trash2 className="h-5 w-5" />
+                          </Button>
+                      )}
+                   </div>
+                   <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-white bg-black/50" onClick={() => setViewingPhoto(null)}>
+                      <X className="h-6 w-6" />
+                   </Button>
+                </div>
+              </div>
+            )}
 
             <Dialog open={isUploadModalOpen} onOpenChange={setUploadModalOpen}>
                 <DialogContent>
@@ -407,8 +402,8 @@ export default function PhotosPage() {
                          <Button type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick('0')}>
                            0
                          </Button>
-                         <Button type="button" variant="outline" size="icon" className="h-14" onClick={handlePinPadBackspace}>
-                           <Delete className="h-6 w-6" />
+                         <Button type="button" variant="outline" size="icon" className="h-14" onClick={() => handlePinPadBackspace}>
+                           <X className="h-6 w-6" />
                          </Button>
                     </div>
                   </div>
