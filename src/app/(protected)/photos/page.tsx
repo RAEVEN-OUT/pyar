@@ -26,8 +26,15 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { restrictToParentElement } from '@dnd-kit/modifiers';
+import { Input } from '@/components/ui/input';
 
-function SortablePhoto({ photo }: { photo: ImagePlaceholder }) {
+function SortablePhoto({ 
+  photo,
+  onDescriptionChange,
+}: { 
+  photo: ImagePlaceholder,
+  onDescriptionChange: (id: string, newDescription: string) => void;
+}) {
   const {
     attributes,
     listeners,
@@ -37,34 +44,71 @@ function SortablePhoto({ photo }: { photo: ImagePlaceholder }) {
     isDragging,
   } = useSortable({ id: photo.id });
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [description, setDescription] = useState(photo.description);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 10 : 'auto',
   };
 
+  const handleDescriptionClick = () => {
+    setIsEditing(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+  
+  const handleDescriptionBlur = () => {
+    setIsEditing(false);
+    onDescriptionChange(photo.id, description);
+  };
+  
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleDescriptionBlur();
+    } else if (e.key === 'Escape') {
+      setDescription(photo.description);
+      setIsEditing(false);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
       className={cn(
         'overflow-hidden rounded-lg shadow-md aspect-video relative group',
         isDragging && 'opacity-75'
       )}
     >
-      <Image
-        src={photo.imageUrl}
-        alt={photo.description}
-        width={800}
-        height={600}
-        data-ai-hint={photo.imageHint}
-        className="h-full w-full object-cover transition-transform group-hover:scale-105"
-        priority
-      />
-      <div className="absolute bottom-0 left-0 right-0 bg-black/50 p-2 text-white opacity-0 transition-opacity group-hover:opacity-100">
-        <p className="text-xs truncate">{photo.description}</p>
+      <div {...attributes} {...listeners} className="h-full w-full cursor-grab">
+        <Image
+          src={photo.imageUrl}
+          alt={photo.description}
+          width={800}
+          height={600}
+          data-ai-hint={photo.imageHint}
+          className="h-full w-full object-cover transition-transform group-hover:scale-105 pointer-events-none"
+          priority
+        />
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-white opacity-0 transition-opacity group-hover:opacity-100">
+        {isEditing ? (
+          <Input
+            ref={inputRef}
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            onBlur={handleDescriptionBlur}
+            onKeyDown={handleKeyDown}
+            className="w-full h-auto p-0 m-0 bg-transparent border-0 text-xs text-white focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+        ) : (
+          <p className="text-xs truncate cursor-pointer" onClick={handleDescriptionClick}>
+            {photo.description}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -119,6 +163,13 @@ export default function PhotosPage() {
     }
   };
 
+  const handleDescriptionChange = (id: string, newDescription: string) => {
+    setPhotos(photos => photos.map(photo => 
+      photo.id === id ? { ...photo, description: newDescription } : photo
+    ));
+  };
+
+
   return (
     <div className="flex h-full items-start justify-center p-4 md:p-8">
       <Card className="w-full max-w-6xl">
@@ -158,7 +209,11 @@ export default function PhotosPage() {
               <SortableContext items={photos} strategy={rectSortingStrategy}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {photos.map((photo) => (
-                    <SortablePhoto key={photo.id} photo={photo} />
+                    <SortablePhoto 
+                      key={photo.id} 
+                      photo={photo}
+                      onDescriptionChange={handleDescriptionChange}
+                    />
                   ))}
                 </div>
               </SortableContext>
