@@ -179,40 +179,41 @@ export default function PhotosPage() {
     <div className="flex h-full flex-col p-4 md:p-8">
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
         <DialogContent
-          className="p-0 bg-transparent border-0 shadow-none max-w-none w-auto inline-block"
+          className="p-0 bg-transparent border-0 shadow-none inline-block"
           onInteractOutside={closeViewer}
         >
           {viewingPhoto && (
-            <div className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden">
+            <div className="relative rounded-lg shadow-xl flex flex-col overflow-hidden">
                 <DialogHeader className="sr-only">
                     <DialogTitle>Viewing Photo: {viewingPhoto.description}</DialogTitle>
                 </DialogHeader>
 
-                <div className="max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+                <div className="relative">
                     <Image
                       src={viewingPhoto.url}
                       alt={viewingPhoto.description}
                       width={1920}
                       height={1080}
-                      className="object-contain h-auto w-auto max-w-full max-h-full"
+                      className="object-contain h-auto w-auto max-w-[90vw] max-h-[90vh] rounded-lg"
                       priority
                     />
-                </div>
-                
-                <div className="flex h-[52px] items-center justify-between border-t bg-card/80 p-3 backdrop-blur-sm">
-                    <p className="truncate pr-4 text-sm font-semibold text-card-foreground">
-                      {viewingPhoto.description}
-                    </p>
-                    {isViewingPhotoOwner && (
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeletePhoto(viewingPhoto.id)}
-                        className="flex-shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    >
-                        <Trash2 className="h-5 w-5" />
-                    </Button>
-                    )}
+                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-card/80 backdrop-blur-sm rounded-b-lg">
+                      <div className="flex items-center justify-between">
+                        <p className="truncate pr-4 text-sm font-semibold text-card-foreground">
+                          {viewingPhoto.description}
+                        </p>
+                        {isViewingPhotoOwner && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeletePhoto(viewingPhoto.id)}
+                            className="flex-shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8"
+                        >
+                            <Trash2 className="h-5 w-5" />
+                        </Button>
+                        )}
+                      </div>
+                    </div>
                 </div>
             </div>
           )}
@@ -359,5 +360,3 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-    
