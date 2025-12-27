@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,18 +11,13 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, writeBatch, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { format, startOfToday } from 'date-fns';
 
 type Activity = {
   id: string;
   label: string;
-  createdBy: User;
   checks: {
     [key in User]?: boolean;
   };
-  date: string;
 };
 
 type UserColumnProps = {
@@ -36,6 +31,12 @@ type UserColumnProps = {
   onAddActivity: (e: React.FormEvent) => void;
   onNewActivityChange: (value: string) => void;
 };
+
+const initialActivities: Activity[] = [
+  { id: '1', label: 'Workout', checks: { Him: true, Her: false } },
+  { id: '2', label: 'Read for 30 mins', checks: { Him: false, Her: true } },
+  { id: '3', label: 'No social media after 10 PM', checks: { Him: true, Her: true } },
+];
 
 
 const UserColumn = ({ 
@@ -136,18 +137,10 @@ const UserColumn = ({
 
 export default function DisciplinePage() {
   const { user } = useAuth();
-  const firestore = useFirestore();
   const { toast } = useToast();
+  const [activities, setActivities] = useState<Activity[]>(initialActivities);
   const [newActivity, setNewActivity] = useState('');
-  const todayString = useMemo(() => format(startOfToday(), 'yyyy-MM-dd'), []);
   
-  const activitiesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'discipline-activities'), where('date', '==', todayString));
-  }, [firestore, todayString]);
-
-  const { data: activities, isLoading } = useCollection<Activity>(activitiesQuery);
-
   const prevActivitiesRef = useRef<Activity[]>();
   const otherUser = user === 'Him' ? 'Her' : 'Him';
 
@@ -180,38 +173,47 @@ export default function DisciplinePage() {
     prevActivitiesRef.current = activities;
   }, [activities, user, otherUser, toast]);
 
-  if (!user || !firestore) {
+
+  if (!user) {
     return null;
   }
 
-  const handleCheckChange = async (checkedUser: User, activityId: string, isChecked: boolean) => {
-    if (checkedUser !== user) return;
-    const activityRef = doc(firestore, 'discipline-activities', activityId);
-    const fieldToUpdate = `checks.${user}`;
-    await updateDoc(activityRef, { [fieldToUpdate]: isChecked });
+  const handleCheckChange = (checkedUser: User, activityId: string, isChecked: boolean) => {
+    setActivities((prev) =>
+      prev.map((act) =>
+        act.id === activityId
+          ? {
+              ...act,
+              checks: { ...act.checks, [checkedUser]: isChecked },
+            }
+          : act
+      )
+    );
   };
 
-  const handleAddActivity = async (e: React.FormEvent) => {
+  const handleAddActivity = (e: React.FormEvent) => {
     e.preventDefault();
     if (newActivity.trim() === '' || !user) return;
     
-    const newActivityData = {
+    const newActivityData: Activity = {
+      id: crypto.randomUUID(),
       label: newActivity.trim(),
-      createdBy: user,
-      date: todayString,
       checks: { Him: false, Her: false },
     };
     
-    await addDoc(collection(firestore, 'discipline-activities'), newActivityData);
+    setActivities((prev) => [...prev, newActivityData]);
     setNewActivity('');
   };
 
-  const handleDeleteActivity = async (activityId: string) => {
-    await deleteDoc(doc(firestore, 'discipline-activities', activityId));
+  const handleDeleteActivity = (activityId: string) => {
+    setActivities(prev => prev.filter(act => act.id !== activityId));
   };
   
-  const userScore = activities ? activities.filter(a => a.checks[user]).length : 0;
-  const otherUserScore = activities ? activities.filter(a => a.checks[otherUser]).length : 0;
+  const userScore = activities.filter(a => a.checks[user]).length;
+  const otherUserScore = activities.filter(a => a.checks[otherUser]).length;
+
+  const userActivities = activities;
+  const otherUserActivities = activities;
   
   return (
     <div className="flex h-full flex-col items-center justify-center p-4 md:p-8">
@@ -220,36 +222,31 @@ export default function DisciplinePage() {
             <ShieldCheck className="h-10 w-10 text-primary" />
             Discipline Tracker
           </div>
-          {isLoading && <p>Loading activities...</p>}
-          {activities && (
-            <div className="grid w-full grid-cols-1 md:grid-cols-2 gap-8 items-start">
-              <UserColumn 
-                displayedUser={user}
-                currentUser={user}
-                activities={activities}
-                score={userScore}
-                newActivity={newActivity}
-                onCheckChange={handleCheckChange}
-                onDeleteActivity={handleDeleteActivity}
-                onAddActivity={handleAddActivity}
-                onNewActivityChange={setNewActivity}
-              />
-              <UserColumn 
-                displayedUser={otherUser}
-                currentUser={user}
-                activities={activities}
-                score={otherUserScore}
-                newActivity={newActivity}
-                onCheckChange={handleCheckChange}
-                onDeleteActivity={handleDeleteActivity}
-                onAddActivity={handleAddActivity}
-                onNewActivityChange={setNewActivity}
-              />
-            </div>
-          )}
+          <div className="grid w-full grid-cols-1 md:grid-cols-2 gap-8 items-start">
+            <UserColumn 
+              displayedUser={user}
+              currentUser={user}
+              activities={userActivities}
+              score={userScore}
+              newActivity={newActivity}
+              onCheckChange={handleCheckChange}
+              onDeleteActivity={handleDeleteActivity}
+              onAddActivity={handleAddActivity}
+              onNewActivityChange={setNewActivity}
+            />
+            <UserColumn 
+              displayedUser={otherUser}
+              currentUser={user}
+              activities={otherUserActivities}
+              score={otherUserScore}
+              newActivity={newActivity} // These are passed but the component won't render the inputs
+              onCheckChange={handleCheckChange}
+              onDeleteActivity={handleDeleteActivity}
+              onAddActivity={handleAddActivity}
+              onNewActivityChange={setNewActivity}
+            />
+          </div>
         </div>
     </div>
   );
 }
-
-    
