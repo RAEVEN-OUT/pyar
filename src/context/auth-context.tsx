@@ -16,12 +16,16 @@ export type User = 'Him' | 'Her';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (user: User) => Promise<void>;
+  login: (user: User, magicWord: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const MAGIC_WORDS: Record<User, string> = {
+  Him: '070805',
+  Her: '210406',
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<User | null>(null);
@@ -29,21 +33,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // In a local-only setup, we can immediately determine the auth state.
-    // If you were checking a token in localStorage, you'd do it here.
+    // Check for saved user session in local storage for persistence
+    const savedUser = localStorage.getItem('amorem_duo_user') as User | null;
+    if (savedUser) {
+      setUserRole(savedUser);
+    }
     setLoading(false);
   }, []);
 
-  const login = useCallback(async (selectedUser: User) => {
-    // Simple login, just sets the user role.
+  const login = useCallback(async (selectedUser: User, magicWord: string) => {
     setLoading(true);
-    setUserRole(selectedUser);
-    setLoading(false);
-    router.push('/chat'); // Redirect to a protected page
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    if (MAGIC_WORDS[selectedUser] === magicWord) {
+      setUserRole(selectedUser);
+      localStorage.setItem('amorem_duo_user', selectedUser);
+      router.push('/chat');
+    } else {
+      setLoading(false);
+      throw new Error('That\'s not the right magic word. Please try again.');
+    }
   }, [router]);
 
   const logout = useCallback(async () => {
     setUserRole(null);
+    localStorage.removeItem('amorem_duo_user');
     router.push('/');
   }, [router]);
   
