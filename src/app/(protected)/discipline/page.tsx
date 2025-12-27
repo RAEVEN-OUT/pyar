@@ -11,8 +11,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebase } from '@/firebase';
-import { useCollection } from '@/firebase/firestore';
+import { useFirebase, useCollection } from '@/firebase';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, doc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { format, startOfDay } from 'date-fns';
@@ -259,3 +258,5 @@ export default function DisciplinePage() {
     </div>
   );
 }
+
+    

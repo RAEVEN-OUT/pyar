@@ -10,8 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ListChecks, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, isBefore, startOfToday } from 'date-fns';
-import { useFirebase } from '@/firebase';
-import { useCollection } from '@/firebase/firestore';
+import { useFirebase, useCollection } from '@/firebase';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, query, orderBy, doc, serverTimestamp } from 'firebase/firestore';
 
@@ -164,3 +163,5 @@ export default function TodoPage() {
     </div>
   );
 }
+
+    

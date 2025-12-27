@@ -39,8 +39,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useFirebase } from '@/firebase';
-import { useCollection } from '@/firebase/firestore';
+import { useFirebase, useCollection } from '@/firebase';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
 
@@ -332,3 +331,5 @@ export default function CalendarPage() {
     </div>
   );
 }
+
+    

@@ -27,8 +27,7 @@ import { cn } from '@/lib/utils';
 import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useFirebase } from '@/firebase';
-import { useCollection } from '@/firebase/firestore';
+import { useFirebase, useCollection } from '@/firebase';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, query, where, orderBy, doc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -322,3 +321,5 @@ export default function PhotosPage() {
     </div>
   );
 }
+
+    

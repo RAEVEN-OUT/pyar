@@ -9,8 +9,7 @@ import { NotebookText, Edit, Save, ChevronLeft, ChevronRight } from 'lucide-reac
 import { isFuture, isSameMonth, isToday, format, add, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useFirebase } from '@/firebase';
-import { useCollection } from '@/firebase/firestore';
+import { useFirebase, useCollection } from '@/firebase';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { doc, serverTimestamp, collection, where, query } from 'firebase/firestore';
 
@@ -307,3 +306,5 @@ export default function NotesPage() {
     </div>
   );
 }
+
+    

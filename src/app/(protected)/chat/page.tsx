@@ -19,10 +19,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { useFirebase } from '@/firebase';
-import { useCollection, useDoc } from '@/firebase/firestore';
+import { useFirebase, useCollection } from '@/firebase';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, query, orderBy, limit, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, doc, serverTimestamp } from 'firebase/firestore';
 
 type Mood = {
   mood: string;
@@ -656,3 +655,5 @@ export default function ChatPage() {
     </div>
   );
 }
+
+    
