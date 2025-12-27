@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Plus, Lock, Trash2 } from 'lucide-react';
+import { Image as ImageIcon, Plus, Lock, Trash2, Delete } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useRef, useMemo, useEffect } from 'react';
 import {
@@ -274,12 +274,27 @@ export default function PhotosPage() {
       setActiveTab('private');
     } else {
       setPasswordError('Incorrect PIN. Please try again.');
+      setPasswordInput('');
     }
+  };
+
+  const handlePinPadClick = (value: string) => {
+    setPasswordError('');
+    if (passwordInput.length < 4) {
+      setPasswordInput(prev => prev + value);
+    }
+  };
+
+  const handlePinPadBackspace = () => {
+    setPasswordError('');
+    setPasswordInput(prev => prev.slice(0, -1));
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!user) return null;
+
+  const pinDisplay = '●'.repeat(passwordInput.length).padEnd(4, '○');
 
   return (
     <div className="flex h-full items-start justify-center p-4 md:p-8">
@@ -341,33 +356,36 @@ export default function PhotosPage() {
             </Dialog>
 
             <Dialog open={isPasswordDialogOpen} onOpenChange={setPasswordDialogOpen}>
-              <DialogContent>
+              <DialogContent className="max-w-xs">
                 <DialogHeader>
-                  <DialogTitle>Enter PIN</DialogTitle>
-                  <DialogDescription>
-                    This album is locked. Please enter the special PIN to view it.
+                  <DialogTitle className="text-center">Enter PIN</DialogTitle>
+                  <DialogDescription className="text-center">
+                    This album is locked.
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handlePasswordSubmit}>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="password" className="text-right">
-                        PIN
-                      </Label>
-                      <Input
-                        id="password"
-                        type="tel"
-                        value={passwordInput}
-                        onChange={(e) => setPasswordInput(e.target.value)}
-                        className="col-span-3"
-                        maxLength={4}
-                      />
+                  <div className="flex flex-col items-center gap-4 py-4">
+                    <div className="flex h-10 items-center justify-center gap-3 text-2xl tracking-widest text-muted-foreground">
+                      {pinDisplay.split('').map((char, i) => <span key={i}>{char}</span>)}
                     </div>
-                    {passwordError && <p className="text-sm text-destructive text-center col-span-4">{passwordError}</p>}
+                    {passwordError && <p className="text-sm text-destructive text-center">{passwordError}</p>}
+                    <div className="grid grid-cols-3 gap-2 w-full">
+                        {[ '1', '2', '3', '4', '5', '6', '7', '8', '9'].map(digit => (
+                           <Button key={digit} type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick(digit)}>
+                               {digit}
+                           </Button>
+                        ))}
+                         <div />
+                         <Button type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick('0')}>
+                           0
+                         </Button>
+                         <Button type="button" variant="outline" size="icon" className="h-14" onClick={handlePinPadBackspace}>
+                           <Delete className="h-6 w-6" />
+                         </Button>
+                    </div>
                   </div>
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setPasswordDialogOpen(false)}>Cancel</Button>
-                    <Button type="submit">Unlock</Button>
+                  <DialogFooter className="sm:justify-center">
+                    <Button type="submit" className="w-full">Unlock</Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -412,3 +430,5 @@ export default function PhotosPage() {
     </div>
   );
 }
+
+    
