@@ -118,14 +118,13 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
       </Sidebar>
       <SidebarInset>
         {isMobile && (
-           <div className="p-2 md:hidden">
+           <div className="p-2 md:hidden flex items-center">
             <Button
-              variant="ghost"
-              size="icon"
-              className="text-primary hover:text-primary/90"
+              variant="link"
+              className="p-0 h-auto"
               onClick={toggleSidebar}
             >
-              <PanelLeft className="h-6 w-6" />
+              <Logo className="text-3xl" />
             </Button>
           </div>
         )}
