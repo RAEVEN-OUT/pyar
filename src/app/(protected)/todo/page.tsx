@@ -74,9 +74,9 @@ export default function TodoPage() {
                   key={task.id}
                   className={cn(
                     'flex items-center gap-4 rounded-lg p-3 transition-colors',
-                     task.creator === 'Him'
-                      ? 'bg-card text-card-foreground'
-                      : 'bg-accent text-accent-foreground',
+                     task.creator === 'Her'
+                      ? 'bg-accent text-accent-foreground'
+                      : 'bg-card text-card-foreground',
                     isCompleted ? 'opacity-60' : 'opacity-100'
                   )}
                 >
@@ -111,7 +111,7 @@ export default function TodoPage() {
                     </label>
                      <p className={cn(
                         'text-xs mt-1',
-                         task.creator === 'Him' ? 'text-card-foreground/70' : 'text-accent-foreground/70',
+                         task.creator === 'Her' ? 'text-accent-foreground/70' : 'text-card-foreground/70',
                          isCompleted && 'line-through'
                       )}>
                       Created by {task.creator} on {task.createdAt}
