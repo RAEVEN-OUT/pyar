@@ -25,9 +25,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const USER_CREDENTIALS: Record<User, { email: string; magicWord: string }> = {
-  Raveen: { email: 'raveen@amorem.duo', magicWord: '070805' },
-  Priya: { email: 'priya@amorem.duo', magicWord: '210406' },
+const USER_CREDENTIALS: Record<User, { email: string }> = {
+  Raveen: { email: 'raveen@amorem.duo' },
+  Priya: { email: 'priya@amorem.duo' },
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -56,19 +56,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (selectedUser: User, magicWord: string) => {
     setLoading(true);
     const credentials = USER_CREDENTIALS[selectedUser];
-    if (credentials.magicWord !== magicWord) {
-      setLoading(false);
-      throw new Error('That\'s not the right magic word. Please try again.');
-    }
 
     try {
-      // Use the magicWord from the form input as the password
+      // Attempt to sign in directly. Firebase will be the source of truth.
       await signInWithEmailAndPassword(auth, credentials.email, magicWord);
       router.push('/chat');
     } catch (error: any) {
+      // If the user doesn't exist, create a new account.
       if (error.code === 'auth/user-not-found') {
         try {
-          // Use the magicWord from the form input as the password
           await createUserWithEmailAndPassword(auth, credentials.email, magicWord);
            router.push('/chat');
         } catch (creationError) {
@@ -76,10 +72,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
           throw new Error('Could not create an account. Please try again.');
         }
-      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+      } 
+      // If the user exists but the password ("magic word") is wrong.
+      else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
         setLoading(false);
         throw new Error('That\'s not the right magic word. Please try again.');
       }
+      // Handle any other unexpected errors.
       else {
         console.error("Error signing in:", error);
         setLoading(false);
