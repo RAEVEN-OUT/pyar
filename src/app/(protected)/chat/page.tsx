@@ -18,20 +18,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  query,
-  orderBy,
-  doc,
-  updateDoc,
-  deleteDoc,
-  setDoc,
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-
 
 type Mood = {
   mood: string;
@@ -61,6 +47,14 @@ export type Message = {
   replyTo?: Message;
 };
 
+const mockMessages: Message[] = [
+    { id: '1', senderId: 'raveen', sender: 'Raveen', text: 'Hey Priya! How was your day?', timestamp: { seconds: Date.now() / 1000 - 300 } },
+    { id: '2', senderId: 'priya', sender: 'Priya', text: 'It was great! Just got home. What about you?', timestamp: { seconds: Date.now() / 1000 - 240 } },
+    { id: '3', senderId: 'raveen', sender: 'Raveen', text: 'Same, pretty chill day. Thinking about what to have for dinner.', timestamp: { seconds: Date.now() / 1000 - 180 } },
+    { id: '4', senderId: 'priya', sender: 'Priya', text: 'Pastaaaa!', timestamp: { seconds: Date.now() / 1000 - 120 }, reactions: { '🥰': ['raveen'] } },
+];
+
+
 const reactionEmojis = ['❤️', '😂', '🥰', '😍', '😢', '😮'];
 
 
@@ -71,23 +65,13 @@ function MoodDisplay({
   user: User;
   otherUser: User;
 }) {
-  const { firestore } = useFirebase();
-  const currentUserRef = useMemoFirebase(() => user ? doc(firestore, 'userProfiles', user) : null, [firestore, user]);
-  const otherUserRef = useMemoFirebase(() => otherUser ? doc(firestore, 'userProfiles', otherUser) : null, [firestore, otherUser]);
-  
-  const { data: currentUserProfile } = useDoc(currentUserRef);
-  const { data: otherUserProfile } = useDoc(otherUserRef);
+  const [currentUserMood, setCurrentUserMood] = useState<Mood>(moodOptions[0]);
+  const [otherUserMood, setOtherUserMood] = useState<Mood>(moodOptions[1]);
 
   const onMoodChange = (newMood: Mood) => {
-    if (currentUserRef) {
-      updateDoc(currentUserRef, { mood: newMood });
-    }
+    setCurrentUserMood(newMood);
   };
   
-  const currentMood = currentUserProfile?.mood || moodOptions[0];
-  const otherUserMood = otherUserProfile?.mood || moodOptions[0];
-
-
   return (
     <div className="flex justify-between items-center p-4 border-b bg-card rounded-t-lg">
       <div className="flex items-center gap-3">
@@ -103,9 +87,9 @@ function MoodDisplay({
           <div className="flex items-center gap-3 text-right cursor-pointer rounded-md p-2 hover:bg-muted transition-colors">
             <div className="flex flex-col items-end">
               <p className="font-semibold text-sm">{user}</p>
-              <p className="text-xs text-muted-foreground">{currentMood.mood}</p>
+              <p className="text-xs text-muted-foreground">{currentUserMood.mood}</p>
             </div>
-            <span className="text-4xl">{currentMood.emoji}</span>
+            <span className="text-4xl">{currentUserMood.emoji}</span>
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
@@ -222,10 +206,10 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
 
 
 export default function ChatPage() {
-  const { user, firebaseUser, loading } = useAuth();
-  const { firestore, storage } = useFirebase();
+  const { user, loading } = useAuth();
   const { toast } = useToast();
   
+  const [messages, setMessages] = useState<Message[]>(mockMessages);
   const [newMessage, setNewMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -242,11 +226,6 @@ export default function ChatPage() {
 
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   
-  const messagesCollectionRef = useMemoFirebase(() => collection(firestore, 'privateChats', 'mainChat', 'chatMessages'), [firestore]);
-  const messagesQuery = useMemoFirebase(() => query(messagesCollectionRef, orderBy('timestamp', 'asc')), [messagesCollectionRef]);
-  const { data: messages } = useCollection<Message>(messagesQuery);
-
-
   useEffect(() => {
     navigator.permissions.query({ name: 'microphone' as PermissionName }).then((result) => {
         setHasMicPermission(result.state === 'granted');
@@ -265,46 +244,47 @@ export default function ChatPage() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === '' || !user || !firebaseUser) return;
+    if (newMessage.trim() === '' || !user) return;
     
-    addDoc(messagesCollectionRef, {
-      senderId: firebaseUser.uid,
-      sender: user,
-      text: newMessage.trim(),
-      timestamp: serverTimestamp(),
-      replyTo: replyingTo || null,
-    });
-    
+    const newMsg: Message = {
+        id: new Date().toISOString(),
+        senderId: user.toLowerCase(),
+        sender: user,
+        text: newMessage.trim(),
+        timestamp: { seconds: Date.now() / 1000 },
+        replyTo: replyingTo || undefined,
+    };
+
+    setMessages(prev => [...prev, newMsg]);
     setNewMessage('');
     setReplyingTo(null);
     setShowEmojiPicker(false);
   };
 
   const handleReaction = (messageId: string, emoji: string) => {
-    if (!firebaseUser) return;
+    if (!user) return;
 
-    const messageRef = doc(firestore, 'privateChats', 'mainChat', 'chatMessages', messageId);
-    const message = messages?.find(m => m.id === messageId);
-    if (!message) return;
+    setMessages(prev => prev.map(msg => {
+        if (msg.id === messageId) {
+            const newReactions = { ...(msg.reactions || {}) };
+            const usersForEmoji = newReactions[emoji] || [];
 
-    const newReactions = { ...(message.reactions || {}) };
-    const usersForEmoji = newReactions[emoji] || [];
-    
-    if (usersForEmoji.includes(firebaseUser.uid)) {
-      newReactions[emoji] = usersForEmoji.filter((uid) => uid !== firebaseUser.uid);
-      if (newReactions[emoji].length === 0) {
-        delete newReactions[emoji];
-      }
-    } else {
-      newReactions[emoji] = [...usersForEmoji, firebaseUser.uid];
-    }
-
-    updateDoc(messageRef, { reactions: newReactions });
+            if (usersForEmoji.includes(user.toLowerCase())) {
+                newReactions[emoji] = usersForEmoji.filter((uid) => uid !== user.toLowerCase());
+                if (newReactions[emoji].length === 0) {
+                    delete newReactions[emoji];
+                }
+            } else {
+                newReactions[emoji] = [...usersForEmoji, user.toLowerCase()];
+            }
+            return { ...msg, reactions: newReactions };
+        }
+        return msg;
+    }));
   };
 
   const handleUnsend = (messageId: string) => {
-    const messageRef = doc(firestore, 'privateChats', 'mainChat', 'chatMessages', messageId);
-    deleteDoc(messageRef);
+    setMessages(prev => prev.filter(msg => msg.id !== messageId));
   };
   
   const handleEdit = (message: Message) => {
@@ -318,11 +298,9 @@ export default function ChatPage() {
 
   const submitEdit = () => {
     if (!editingMessage) return;
-    const messageRef = doc(firestore, 'privateChats', 'mainChat', 'chatMessages', editingMessage.id);
-    updateDoc(messageRef, {
-      text: editedText,
-      isEdited: true,
-    });
+    setMessages(prev => prev.map(msg => 
+        msg.id === editingMessage.id ? { ...msg, text: editedText, isEdited: true } : msg
+    ));
     setEditingMessage(null);
     setEditedText('');
   };
@@ -342,7 +320,7 @@ export default function ChatPage() {
   }
 
   const handleVoiceMessage = async () => {
-    if (!user || !firebaseUser) return;
+    if (!user) return;
     if (isRecording) {
         stopRecording(true);
         return;
@@ -385,30 +363,19 @@ export default function ChatPage() {
 
             if (audioChunks.length > 0) {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                const audioId = new Date().toISOString();
-                const storageRef = ref(storage, `voice-notes/${audioId}.webm`);
-                
-                try {
-                    await uploadBytes(storageRef, audioBlob);
-                    const audioUrl = await getDownloadURL(storageRef);
+                const audioUrl = URL.createObjectURL(audioBlob);
 
-                    await addDoc(messagesCollectionRef, {
-                        senderId: firebaseUser.uid,
-                        sender: user,
-                        audioUrl,
-                        timestamp: serverTimestamp(),
-                        replyTo: replyingTo || null,
-                    });
-                    setReplyingTo(null);
+                const newMsg: Message = {
+                    id: new Date().toISOString(),
+                    senderId: user.toLowerCase(),
+                    sender: user,
+                    audioUrl,
+                    timestamp: { seconds: Date.now() / 1000 },
+                    replyTo: replyingTo || undefined,
+                };
 
-                } catch (e) {
-                    console.error("Error uploading voice note:", e);
-                    toast({
-                      variant: "destructive",
-                      title: "Upload failed",
-                      description: "Could not upload your voice note."
-                    })
-                }
+                setMessages(prev => [...prev, newMsg]);
+                setReplyingTo(null);
             }
             
             stream.getTracks().forEach(track => track.stop());

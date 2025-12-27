@@ -6,12 +6,10 @@ import {
   useContext,
   type ReactNode,
   useCallback,
-  useMemo,
+  useState,
 } from 'react';
-import { useAuth, type User } from './auth-context';
+import { type User } from './auth-context';
 import { format } from 'date-fns';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export type Note = {
   id: string; // "yyyy-MM-dd"
@@ -27,27 +25,39 @@ interface NotesContextType {
 
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
+const mockNotes: Note[] = [
+    { id: format(new Date(), 'yyyy-MM-dd'), author: 'Raveen', text: 'Feeling great today!', lastUpdated: { seconds: Date.now() / 1000 } },
+    { id: format(new Date(), 'yyyy-MM-dd'), author: 'Priya', text: 'Excited for the weekend! 💕', lastUpdated: { seconds: Date.now() / 1000 } },
+];
+
+
 export function NotesProvider({ children }: { children: ReactNode }) {
-  const { firestore } = useFirebase();
-  const { user } = useAuth();
-  
-  const notesCollectionRef = useMemoFirebase(() => user ? collection(firestore, 'userProfiles', user, 'notes') : null, [firestore, user]);
-  const { data: notes } = useCollection<Note>(notesCollectionRef);
+  const [notes, setNotes] = useState<Note[]>(mockNotes);
 
   const saveNote = useCallback((author: User, date: Date, text: string) => {
     const dateKey = format(date, 'yyyy-MM-dd');
-    const noteRef = doc(firestore, 'userProfiles', author, 'notes', dateKey);
+    
+    setNotes(prev => {
+        const existingNoteIndex = prev.findIndex(n => n.id === dateKey && n.author === author);
+        const newNote: Note = {
+            id: dateKey,
+            author,
+            text,
+            lastUpdated: { seconds: Date.now() / 1000 },
+        };
+        
+        if (existingNoteIndex > -1) {
+            const newNotes = [...prev];
+            newNotes[existingNoteIndex] = newNote;
+            return newNotes;
+        } else {
+            return [...prev, newNote];
+        }
+    });
 
-    setDoc(noteRef, {
-      id: dateKey,
-      author,
-      text,
-      lastUpdated: serverTimestamp(),
-    }, { merge: true });
-
-  }, [firestore]);
+  }, []);
   
-  const value = { notes: notes || [], saveNote };
+  const value = { notes, saveNote };
 
   return <NotesContext.Provider value={value}>{children}</NotesContext.Provider>;
 }

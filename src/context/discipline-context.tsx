@@ -7,11 +7,8 @@ import {
   useState,
   type ReactNode,
   useCallback,
-  useMemo
 } from 'react';
 import { useAuth, type User } from './auth-context';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 export type Activity = {
   id: string;
@@ -31,40 +28,47 @@ interface DisciplineContextType {
 
 const DisciplineContext = createContext<DisciplineContextType | undefined>(undefined);
 
-export function DisciplineProvider({ children }: { children: ReactNode }) {
-  const { firestore } = useFirebase();
-  const { firebaseUser } = useAuth();
+const mockActivities: Activity[] = [
+    { id: '1', label: 'Workout', checks: { Raveen: true, Priya: false }, creatorId: 'raveen' },
+    { id: '2', label: 'Read 30 mins', checks: { Raveen: true, Priya: true }, creatorId: 'raveen' },
+    { id: '3', label: 'Journal', checks: { Priya: true, Raveen: false }, creatorId: 'priya' },
+];
 
-  const activitiesCollectionRef = useMemoFirebase(() => collection(firestore, 'disciplineActivities'), [firestore]);
-  const { data: activities } = useCollection<Activity>(activitiesCollectionRef);
+
+export function DisciplineProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [activities, setActivities] = useState<Activity[]>(mockActivities);
 
   const addActivity = useCallback((label: string) => {
-    if (!firebaseUser) return;
-    addDoc(activitiesCollectionRef, {
+    if (!user) return;
+    const newActivity: Activity = {
+      id: new Date().toISOString(),
       label,
       checks: {},
-      creatorId: firebaseUser.uid,
-    });
-  }, [activitiesCollectionRef, firebaseUser]);
+      creatorId: user.toLowerCase(),
+    };
+    setActivities(prev => [...prev, newActivity]);
+  }, [user]);
 
-  const toggleActivity = useCallback((activityId: string, user: User) => {
-    const activity = activities?.find(a => a.id === activityId);
-    if (!activity) return;
-    const activityRef = doc(firestore, 'disciplineActivities', activityId);
-    
-    const newChecks = { ...activity.checks };
-    newChecks[user] = !newChecks[user];
-
-    updateDoc(activityRef, { checks: newChecks });
-  }, [activities, firestore]);
+  const toggleActivity = useCallback((activityId: string, userToToggle: User) => {
+    setActivities(prev => 
+      prev.map(activity => {
+        if (activity.id === activityId) {
+          const newChecks = { ...activity.checks };
+          newChecks[userToToggle] = !newChecks[userToToggle];
+          return { ...activity, checks: newChecks };
+        }
+        return activity;
+      })
+    );
+  }, []);
   
   const deleteActivity = useCallback((activityId: string) => {
-    const activityRef = doc(firestore, 'disciplineActivities', activityId);
-    deleteDoc(activityRef);
-  }, [firestore]);
+    setActivities(prev => prev.filter(a => a.id !== activityId));
+  }, []);
 
 
-  const value = { activities: activities || [], addActivity, toggleActivity, deleteActivity };
+  const value = { activities, addActivity, toggleActivity, deleteActivity };
 
   return <DisciplineContext.Provider value={value}>{children}</DisciplineContext.Provider>;
 }

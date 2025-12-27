@@ -40,8 +40,6 @@ import { Textarea } from '@/components/ui/textarea';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/auth-context';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, addDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 
 type CalendarEvent = {
@@ -58,16 +56,20 @@ type CalendarSticker = {
 
 type ViewMode = 'add' | 'view';
 
+const mockEvents: CalendarEvent[] = [
+    { id: '1', date: new Date().toISOString(), title: "Today's Special Event", description: "This is a description for today's event." },
+];
+
+const mockStickers: CalendarSticker[] = [
+    { id: format(add(new Date(), { days: -2 }), 'yyyy-MM-dd'), emoji: '💖' },
+];
+
 export default function CalendarPage() {
   const { user } = useAuth();
-  const { firestore } = useFirebase();
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const eventsCollectionRef = useMemoFirebase(() => collection(firestore, 'importantDates'), [firestore]);
-  const stickersCollectionRef = useMemoFirebase(() => collection(firestore, 'stickers'), [firestore]);
-  
-  const { data: events } = useCollection<CalendarEvent>(eventsCollectionRef);
-  const { data: stickers } = useCollection<CalendarSticker>(stickersCollectionRef);
+  const [events, setEvents] = useState<CalendarEvent[]>(mockEvents);
+  const [stickers, setStickers] = useState<CalendarSticker[]>(mockStickers);
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -114,20 +116,25 @@ export default function CalendarPage() {
   const onEmojiClick = (emojiData: EmojiClickData) => {
     if (selectedDate) {
       const dateKey = format(selectedDate, 'yyyy-MM-dd');
-      const stickerRef = doc(firestore, 'stickers', dateKey);
-      setDoc(stickerRef, { emoji: emojiData.emoji, id: dateKey });
+      setStickers(prev => {
+        const existing = prev.find(s => s.id === dateKey);
+        if (existing) {
+          return prev.map(s => s.id === dateKey ? { ...s, emoji: emojiData.emoji } : s);
+        }
+        return [...prev, { id: dateKey, emoji: emojiData.emoji }];
+      });
     }
   };
 
   const handleAddEvent = () => {
     if (selectedDate && eventTitle && user) {
-      addDoc(eventsCollectionRef, {
+      const newEvent: CalendarEvent = {
+        id: new Date().toISOString(),
         date: selectedDate.toISOString(),
         title: eventTitle,
         description: eventDesc,
-        authorId: user,
-        createdAt: serverTimestamp(),
-      });
+      };
+      setEvents(prev => [...prev, newEvent]);
       setPopoverOpen(false);
       setSelectedDate(null);
     }
