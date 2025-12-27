@@ -178,45 +178,50 @@ export default function PhotosPage() {
   return (
     <div className="flex h-full flex-col p-4 md:p-8">
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
-         <DialogContent
-            className="p-4 bg-transparent border-0 shadow-none w-full h-full flex items-center justify-center"
-            onInteractOutside={closeViewer}
-          >
+        <DialogContent
+          className="flex items-center justify-center bg-transparent border-0 shadow-none p-0 w-auto h-auto"
+          onInteractOutside={closeViewer}
+        >
           {viewingPhoto && (
             <>
-              <Image
-                src={viewingPhoto.url}
-                alt={viewingPhoto.description}
-                width={2000}
-                height={2000}
-                className="w-auto h-auto max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
-                priority
-              />
-               <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-[90vw]">
-                    <div className="flex items-center justify-center gap-4 p-3 rounded-full bg-card/80 backdrop-blur-sm shadow-xl border border-white/10">
-                        <p className="text-sm font-semibold text-card-foreground text-center">
-                            {viewingPhoto.description}
-                        </p>
-                        {isViewingPhotoOwner && (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeletePhoto(viewingPhoto.id)}
-                            className="flex-shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8 rounded-full"
-                        >
-                            <Trash2 className="h-5 w-5" />
-                        </Button>
-                        )}
-                         <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={closeViewer}
-                            className="flex-shrink-0 text-card-foreground hover:bg-white/20 h-8 w-8 rounded-full"
-                        >
-                            <X className="h-5 w-5" />
-                        </Button>
-                    </div>
+              <DialogTitle className="sr-only">
+                Viewing photo: {viewingPhoto.description}
+              </DialogTitle>
+              <div className="relative w-auto h-auto">
+                <Image
+                  src={viewingPhoto.url}
+                  alt={viewingPhoto.description}
+                  width={2000}
+                  height={2000}
+                  className="object-contain rounded-lg shadow-2xl max-w-[90vw] max-h-[90vh]"
+                  priority
+                />
+              </div>
+              <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-[90vw]">
+                <div className="flex items-center justify-center gap-2 p-3 rounded-full bg-card/80 backdrop-blur-sm shadow-xl border border-white/10">
+                  <p className="text-sm font-semibold text-card-foreground text-center truncate px-2">
+                    {viewingPhoto.description}
+                  </p>
+                  {isViewingPhotoOwner && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeletePhoto(viewingPhoto.id)}
+                      className="flex-shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8 rounded-full"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
+                  )}
+                  <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={closeViewer}
+                      className="flex-shrink-0 text-card-foreground hover:bg-white/20 h-8 w-8 rounded-full"
+                  >
+                      <X className="h-5 w-5" />
+                  </Button>
                 </div>
+              </div>
             </>
           )}
         </DialogContent>
@@ -362,5 +367,3 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-    
