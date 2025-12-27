@@ -164,7 +164,7 @@ export default function PhotosPage() {
         isPrivate: uploadIsPrivate,
       };
 
-      setPhotos(prev => [...prev, newPhoto]);
+      setPhotos(prev => [newPhoto, ...prev]);
       setUploadModalOpen(false);
       setUploadFile(null);
       setUploadDescription('');
@@ -253,8 +253,8 @@ export default function PhotosPage() {
   const isViewingPhotoOwner = viewingPhoto?.uploader === user;
 
   return (
-    <div className="flex h-full items-start justify-center p-4 md:p-8">
-      <Card className="w-full max-w-6xl">
+    <div className="flex h-full flex-col p-4 md:p-8">
+      <Card className="w-full max-w-6xl mx-auto flex-1 flex flex-col">
         <CardHeader className="relative border-b pb-4 flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-2xl font-headline">
             <ImageIcon className="h-8 w-8 text-primary" />
@@ -283,18 +283,11 @@ export default function PhotosPage() {
             accept="image/*"
           />
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 flex-1 overflow-y-auto">
             <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
               <DialogContent 
-                className="bg-transparent border-0 shadow-none p-0 max-w-none w-full h-full"
-                onInteractOutside={(e) => {
-                  const target = e.target as HTMLElement;
-                  if (target.closest('[data-photo-frame]')) {
-                    e.preventDefault();
-                  } else {
-                    setViewingPhoto(null);
-                  }
-                }}
+                className="bg-transparent border-0 shadow-none p-0 max-w-none w-auto h-auto"
+                onInteractOutside={() => setViewingPhoto(null)}
               >
                  {viewingPhoto && (
                   <>
@@ -302,10 +295,10 @@ export default function PhotosPage() {
                     <DialogTitle>{viewingPhoto.description}</DialogTitle>
                     <DialogDescription>A photo uploaded by {viewingPhoto.uploader}.</DialogDescription>
                   </DialogHeader>
-                   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+                   <div className="p-4">
                     <div 
                       data-photo-frame
-                      className="relative w-full bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-w-4xl max-h-[90vh]"
+                      className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-w-4xl max-h-[90vh] mx-auto"
                     >
                       <div className="relative aspect-video flex-1">
                          <Image
