@@ -1,0 +1,323 @@
+{
+  "entities": {
+    "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatMessage",
+      "type": "object",
+      "description": "Represents a single chat message within the Amorem Duo application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the chat message."
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Reference to the User who sent the message. (Relationship: User 1:N ChatMessage)"
+        },
+        "content": {
+          "type": "string",
+          "description": "The text content of the message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time the message was sent, stored as an ISO 8601 string.",
+          "format": "date-time"
+        },
+        "voiceNoteUrl": {
+          "type": "string",
+          "description": "URL to the voice note stored in Firebase Storage, if applicable."
+        }
+      },
+      "required": [
+        "id",
+        "senderId",
+        "content",
+        "timestamp"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user (Him or Her) in the Amorem Duo application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user ('Him' or 'Her')."
+        },
+        "mood": {
+          "type": "string",
+          "description": "The current mood of the user (emoji representation)."
+        }
+      },
+      "required": [
+        "id",
+        "role"
+      ]
+    },
+    "Note": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Note",
+      "type": "object",
+      "description": "Represents a note created by one of the users for a specific date.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the note."
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Reference to the User who created the note. (Relationship: User 1:N Note)"
+        },
+        "date": {
+          "type": "string",
+          "description": "The date the note is associated with, stored as an ISO 8601 date string.",
+          "format": "date"
+        },
+        "text": {
+          "type": "string",
+          "description": "The text content of the note."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time the note was created, stored as an ISO 8601 string.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "authorId",
+        "date",
+        "text",
+        "timestamp"
+      ]
+    },
+    "ImportantDate": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ImportantDate",
+      "type": "object",
+      "description": "Represents an important date stored in the calendar.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the important date."
+        },
+        "date": {
+          "type": "string",
+          "description": "The date of the event, stored as an ISO 8601 date string.",
+          "format": "date"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the event."
+        },
+        "description": {
+          "type": "string",
+          "description": "A short description of the event."
+        },
+        "creatorId": {
+          "type": "string",
+          "description": "Reference to the User who created the important date. (Relationship: User 1:N ImportantDate)"
+        }
+      },
+      "required": [
+        "id",
+        "date",
+        "title",
+        "description",
+        "creatorId"
+      ]
+    },
+    "TodoTask": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TodoTask",
+      "type": "object",
+      "description": "Represents a task in the shared to-do list.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the to-do task."
+        },
+        "text": {
+          "type": "string",
+          "description": "The text description of the task."
+        },
+        "assigneeId": {
+          "type": "string",
+          "description": "Reference to the User who is assigned the task. (Relationship: User 1:N TodoTask)"
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Indicates whether the task is completed."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time the task was created, stored as an ISO 8601 string.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "assigneeId",
+        "isCompleted",
+        "timestamp"
+      ]
+    },
+    "Photo": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Photo",
+      "type": "object",
+      "description": "Represents a photo in the shared photo album or the private 'My Eyes Only' album.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the photo."
+        },
+        "url": {
+          "type": "string",
+          "description": "URL to the photo stored in Firebase Storage."
+        },
+        "uploaderId": {
+          "type": "string",
+          "description": "Reference to the User who uploaded the photo. (Relationship: User 1:N Photo)"
+        },
+        "isPrivate": {
+          "type": "boolean",
+          "description": "Indicates whether the photo is in the 'My Eyes Only' album."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time the photo was uploaded, stored as an ISO 8601 string.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "uploaderId",
+        "isPrivate",
+        "timestamp"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user-specific data, including role and mood.  Path-based ownership enables simple security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/chats/{chatId}/messages/{messageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores chat messages, with `chatId` duplicated in each message to ensure authorization independence.",
+          "params": [
+            {
+              "name": "chatId",
+              "description": "The unique identifier for the chat (fixed id)."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier for the message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/notes/{noteId}",
+        "definition": {
+          "entityName": "Note",
+          "schema": {
+            "$ref": "#/backend/entities/Note"
+          },
+          "description": "Each user has their own collection of notes, enabling path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "noteId",
+              "description": "The unique identifier for the note."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/important_dates/{dateId}",
+        "definition": {
+          "entityName": "ImportantDate",
+          "schema": {
+            "$ref": "#/backend/entities/ImportantDate"
+          },
+          "description": "Important dates are stored in a top-level collection, with the `creatorId` field indicating who created the date.",
+          "params": [
+            {
+              "name": "dateId",
+              "description": "The unique identifier for the important date."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/todo_tasks/{taskId}",
+        "definition": {
+          "entityName": "TodoTask",
+          "schema": {
+            "$ref": "#/backend/entities/TodoTask"
+          },
+          "description": "Todo tasks are stored in a top-level collection. The `assigneeId` field indicates who is assigned to the task, and both `himId` and `herId` are stored in each document to ensure that both users have read access.",
+          "params": [
+            {
+              "name": "taskId",
+              "description": "The unique identifier for the todo task."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/photos/{photoId}",
+        "definition": {
+          "entityName": "Photo",
+          "schema": {
+            "$ref": "#/backend/entities/Photo"
+          },
+          "description": "Photos are stored in a top-level collection. The `uploaderId` field indicates who uploaded the photo.  The `isPrivate` field supports the 'My Eyes Only' feature.",
+          "params": [
+            {
+              "name": "photoId",
+              "description": "The unique identifier for the photo."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, DBAC, and support secure list operations (QAPs). It prioritizes path-based ownership for private user data and uses membership maps where data is shared between the two users.  Authentication relies on `request.auth.uid`. Since there are exactly 2 users in the application, we are modelling all shared resources with two explicit user id fields: `himId`, and `herId` to avoid a costly `members` map. This offers a performant and inexpensive query pattern at the expense of limited scalability.\n\n*   **`/users/{userId}`:** Stores user-specific data like the role and mood, using path-based ownership for straightforward security rules.\n*   **`/chats/{chatId}/messages/{messageId}`:**  Stores chat messages. The `chatId` will always be the same fixed ID. This path enforces that only authenticated users can create messages within the shared chat. The structure also supports retrieval of messages based on the timestamp. To ensure authorization independence, the `chatId` is duplicated in each message, though it will be the same for all messages.\n*   **`/users/{userId}/notes/{noteId}`:**  Each user has their own collection of notes, enabling path-based ownership for simple security rules.\n*   **`/important_dates/{dateId}`:** Important dates are stored in a top-level collection. The `creatorId` field within each document ensures that only the creator can modify or delete the date.\n*   **`/todo_tasks/{taskId}`:**  Todo tasks are stored in a top-level collection. The `assigneeId` field indicates which user is assigned to the task. Both `himId` and `herId` are stored in each document to ensure that both users have read access to all todo tasks, and only the assignee can modify the task.\n*   **`/photos/{photoId}`:** Photos are stored in a top-level collection. The `uploaderId` field indicates which user uploaded the photo. To support the 'My Eyes Only' feature, the `isPrivate` field is used. Security rules will enforce that only the uploader can view private photos.\n\n\n\n**Authorization Independence (CRITICAL):**\n    *   The application data model contains no authorization hierarchies. Therefore, it avoids `get()` calls in security rules. This independence is achieved by denormalizing authorization data (e.g., `himId` and `herId` in `todo_tasks`) directly into the documents where access control is required.\n\n**QAPs (Rules are not Filters):**\n    *   The structure supports secure `list` operations by segregating data based on access control requirements. For example, notes are stored under `/users/{userId}/notes/{noteId}`, ensuring that a user can only list their own notes.  Photos can be filtered based on the `isPrivate` field. This structure avoids filtering on the client-side, improving security and performance."
+  }
+}
