@@ -19,7 +19,7 @@ type Photo = {
   id: string;
   url: string;
   description: string;
-  uploader: string; // In a real app, this would be a user ID
+  uploader: string;
   isPrivate: boolean;
 };
 
@@ -29,7 +29,7 @@ const initialPhotos: Photo[] = PlaceHolderImages.map(p => ({
     description: p.description,
     uploader: Math.random() > 0.5 ? 'Raveen' : 'Priya',
     isPrivate: false,
-}))
+}));
 
 function PhotoItem({ 
   photo,
@@ -109,7 +109,6 @@ function PhotoItem({
   );
 }
 
-
 export default function PhotosPage() {
   const { user } = useAuth();
   const [photos, setPhotos] = useState(initialPhotos);
@@ -127,13 +126,14 @@ export default function PhotosPage() {
 
   const [viewingPhoto, setViewingPhoto] = useState<Photo | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const SPECIAL_PIN = '2107';
 
   const displayedPhotos = useMemo(() => {
     if (activeTab === 'shared') {
       return photos.filter(p => !p.isPrivate);
     }
-    // For 'private' tab, only show if unlocked
     if (isPrivateAlbumLocked) {
       return [];
     }
@@ -172,7 +172,6 @@ export default function PhotosPage() {
     };
     reader.readAsDataURL(uploadFile);
   };
-
 
   const handleDescriptionChange = (id: string, newDescription: string) => {
     setPhotos(prev => prev.map(p => p.id === id ? { ...p, description: newDescription } : p));
@@ -220,8 +219,6 @@ export default function PhotosPage() {
     setPasswordInput(prev => prev.slice(0, -1));
   }, []);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isPasswordDialogOpen) return;
@@ -239,7 +236,6 @@ export default function PhotosPage() {
     };
 
     window.addEventListener('keydown', handleKeyDown);
-
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
@@ -249,7 +245,6 @@ export default function PhotosPage() {
   if (!user) return null;
 
   const pinDisplay = '●'.repeat(passwordInput.length).padEnd(4, '○');
-
   const isViewingPhotoOwner = viewingPhoto?.uploader === user;
 
   return (
@@ -284,27 +279,15 @@ export default function PhotosPage() {
           />
         </CardHeader>
         <CardContent className="pt-6 flex-1 overflow-y-auto">
-            <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
-              <DialogContent
-                className="bg-transparent border-0 shadow-none p-0 max-w-none w-auto h-auto"
-                onPointerDownOutside={(e) => {
-                    const target = e.target as HTMLElement;
-                    if (!target.closest('[data-photo-frame]')) {
-                        setViewingPhoto(null);
-                    }
-                }}
-              >
+            <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>
+              <DialogContent className="p-0 bg-transparent border-0 shadow-none max-w-4xl w-full">
                  {viewingPhoto && (
                   <>
-                  <DialogHeader className="sr-only">
-                    <DialogTitle>{viewingPhoto.description}</DialogTitle>
-                    <DialogDescription>A photo uploaded by {viewingPhoto.uploader}.</DialogDescription>
-                  </DialogHeader>
-                   <div className="p-4">
-                    <div 
-                      data-photo-frame
-                      className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-w-4xl max-h-[90vh] mx-auto"
-                    >
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>{viewingPhoto.description}</DialogTitle>
+                        <DialogDescription>A photo by {viewingPhoto.uploader}.</DialogDescription>
+                    </DialogHeader>
+                    <div className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-h-[90vh] mx-auto">
                       <div className="relative aspect-video flex-1">
                          <Image
                             src={viewingPhoto.url}
@@ -313,17 +296,15 @@ export default function PhotosPage() {
                             className="object-contain"
                          />
                       </div>
-
                       <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t">
                           <p className="font-semibold text-card-foreground text-sm truncate pr-4">{viewingPhoto.description}</p>
                           {isViewingPhotoOwner && (
-                              <Button variant="ghost" size="icon" onClick={() => handleDeletePhoto(viewingPhoto!.id)} className="text-destructive hover:bg-destructive/10 hover:text-destructive flex-shrink-0">
+                              <Button variant="ghost" size="icon" onClick={() => handleDeletePhoto(viewingPhoto.id)} className="text-destructive hover:bg-destructive/10 hover:text-destructive flex-shrink-0">
                                   <Trash2 className="h-5 w-5" />
                               </Button>
                           )}
                        </div>
                     </div>
-                  </div>
                   </>
                  )}
               </DialogContent>
@@ -371,21 +352,14 @@ export default function PhotosPage() {
                     </div>
                     {passwordError && <p className="text-sm text-destructive text-center">{passwordError}</p>}
                     <div className="grid grid-cols-3 gap-2 w-full">
-                        {[ '1', '2', '3', '4', '5', '6', '7', '8', '9'].map(digit => (
+                        {[ '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].map(digit => (
                            <Button key={digit} type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick(digit)}>
                                {digit}
                            </Button>
                         ))}
-                         <div />
-                         <Button type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick('0')}>
-                           0
-                         </Button>
-                         <Button type="button" variant="ghost" className="h-14 text-xl" onClick={handlePinPadBackspace}>
-                           <Delete className="h-6 w-6" />
-                         </Button>
                     </div>
                   </div>
-                  <DialogFooter className="sm:justify-center">
+                  <DialogFooter className="sm:justify-center mt-2">
                     <Button type="submit" className="w-full">Unlock</Button>
                   </DialogFooter>
                 </form>
