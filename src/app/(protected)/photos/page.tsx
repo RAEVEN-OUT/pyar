@@ -173,7 +173,7 @@ export default function PhotosPage() {
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  const SPECIAL_PASSWORD = 'amorem';
+  const SPECIAL_PIN = '2107';
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -266,14 +266,14 @@ export default function PhotosPage() {
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordInput === SPECIAL_PASSWORD) {
+    if (passwordInput === SPECIAL_PIN) {
       setPrivateAlbumLocked(false);
       setPasswordDialogOpen(false);
       setPasswordError('');
       setPasswordInput('');
       setActiveTab('private');
     } else {
-      setPasswordError('Incorrect password. Please try again.');
+      setPasswordError('Incorrect PIN. Please try again.');
     }
   };
 
@@ -343,23 +343,24 @@ export default function PhotosPage() {
             <Dialog open={isPasswordDialogOpen} onOpenChange={setPasswordDialogOpen}>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Enter Password</DialogTitle>
+                  <DialogTitle>Enter PIN</DialogTitle>
                   <DialogDescription>
-                    This album is locked. Please enter the special password to view it.
+                    This album is locked. Please enter the special PIN to view it.
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handlePasswordSubmit}>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="password" className="text-right">
-                        Password
+                        PIN
                       </Label>
                       <Input
                         id="password"
-                        type="password"
+                        type="tel"
                         value={passwordInput}
                         onChange={(e) => setPasswordInput(e.target.value)}
                         className="col-span-3"
+                        maxLength={4}
                       />
                     </div>
                     {passwordError && <p className="text-sm text-destructive text-center col-span-4">{passwordError}</p>}
@@ -411,5 +412,3 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-    
