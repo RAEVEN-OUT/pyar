@@ -140,8 +140,8 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
         {isMobile && (
            <div className="p-2 md:hidden flex items-center">
             <Button
-              variant="link"
-              className="p-0 h-auto"
+              variant="ghost"
+              className="p-0 h-auto hover:bg-transparent"
               onClick={toggleSidebar}
             >
               <Logo className="text-3xl" />
@@ -194,4 +194,3 @@ export default function ProtectedLayout({
   return <MainAppLayout>{children}</MainAppLayout>;
 }
 
-    
