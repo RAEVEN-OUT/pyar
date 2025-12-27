@@ -62,12 +62,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      await signInWithEmailAndPassword(auth, credentials.email, credentials.magicWord);
+      // Use the magicWord from the form input as the password
+      await signInWithEmailAndPassword(auth, credentials.email, magicWord);
       router.push('/chat');
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
         try {
-          await createUserWithEmailAndPassword(auth, credentials.email, credentials.magicWord);
+          // Use the magicWord from the form input as the password
+          await createUserWithEmailAndPassword(auth, credentials.email, magicWord);
            router.push('/chat');
         } catch (creationError) {
           console.error("Error creating user:", creationError);
