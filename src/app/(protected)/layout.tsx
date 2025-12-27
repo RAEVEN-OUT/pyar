@@ -33,7 +33,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { TaskProvider, useTasks } from '@/context/task-context';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 
@@ -50,8 +49,6 @@ const navItems = [
 function AppWithSidebar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const { tasks } = useTasks();
-  const incompleteTasks = tasks.filter(task => !task.completedAt).length;
   const { toggleSidebar, isMobile } = useSidebar();
 
   return (
@@ -72,9 +69,6 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
                 >
                   <item.icon />
                   <span>{item.label}</span>
-                  {item.href === '/todo' && incompleteTasks > 0 && (
-                    <Badge className="ml-auto group-data-[collapsible=icon]:hidden">{incompleteTasks}</Badge>
-                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
@@ -158,9 +152,5 @@ export default function ProtectedLayout({
     );
   }
 
-  return (
-    <TaskProvider>
-      <MainAppLayout>{children}</MainAppLayout>
-    </TaskProvider>
-  )
+  return <MainAppLayout>{children}</MainAppLayout>;
 }
