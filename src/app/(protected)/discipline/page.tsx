@@ -84,6 +84,7 @@ export default function DisciplinePage() {
                   id={`${displayedUser}-${activity.id}`}
                   checked={!!checked[displayedUser][activity.id]}
                   onCheckedChange={() => handleCheckChange(displayedUser, activity.id)}
+                  disabled={!isCurrentUser}
                    className={cn(
                       "h-6 w-6",
                       displayedUser === 'Him' 
@@ -95,7 +96,8 @@ export default function DisciplinePage() {
                   htmlFor={`${displayedUser}-${activity.id}`}
                   className={cn(
                     'text-base font-medium',
-                    checked[displayedUser][activity.id] && 'line-through text-muted-foreground'
+                    checked[displayedUser][activity.id] && 'line-through text-muted-foreground',
+                    !isCurrentUser && 'cursor-not-allowed'
                   )}
                 >
                   {activity.label}
