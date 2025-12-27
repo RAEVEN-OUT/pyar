@@ -3,14 +3,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Plus, Lock, Trash2, Delete } from 'lucide-react';
+import { Image as ImageIcon, Plus, Lock, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/auth-context';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogOverlay, DialogPortal, DialogClose } from '@/components/ui/dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -31,83 +31,6 @@ const initialPhotos: Photo[] = PlaceHolderImages.map(p => ({
     isPrivate: false,
 }));
 
-function PhotoItem({ 
-  photo,
-  onDescriptionChange,
-  isOwner,
-  onPhotoClick,
-}: { 
-  photo: Photo,
-  onDescriptionChange: (id: string, newDescription: string) => void;
-  isOwner: boolean;
-  onPhotoClick: (photo: Photo) => void;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [description, setDescription] = useState(photo.description);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleDescriptionClick = () => {
-    if (!isOwner) return;
-    setIsEditing(true);
-    setTimeout(() => inputRef.current?.focus(), 0);
-  };
-  
-  const handleDescriptionBlur = () => {
-    setIsEditing(false);
-    if (description !== photo.description) {
-      onDescriptionChange(photo.id, description);
-    }
-  };
-  
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleDescriptionBlur();
-    } else if (e.key === 'Escape') {
-      setDescription(photo.description);
-      setIsEditing(false);
-    }
-  };
-
-  return (
-    <div
-      className='overflow-hidden rounded-lg shadow-md aspect-video relative group'
-    >
-      <div onClick={() => onPhotoClick(photo)} className="h-full w-full cursor-pointer">
-        <Image
-          src={photo.url}
-          alt={photo.description}
-          width={800}
-          height={600}
-          className="h-full w-full object-cover transition-transform group-hover:scale-105 pointer-events-none"
-          priority
-        />
-      </div>
-      {photo.isPrivate && (
-        <div className="absolute top-2 right-2 bg-black/50 p-1.5 rounded-full">
-            <Lock className="h-4 w-4 text-white" />
-        </div>
-      )}
-      <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-white opacity-0 transition-opacity group-hover:opacity-100">
-        {isEditing ? (
-          <Input
-            ref={inputRef}
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            onBlur={handleDescriptionBlur}
-            onKeyDown={handleKeyDown}
-            className="w-full h-auto p-0 m-0 bg-transparent border-0 text-xs text-white focus-visible:ring-0 focus-visible:ring-offset-0"
-            maxLength={30}
-          />
-        ) : (
-          <p className={cn("text-xs truncate", isOwner && "cursor-pointer")} onClick={handleDescriptionClick}>
-            {photo.description}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default function PhotosPage() {
   const { user } = useAuth();
@@ -207,17 +130,17 @@ export default function PhotosPage() {
     }
   };
   
-  const handlePinPadClick = useCallback((value: string) => {
+  const handlePinPadClick = (value: string) => {
     setPasswordError('');
     if (passwordInput.length < 4) {
       setPasswordInput(prev => prev + value);
     }
-  }, [passwordInput.length]);
+  };
 
-  const handlePinPadBackspace = useCallback(() => {
+  const handlePinPadBackspace = () => {
     setPasswordError('');
     setPasswordInput(prev => prev.slice(0, -1));
-  }, []);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -239,7 +162,7 @@ export default function PhotosPage() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isPasswordDialogOpen, handlePinPadClick, handlePinPadBackspace]);
+  }, [isPasswordDialogOpen]);
 
 
   if (!user) return null;
@@ -249,6 +172,40 @@ export default function PhotosPage() {
 
   return (
     <div className="flex h-full flex-col p-4 md:p-8">
+       {/* Photo Viewer Dialog */}
+      <Dialog open={!!viewingPhoto} onOpenChange={setViewingPhoto}>
+        <DialogPortal>
+          <DialogOverlay />
+          <DialogContent 
+            className="p-0 bg-transparent border-0 shadow-none max-w-4xl w-full"
+            onInteractOutside={() => setViewingPhoto(null)}
+          >
+             {viewingPhoto && (
+              <div className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-h-[90vh] mx-auto">
+                {/* Image */}
+                <div className="relative aspect-video flex-1">
+                   <Image
+                      src={viewingPhoto.url}
+                      alt={viewingPhoto.description}
+                      fill
+                      className="object-contain"
+                   />
+                </div>
+                {/* Footer with Description and Delete Button */}
+                <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t">
+                    <p className="font-semibold text-card-foreground text-sm truncate pr-4">{viewingPhoto.description}</p>
+                    {isViewingPhotoOwner && (
+                        <Button variant="ghost" size="icon" onClick={() => handleDeletePhoto(viewingPhoto.id)} className="text-destructive hover:bg-destructive/10 hover:text-destructive flex-shrink-0">
+                            <Trash2 className="h-5 w-5" />
+                        </Button>
+                    )}
+                 </div>
+              </div>
+             )}
+          </DialogContent>
+        </DialogPortal>
+      </Dialog>
+    
       <Card className="w-full max-w-6xl mx-auto flex-1 flex flex-col">
         <CardHeader className="relative border-b pb-4 flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-2xl font-headline">
@@ -279,37 +236,6 @@ export default function PhotosPage() {
           />
         </CardHeader>
         <CardContent className="pt-6 flex-1 overflow-y-auto">
-            <Dialog open={!!viewingPhoto} onOpenChange={() => setViewingPhoto(null)}>
-              <DialogContent className="p-0 bg-transparent border-0 shadow-none max-w-4xl w-full">
-                 {viewingPhoto && (
-                  <>
-                    <DialogHeader className="sr-only">
-                        <DialogTitle>{viewingPhoto.description}</DialogTitle>
-                        <DialogDescription>A photo by {viewingPhoto.uploader}.</DialogDescription>
-                    </DialogHeader>
-                    <div className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-h-[90vh] mx-auto">
-                      <div className="relative aspect-video flex-1">
-                         <Image
-                            src={viewingPhoto.url}
-                            alt={viewingPhoto.description}
-                            fill
-                            className="object-contain"
-                         />
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t">
-                          <p className="font-semibold text-card-foreground text-sm truncate pr-4">{viewingPhoto.description}</p>
-                          {isViewingPhotoOwner && (
-                              <Button variant="ghost" size="icon" onClick={() => handleDeletePhoto(viewingPhoto.id)} className="text-destructive hover:bg-destructive/10 hover:text-destructive flex-shrink-0">
-                                  <Trash2 className="h-5 w-5" />
-                              </Button>
-                          )}
-                       </div>
-                    </div>
-                  </>
-                 )}
-              </DialogContent>
-            </Dialog>
-
             <Dialog open={isUploadModalOpen} onOpenChange={setUploadModalOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -381,13 +307,30 @@ export default function PhotosPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {displayedPhotos.map((photo) => (
-                <PhotoItem 
-                  key={photo.id} 
-                  photo={photo}
-                  onDescriptionChange={handleDescriptionChange}
-                  isOwner={photo.uploader === user}
-                  onPhotoClick={setViewingPhoto}
-                />
+                 <div
+                  key={photo.id}
+                  onClick={() => setViewingPhoto(photo)}
+                  className='overflow-hidden rounded-lg shadow-md aspect-video relative group cursor-pointer'
+                >
+                  <Image
+                    src={photo.url}
+                    alt={photo.description}
+                    width={800}
+                    height={600}
+                    className="h-full w-full object-cover transition-transform group-hover:scale-105 pointer-events-none"
+                    priority
+                  />
+                  {photo.isPrivate && (
+                    <div className="absolute top-2 right-2 bg-black/50 p-1.5 rounded-full">
+                        <Lock className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                      <p className="text-xs truncate">
+                        {photo.description}
+                      </p>
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -396,5 +339,3 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-    
