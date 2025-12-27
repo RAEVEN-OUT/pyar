@@ -129,8 +129,10 @@ export default function PhotosPage() {
   }, [passwordInput]);
   
   const handlePinPadClick = useCallback((value: string) => {
-    setPasswordInput((prev) => (prev + value).slice(0, 4));
-  }, []);
+    if (passwordInput.length < 4) {
+      setPasswordInput((prev) => prev + value);
+    }
+  }, [passwordInput.length]);
 
   const handlePinPadBackspace = useCallback(() => {
     setPasswordInput(prev => prev.slice(0, -1));
@@ -169,7 +171,7 @@ export default function PhotosPage() {
     <div className="flex h-full flex-col p-4 md:p-8">
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
         <DialogContent
-          className="p-0 bg-transparent border-0 shadow-none sm:rounded-lg w-auto inline-block"
+          className="p-0 bg-transparent border-0 shadow-none inline-block w-auto"
         >
           <DialogTitle className="sr-only">Viewing Photo: {viewingPhoto?.description}</DialogTitle>
           {viewingPhoto && (
@@ -180,7 +182,7 @@ export default function PhotosPage() {
                         alt={viewingPhoto.description}
                         width={1920}
                         height={1080}
-                        className="object-contain w-full h-auto max-h-[calc(95vh-4rem)]"
+                        className="object-contain w-auto h-auto max-h-[115vh]"
                     />
                 </div>
                 <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t">
@@ -277,6 +279,9 @@ export default function PhotosPage() {
                          <div />
                          <Button key="0" type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick('0')}>
                            0
+                         </Button>
+                         <Button key="backspace" type="button" variant="outline" className="h-14 text-xl" onClick={handlePinPadBackspace}>
+                           <Trash2 className="h-6 w-6" />
                          </Button>
                     </div>
                   </div>
