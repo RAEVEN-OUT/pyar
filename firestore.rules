@@ -1,224 +1,61 @@
-/**
- * Core Philosophy: This ruleset is designed for the Amorem Duo application, a platform for exactly two users.
- * The security model combines strict user-ownership for private data with a shared-access model for collaborative
- * features. This ensures personal information remains private while shared content is accessible only to the couple.
- *
- * Data Structure: The data is organized into user-specific and shared collections.
- * - Private data, such as personal notes, is nested under `/userProfiles/{userId}`.
- * - Shared data, like chats, to-do tasks, and important dates, resides in top-level collections.
- *
- * Key Security Decisions:
- * - User Isolation: Users can only create, read, update, or delete their own user profile and associated private data.
- *   Global listing of users is explicitly disabled to protect privacy.
- * - Shared Access via Denormalization: Access to shared documents is controlled by a `members` map
- *   denormalized (copied) directly onto each shared document. This allows for fast, secure, and independent
- *   authorization checks without costly or slow cross-document reads (`get()` calls).
- * - Photo Security: Photos are stored in a single collection with an `albumType` field ('shared' or 'private').
- *   To prevent private photos from being accidentally exposed in general queries, `list` operations on the
- *   entire `/photos` collection are disabled. Photos must be fetched by their specific ID.
- * - Prototyping Flexibility: These rules strictly enforce *who* can access data but do not enforce the *shape*
- *   of the data (e.g., field types, required fields). This allows for rapid development and schema changes.
- *   Validation is limited to fields critical for authorization, such as ownership IDs.
- */
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --------------------------------------------------------------------
-    // Helper Functions
-    // --------------------------------------------------------------------
-
-    /**
-     * Verifies that the user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Verifies that the authenticated user's UID matches the provided userId.
-     * This is the foundation of the user-ownership model.
-     * @param userId The UID to check against the authenticated user.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * Checks if the document being accessed already exists in Firestore.
-     * Crucial for protecting against writes to non-existent paths.
-     */
-    function isExistingDoc() {
-      return resource != null;
-    }
-
-    /**
-     * A convenience function that combines an ownership check with an existence check.
-     * Used for secure update and delete operations on user-owned documents.
-     * @param userId The UID of the document's owner.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && isExistingDoc();
-    }
-    
-    /**
-     * Checks if the authenticated user is a member of a shared document.
-     * Assumes the document data contains a 'members' map (e.g., {uid1: true, uid2: true}).
-     * @param docData The data of the document being checked.
-     */
-    function isMember(docData) {
-      // CRITICAL: This function assumes a 'members' map exists on the document.
-      // Example: { members: { 'user_abc': true, 'user_xyz': true } }
-      return isSignedIn() && request.auth.uid in docData.members;
-    }
-    
-    /**
-     * Combines a membership check with an existence check for secure updates/deletes.
-     * @param docData The data of the document being checked.
-     */
-    function isExistingMember(docData) {
-      return isMember(docData) && isExistingDoc();
-    }
-    
-    /**
-     * Checks if the user is the author of a message or note.
-     * Assumes the document data contains an 'authorId' or 'senderId' field.
-     */
-    function isAuthor(docData) {
-      return isSignedIn() && (request.auth.uid == docData.authorId || request.auth.uid == docData.senderId);
-    }
-    
-    /**
-     * Checks if the user is the creator of a resource.
-     * Assumes the document data contains a 'creatorId' field.
-     */
-    function isCreator(docData) {
-      return isSignedIn() && request.auth.uid == docData.creatorId;
-    }
-
-    /**
-     * Provides a shorthand for the incoming data in a write request.
-     */
-    function incomingData() {
-      return request.resource.data;
-    }
-
-    /**
-     * Provides a shorthand for the existing data of a document before a write.
-     */
-    function existingData() {
-      return resource.data;
-    }
-
-    /**
-     * @description Rules for user profile documents.
-     * @path /userProfiles/{userId}
-     * @allow A user (uid: 'user123') can (create) their own profile at `/userProfiles/user123`.
-     * @deny A user (uid: 'user123') cannot (get) another user's profile at `/userProfiles/user456`.
-     * @principle Restricts access to a user's own data tree.
-     */
+    // USER PROFILES
     match /userProfiles/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && incomingData().id == userId;
-      allow update: if isExistingOwner(userId) && incomingData().id == existingData().id;
-      allow delete: if isExistingOwner(userId);
-
-      /**
-       * @description Rules for a user's private notes.
-       * @path /userProfiles/{userId}/notes/{noteId}
-       * @allow A user (uid: 'user123') can (list) all notes under their own path `/userProfiles/user123/notes`.
-       * @deny A user (uid: 'user123') cannot (create) a note under another user's path `/userProfiles/user456/notes`.
-       * @principle Enforces strict document ownership within a user's private subcollection.
-       */
-      match /notes/{noteId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && incomingData().authorId == userId;
-        allow update: if isExistingOwner(userId) && incomingData().authorId == existingData().authorId;
-        allow delete: if isExistingOwner(userId);
-      }
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * @description Rules for the parent chat document that contains metadata.
-     * @path /privateChats/{chatId}
-     * @allow A user included in the `members` map can (get) the chat document.
-     * @deny An unauthenticated user cannot (get) any chat document.
-     * @principle Access is granted based on membership in a denormalized list on the document itself.
-     */
-    match /privateChats/{chatId} {
-      // CRITICAL: The 'privateChats' document requires a 'members' map field for these rules to work.
-      // Example: { members: { 'user_abc': true, 'user_xyz': true } }
-      allow get, list: if isMember(resource.data);
-      allow create: if isSignedIn() && request.auth.uid in incomingData().members;
-      allow update: if isExistingMember(resource.data);
-      allow delete: if false; // Disallow deleting the entire chat thread.
+    // CHAT
+    match /privateChats/mainChat {
+        allow read, write: if isSignedIn();
+    }
+    match /privateChats/mainChat/chatMessages/{messageId} {
+      allow read, list, create: if isSignedIn();
+      allow update, delete: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
 
-    /**
-     * @description Rules for individual chat messages.
-     * @path /privateChats/{chatId}/chatMessages/{messageId}
-     * @allow A user in the chat's `members` list can (create) a message.
-     * @deny A user who is not the original sender cannot (delete) a message.
-     * @principle Access control relies on a `get()` call to the parent document to check membership,
-     * ensuring that only current chat members can interact with the message history.
-     */
-    match /privateChats/{chatId}/chatMessages/{messageId} {
-      // This rule uses get() to check the parent document for membership. This is an explicit
-      // exception to the 'no-get' rule because the parent document is the single source of truth for chat membership.
-      allow get, list: if isMember(get(/databases/$(database)/documents/privateChats/$(chatId)).data);
-      allow create: if isMember(get(/databases/$(database)/documents/privateChats/$(chatId)).data) && incomingData().senderId == request.auth.uid;
-      allow update: if isExistingDoc() && isAuthor(existingData()) && isMember(get(/databases/$(database)/documents/privateChats/$(chatId)).data) && incomingData().senderId == existingData().senderId;
-      allow delete: if isExistingDoc() && isAuthor(existingData()) && isMember(get(/databases/$(database)/documents/privateChats/$(chatId)).data);
+    // NOTES
+    match /userProfiles/{userId}/notes/{noteId} {
+      allow read, list, create, update, delete: if isSignedIn() && request.auth.uid == userId;
     }
-    
-    /**
-     * @description Rules for shared important dates.
-     * @path /importantDates/{dateId}
-     * @allow Any user in the document's `members` map can (get) the date.
-     * @deny A user not in the `members` map cannot (update) the date.
-     * @principle Shared access is controlled by a denormalized `members` map on the document.
-     */
+
+    // IMPORTANT DATES
     match /importantDates/{dateId} {
-      // TODO: The 'ImportantDate' entity is missing a 'members' map field.
-      // These rules assume it exists, e.g., { members: { 'user_abc': true, 'user_xyz': true } }.
-      allow get, list: if isMember(resource.data);
-      allow create: if isMember(incomingData()) && isAuthor(incomingData());
-      allow update, delete: if isExistingMember(resource.data);
+      allow read, list, create: if isSignedIn();
+      allow update, delete: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
     }
     
-    /**
-     * @description Rules for the shared to-do list.
-     * @path /toDoTasks/{taskId}
-     * @allow A user in the document's `members` map can (update) a task (e.g., mark as complete).
-     * @deny A user not in the `members` map cannot (create) a new task.
-     * @principle Shared access is controlled by a denormalized `members` map on the document.
-     */
+    // STICKERS
+    match /stickers/{stickerId} {
+        allow read, list, create, update: if isSignedIn();
+    }
+
+    // TO-DO TASKS
     match /toDoTasks/{taskId} {
-      // TODO: The 'ToDoTask' entity is missing a 'members' map field.
-      // These rules assume it exists, e.g., { members: { 'user_abc': true, 'user_xyz': true } }.
-      allow get, list: if isMember(resource.data);
-      allow create: if isMember(incomingData()) && isCreator(incomingData());
-      allow update, delete: if isExistingMember(resource.data);
+      allow read, list, create: if isSignedIn();
+      allow update, delete: if isSignedIn(); // Allow both users to update/delete
+    }
+
+    // PHOTOS
+    match /photos/{photoId} {
+      allow create: if isSignedIn() && request.resource.data.uploader == request.auth.uid;
+      allow read: if isSignedIn() && (resource.data.isPrivate == false || resource.data.uploader == request.auth.uid);
+      allow list: if isSignedIn();
+      allow delete: if isSignedIn() && resource.data.uploader == request.auth.uid;
     }
     
-    /**
-     * @description Rules for shared and private photos.
-     * @path /photos/{photoId}
-     * @allow A user can (get) a photo if its `albumType` is 'shared' and they are in the `members` map.
-     * @deny Listing all photos via `(list)` is disabled to prevent leaking private photos.
-     * @principle Implements complex logic based on document fields ('albumType') and disables insecure queries.
-     */
-    match /photos/{photoId} {
-      // CRITICAL: The 'Photo' entity is missing an 'ownerId' string field and a 'members' map field.
-      // These fields are essential for these rules to function correctly.
-      // `ownerId` should be the UID of the uploader.
-      // `members` should be a map of users who can view 'shared' photos.
-      allow get: if (existingData().albumType == 'shared' && isMember(existingData())) || (existingData().albumType == 'private' && isOwner(existingData().ownerId));
-      allow list: if false; // Denied to prevent leaking private photo data in broad queries.
-      allow create: if isSignedIn() && incomingData().ownerId == request.auth.uid;
-      allow update: if isExistingOwner(existingData().ownerId) && incomingData().ownerId == existingData().ownerId;
-      allow delete: if isExistingOwner(existingData().ownerId);
+    // DISCIPLINE ACTIVITIES
+    match /disciplineActivities/{activityId} {
+        allow read, list, update: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.creatorId == request.auth.uid;
+        allow delete: if isSignedIn() && resource.data.creatorId == request.auth.uid;
     }
   }
 }

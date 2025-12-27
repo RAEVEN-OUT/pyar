@@ -10,6 +10,9 @@ import { isFuture, isSameMonth, isToday, format, add, startOfMonth, endOfMonth, 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useNotes, type Note } from '@/context/notes-context';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+
 
 const NoteEditor = ({
   noteUser,
@@ -107,7 +110,7 @@ const NoteEditor = ({
             </div>
             {note?.lastUpdated && (
                 <p className="self-end px-2 text-xs text-muted-foreground">
-                    Last updated: {note.lastUpdated}
+                    Last updated: {new Date(note.lastUpdated?.seconds * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                 </p>
             )}
           </div>
@@ -148,7 +151,7 @@ const NotesCalendar = ({
 
   const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-  const noteDates = useMemo(() => notes.map(note => new Date(note.date.replace(/-/g, '/'))), [notes]);
+  const noteDates = useMemo(() => notes.map(note => new Date(note.id.replace(/-/g, '/'))), [notes]);
 
   return (
     <Card className="w-full">
@@ -201,14 +204,25 @@ const NotesCalendar = ({
 
 export default function NotesPage() {
   const { user: currentUser } = useAuth();
-  const { notes, saveNote } = useNotes();
+  const { firestore } = useFirebase();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  
+  const otherUser = currentUser === 'Raveen' ? 'Priya' : 'Raveen';
+
+  const currentUserNotesRef = useMemoFirebase(() => currentUser ? collection(firestore, 'userProfiles', currentUser, 'notes') : null, [firestore, currentUser]);
+  const otherUserNotesRef = useMemoFirebase(() => otherUser ? collection(firestore, 'userProfiles', otherUser, 'notes') : null, [firestore, otherUser]);
+
+  const { data: currentUserNotes } = useCollection<Note>(currentUserNotesRef);
+  const { data: otherUserNotes } = useCollection<Note>(otherUserNotesRef);
+
+  const allNotes = useMemo(() => [...(currentUserNotes || []), ...(otherUserNotes || [])], [currentUserNotes, otherUserNotes]);
+
+  const { saveNote } = useNotes();
 
   const dailyNotes = useMemo(() => {
     const dateString = format(selectedDate, 'yyyy-MM-dd');
-    return notes.filter(n => n.date === dateString);
-  }, [notes, selectedDate]);
-
+    return allNotes.filter(n => n.id === dateString);
+  }, [allNotes, selectedDate]);
   
   const handleSaveNote = (userToSave: User) => (text: string) => {
     if (!currentUser) return;
@@ -232,7 +246,7 @@ export default function NotesPage() {
         <NotesCalendar
           selectedDate={selectedDate}
           onDateSelect={setSelectedDate}
-          notes={notes}
+          notes={allNotes}
         />
       </div>
 
@@ -264,5 +278,3 @@ export default function NotesPage() {
     </div>
   );
 }
-
-    

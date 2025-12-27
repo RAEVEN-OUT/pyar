@@ -16,9 +16,22 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { useFirebase, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  orderBy,
+  doc,
+  updateDoc,
+  deleteDoc,
+  setDoc,
+} from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
 
 type Mood = {
   mood: string;
@@ -37,23 +50,16 @@ const moodOptions: Mood[] = [
 ];
 
 export type Message = {
-  id: number;
+  id: string;
+  senderId: string;
   sender: User;
   text?: string;
   audioUrl?: string;
-  timestamp: string;
-  reactions?: { [emoji: string]: User[] };
+  timestamp: any;
+  reactions?: { [emoji: string]: string[] };
   isEdited?: boolean;
   replyTo?: Message;
 };
-
-const initialMessages: Message[] = [
-  { id: 1, sender: 'Priya', text: "Hey! How's your day going?", timestamp: '10:30 AM' },
-  { id: 2, sender: 'Raveen', text: "It's going well, thanks! Just finishing up some work. You?", timestamp: '10:31 AM' },
-  { id: 3, sender: 'Priya', text: "Pretty good! Thinking about what to make for dinner tonight.", timestamp: '10:32 AM' },
-  { id: 4, sender: 'Raveen', text: 'Ooh, any ideas? I was thinking maybe we could order in?', timestamp: '10:33 AM', replyTo: { id: 3, sender: 'Priya', text: "Pretty good! Thinking about what to make for dinner tonight.", timestamp: '10:32 AM'}},
-];
-
 
 const reactionEmojis = ['❤️', '😂', '🥰', '😍', '😢', '😮'];
 
@@ -61,21 +67,34 @@ const reactionEmojis = ['❤️', '😂', '🥰', '😍', '😢', '😮'];
 function MoodDisplay({
   user,
   otherUser,
-  mood,
-  onMoodChange,
 }: {
   user: User;
   otherUser: User;
-  mood: Mood;
-  onMoodChange: (newMood: Mood) => void;
 }) {
+  const { firestore } = useFirebase();
+  const currentUserRef = useMemoFirebase(() => user ? doc(firestore, 'userProfiles', user) : null, [firestore, user]);
+  const otherUserRef = useMemoFirebase(() => otherUser ? doc(firestore, 'userProfiles', otherUser) : null, [firestore, otherUser]);
+  
+  const { data: currentUserProfile } = useDoc(currentUserRef);
+  const { data: otherUserProfile } = useDoc(otherUserRef);
+
+  const onMoodChange = (newMood: Mood) => {
+    if (currentUserRef) {
+      updateDoc(currentUserRef, { mood: newMood });
+    }
+  };
+  
+  const currentMood = currentUserProfile?.mood || moodOptions[0];
+  const otherUserMood = otherUserProfile?.mood || moodOptions[0];
+
+
   return (
     <div className="flex justify-between items-center p-4 border-b bg-card rounded-t-lg">
       <div className="flex items-center gap-3">
-        <span className="text-4xl">{mood.emoji}</span>
+        <span className="text-4xl">{otherUserMood.emoji}</span>
         <div>
           <p className="font-semibold text-sm">{otherUser}</p>
-          <p className="text-xs text-muted-foreground">{mood.mood}</p>
+          <p className="text-xs text-muted-foreground">{otherUserMood.mood}</p>
         </div>
       </div>
 
@@ -84,9 +103,9 @@ function MoodDisplay({
           <div className="flex items-center gap-3 text-right cursor-pointer rounded-md p-2 hover:bg-muted transition-colors">
             <div className="flex flex-col items-end">
               <p className="font-semibold text-sm">{user}</p>
-              <p className="text-xs text-muted-foreground">{mood.mood}</p>
+              <p className="text-xs text-muted-foreground">{currentMood.mood}</p>
             </div>
-            <span className="text-4xl">{mood.emoji}</span>
+            <span className="text-4xl">{currentMood.emoji}</span>
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
@@ -203,11 +222,11 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
 
 
 export default function ChatPage() {
-  const { user, loading } = useAuth();
+  const { user, firebaseUser, loading } = useAuth();
+  const { firestore, storage } = useFirebase();
   const { toast } = useToast();
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  
   const [newMessage, setNewMessage] = useState('');
-  const [mood, setMood] = useState<Mood>(moodOptions[0]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
@@ -222,6 +241,11 @@ export default function ChatPage() {
   const [editedText, setEditedText] = useState('');
 
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  
+  const messagesCollectionRef = useMemoFirebase(() => collection(firestore, 'privateChats', 'mainChat', 'chatMessages'), [firestore]);
+  const messagesQuery = useMemoFirebase(() => query(messagesCollectionRef, orderBy('timestamp', 'asc')), [messagesCollectionRef]);
+  const { data: messages } = useCollection<Message>(messagesQuery);
+
 
   useEffect(() => {
     navigator.permissions.query({ name: 'microphone' as PermissionName }).then((result) => {
@@ -241,50 +265,46 @@ export default function ChatPage() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === '' || !user) return;
+    if (newMessage.trim() === '' || !user || !firebaseUser) return;
     
-    const message: Message = {
-      id: Date.now(),
+    addDoc(messagesCollectionRef, {
+      senderId: firebaseUser.uid,
       sender: user,
       text: newMessage.trim(),
-      timestamp: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-      replyTo: replyingTo || undefined,
-    };
+      timestamp: serverTimestamp(),
+      replyTo: replyingTo || null,
+    });
     
-    setMessages((prev) => [...prev, message]);
     setNewMessage('');
     setReplyingTo(null);
     setShowEmojiPicker(false);
   };
 
-  const handleReaction = (messageId: number, emoji: string) => {
-    if (!user) return;
+  const handleReaction = (messageId: string, emoji: string) => {
+    if (!firebaseUser) return;
 
-    setMessages((prevMessages) =>
-      prevMessages.map((msg) => {
-        if (msg.id === messageId) {
-          const newReactions = { ...(msg.reactions || {}) };
-          const usersForEmoji = newReactions[emoji] || [];
-          
-          if (usersForEmoji.includes(user)) {
-            // User is removing their reaction
-            newReactions[emoji] = usersForEmoji.filter((u) => u !== user);
-            if (newReactions[emoji].length === 0) {
-              delete newReactions[emoji];
-            }
-          } else {
-            // User is adding a reaction
-            newReactions[emoji] = [...usersForEmoji, user];
-          }
-          return { ...msg, reactions: newReactions };
-        }
-        return msg;
-      })
-    );
+    const messageRef = doc(firestore, 'privateChats', 'mainChat', 'chatMessages', messageId);
+    const message = messages?.find(m => m.id === messageId);
+    if (!message) return;
+
+    const newReactions = { ...(message.reactions || {}) };
+    const usersForEmoji = newReactions[emoji] || [];
+    
+    if (usersForEmoji.includes(firebaseUser.uid)) {
+      newReactions[emoji] = usersForEmoji.filter((uid) => uid !== firebaseUser.uid);
+      if (newReactions[emoji].length === 0) {
+        delete newReactions[emoji];
+      }
+    } else {
+      newReactions[emoji] = [...usersForEmoji, firebaseUser.uid];
+    }
+
+    updateDoc(messageRef, { reactions: newReactions });
   };
 
-  const handleUnsend = (messageId: number) => {
-    setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+  const handleUnsend = (messageId: string) => {
+    const messageRef = doc(firestore, 'privateChats', 'mainChat', 'chatMessages', messageId);
+    deleteDoc(messageRef);
   };
   
   const handleEdit = (message: Message) => {
@@ -298,11 +318,11 @@ export default function ChatPage() {
 
   const submitEdit = () => {
     if (!editingMessage) return;
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === editingMessage.id ? { ...msg, text: editedText, isEdited: true } : msg
-      )
-    );
+    const messageRef = doc(firestore, 'privateChats', 'mainChat', 'chatMessages', editingMessage.id);
+    updateDoc(messageRef, {
+      text: editedText,
+      isEdited: true,
+    });
     setEditingMessage(null);
     setEditedText('');
   };
@@ -322,7 +342,7 @@ export default function ChatPage() {
   }
 
   const handleVoiceMessage = async () => {
-    if (!user) return;
+    if (!user || !firebaseUser) return;
     if (isRecording) {
         stopRecording(true);
         return;
@@ -357,7 +377,7 @@ export default function ChatPage() {
             audioChunks.push(event.data);
         };
         
-        mediaRecorder.onstop = () => {
+        mediaRecorder.onstop = async () => {
             if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
             if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
             setIsRecording(false);
@@ -365,16 +385,30 @@ export default function ChatPage() {
 
             if (audioChunks.length > 0) {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const message: Message = {
-                    id: Date.now(),
-                    sender: user,
-                    audioUrl,
-                    timestamp: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-                    replyTo: replyingTo || undefined,
-                };
-                setMessages(prev => [...prev, message]);
-                setReplyingTo(null);
+                const audioId = new Date().toISOString();
+                const storageRef = ref(storage, `voice-notes/${audioId}.webm`);
+                
+                try {
+                    await uploadBytes(storageRef, audioBlob);
+                    const audioUrl = await getDownloadURL(storageRef);
+
+                    await addDoc(messagesCollectionRef, {
+                        senderId: firebaseUser.uid,
+                        sender: user,
+                        audioUrl,
+                        timestamp: serverTimestamp(),
+                        replyTo: replyingTo || null,
+                    });
+                    setReplyingTo(null);
+
+                } catch (e) {
+                    console.error("Error uploading voice note:", e);
+                    toast({
+                      variant: "destructive",
+                      title: "Upload failed",
+                      description: "Could not upload your voice note."
+                    })
+                }
             }
             
             stream.getTracks().forEach(track => track.stop());
@@ -404,7 +438,7 @@ export default function ChatPage() {
     return `${minutes}:${secs}`;
   }
 
-  const handleScrollToMessage = (messageId: number) => {
+  const handleScrollToMessage = (messageId: string) => {
     const messageElement = document.getElementById(`message-${messageId}`);
     if (messageElement) {
       messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -415,6 +449,10 @@ export default function ChatPage() {
     }
   };
   
+  const formatTimestamp = (timestamp: any) => {
+    if (!timestamp) return '';
+    return new Date(timestamp.seconds * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
 
   if (loading || !user) {
     return null;
@@ -446,11 +484,9 @@ export default function ChatPage() {
         <MoodDisplay
           user={user}
           otherUser={otherUser}
-          mood={mood}
-          onMoodChange={setMood}
         />
         <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 no-scrollbar" style={{scrollBehavior: 'smooth'}}>
-          {messages.map((msg) => {
+          {messages && messages.map((msg) => {
             const isSender = msg.sender === user;
             const messageReactions = msg.reactions ? Object.entries(msg.reactions) : [];
 
@@ -506,7 +542,7 @@ export default function ChatPage() {
                                       : 'text-accent-foreground/70',
                                     'text-right'
                                   )}>
-                                    {msg.timestamp}
+                                    {formatTimestamp(msg.timestamp)}
                                   </p>
                                  </div>
                                </div>
@@ -606,5 +642,3 @@ export default function ChatPage() {
     </div>
   );
 }
-
-    

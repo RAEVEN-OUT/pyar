@@ -4,19 +4,20 @@
 import {
   createContext,
   useContext,
-  useState,
   type ReactNode,
-  useCallback
+  useCallback,
+  useMemo,
 } from 'react';
-import { type User } from './auth-context';
+import { useAuth, type User } from './auth-context';
 import { format } from 'date-fns';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export type Note = {
-  id: string; // "yyyy-MM-dd-Raveen" or "yyyy-MM-dd-Priya"
+  id: string; // "yyyy-MM-dd"
   author: User;
-  date: string; // 'yyyy-MM-dd'
   text: string;
-  lastUpdated: string;
+  lastUpdated: any;
 };
 
 interface NotesContextType {
@@ -27,36 +28,26 @@ interface NotesContextType {
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
 export function NotesProvider({ children }: { children: ReactNode }) {
-  const [notes, setNotes] = useState<Note[]>([]);
+  const { firestore } = useFirebase();
+  const { user } = useAuth();
+  
+  const notesCollectionRef = useMemoFirebase(() => user ? collection(firestore, 'userProfiles', user, 'notes') : null, [firestore, user]);
+  const { data: notes } = useCollection<Note>(notesCollectionRef);
 
   const saveNote = useCallback((author: User, date: Date, text: string) => {
     const dateKey = format(date, 'yyyy-MM-dd');
-    const noteId = `${dateKey}-${author}`;
-    const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const noteRef = doc(firestore, 'userProfiles', author, 'notes', dateKey);
 
-    setNotes(prevNotes => {
-      const existingNoteIndex = prevNotes.findIndex(n => n.id === noteId);
-      
-      if (existingNoteIndex > -1) {
-        // Update existing note
-        return prevNotes.map((note, index) => 
-          index === existingNoteIndex ? { ...note, text, lastUpdated: now } : note
-        );
-      } else {
-        // Add new note
-        const newNote: Note = {
-          id: noteId,
-          author,
-          date: dateKey,
-          text,
-          lastUpdated: now,
-        };
-        return [...prevNotes, newNote];
-      }
-    });
-  }, []);
+    setDoc(noteRef, {
+      id: dateKey,
+      author,
+      text,
+      lastUpdated: serverTimestamp(),
+    }, { merge: true });
 
-  const value = { notes, saveNote };
+  }, [firestore]);
+  
+  const value = { notes: notes || [], saveNote };
 
   return <NotesContext.Provider value={value}>{children}</NotesContext.Provider>;
 }
@@ -68,5 +59,3 @@ export function useNotes() {
   }
   return context;
 }
-
-    

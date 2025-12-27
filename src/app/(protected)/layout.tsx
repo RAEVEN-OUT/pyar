@@ -59,7 +59,7 @@ function NavMenuItems() {
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   const otherUserHasNoteToday = notes.some(
     (note) =>
-      note.date === todayKey && note.author === otherUser && note.text.trim() !== ''
+      note.id === todayKey && note.author === otherUser && note.text.trim() !== ''
   );
   
   const uncheckedTodoCount = tasks.filter(task => !task.completedAt).length;

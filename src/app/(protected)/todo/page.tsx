@@ -8,12 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ListChecks, Plus, Circle } from 'lucide-react';
+import { ListChecks, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { format } from 'date-fns';
+import { format as formatDate } from 'date-fns';
 
-const TaskItem = ({ task, currentUser, onToggle }: { task: Task, currentUser: User, onToggle: (id: number) => void }) => {
+const TaskItem = ({ task, currentUser, onToggle }: { task: Task, currentUser: User, onToggle: (id: string) => void }) => {
   const isCreatorRaveen = task.creator === 'Raveen';
   const canToggle = task.assignee === currentUser;
 
@@ -63,7 +63,7 @@ const TaskItem = ({ task, currentUser, onToggle }: { task: Task, currentUser: Us
           {task.text}
         </label>
         <p className="text-xs text-muted-foreground/80 mt-1">
-          Created by {task.creator} on {format(new Date(task.createdAt), 'yyyy-MM-dd')}
+          Created by {task.creator} on {task.createdAt ? formatDate(new Date(task.createdAt.seconds * 1000), 'yyyy-MM-dd') : ''}
         </p>
       </div>
     </div>
@@ -84,7 +84,7 @@ export default function ToDoPage() {
   };
 
   const { pendingTasks, completedTasks } = useMemo(() => {
-    const pending = tasks.filter(task => !task.completedAt).sort((a, b) => b.id - a.id);
+    const pending = tasks.filter(task => !task.completedAt).sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds);
     const completed = tasks.filter(task => task.completedAt).sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
     return { pendingTasks: pending, completedTasks: completed };
   }, [tasks]);

@@ -19,8 +19,8 @@ type UserColumnProps = {
   activities: Activity[];
   score: number;
   newActivity: string;
-  onCheckChange: (user: User, activityId: number, currentState: boolean) => void;
-  onDeleteActivity: (activityId: number) => void;
+  onCheckChange: (user: User, activityId: string, currentState: boolean) => void;
+  onDeleteActivity: (activityId: string) => void;
   onAddActivity: (e: React.FormEvent) => void;
   onNewActivityChange: (value: string) => void;
 };
@@ -143,12 +143,12 @@ export default function DisciplinePage() {
     }
 
     const prevOtherUserScore = prevActivitiesRef.current
-        .map(a => a.checks[otherUser] ? 1 : 0)
-        .reduce((sum, current) => sum + current, 0);
+        .filter(a => a.checks[otherUser])
+        .length;
     
     const currentOtherUserScore = activities
-        .map(a => a.checks[otherUser] ? 1 : 0)
-        .reduce((sum, current) => sum + current, 0);
+        .filter(a => a.checks[otherUser])
+        .length;
 
     if (currentOtherUserScore > prevOtherUserScore) {
       const completedActivity = activities.find(act => {
@@ -170,7 +170,7 @@ export default function DisciplinePage() {
     return null; // Or a loading spinner
   }
 
-  const handleCheckChange = (checkedUser: User, activityId: number) => {
+  const handleCheckChange = (checkedUser: User, activityId: string) => {
     toggleActivity(activityId, checkedUser);
   };
 
@@ -184,9 +184,6 @@ export default function DisciplinePage() {
   
   const userScore = activities.filter(a => a.checks[currentUserRole]).length;
   const otherUserScore = activities.filter(a => a.checks[otherUser]).length;
-
-  const userActivities = activities;
-  const otherUserActivities = activities;
 
   // Determine which user is displayed on the left and which is on the right
   const leftUser = currentUserRole === 'Raveen' ? 'Raveen' : 'Priya';
@@ -203,7 +200,7 @@ export default function DisciplinePage() {
             <UserColumn 
               displayedUser={leftUser}
               currentUser={currentUserRole}
-              activities={userActivities}
+              activities={activities}
               score={leftUser === currentUserRole ? userScore : otherUserScore}
               newActivity={newActivity}
               onCheckChange={handleCheckChange}
@@ -214,7 +211,7 @@ export default function DisciplinePage() {
             <UserColumn 
               displayedUser={rightUser}
               currentUser={currentUserRole}
-              activities={otherUserActivities}
+              activities={activities}
               score={rightUser === currentUserRole ? userScore : otherUserScore}
               newActivity={''} // Not used for other user
               onCheckChange={() => {}} // Not used

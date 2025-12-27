@@ -1,310 +1,223 @@
+
 {
   "entities": {
     "UserProfile": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
       "description": "Represents a user profile within the Amorem Duo application.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the user profile."
-        },
         "role": {
           "type": "string",
-          "description": "The user's role within the app ('Him' or 'Her')."
+          "description": "The user's role within the app ('Him' or 'Her').",
+          "enum": ["Raveen", "Priya"]
         },
         "mood": {
-          "type": "string",
-          "description": "The user's current mood, represented by an emoji or short text.",
-          "format": "emoji"
+          "type": "object",
+          "properties": {
+              "mood": {"type": "string"},
+              "emoji": {"type": "string"}
+          }
         }
       },
       "required": [
-        "id",
         "role"
       ]
     },
     "ChatMessage": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ChatMessage",
       "type": "object",
       "description": "Represents a single message within the private chat.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the chat message."
-        },
         "senderId": {
           "type": "string",
-          "description": "Reference to the UserProfile of the message sender. (Relationship: UserProfile 1:N ChatMessage)"
+          "description": "The Firebase UID of the message sender."
         },
-        "content": {
+        "sender": {
+          "type": "string",
+          "enum": ["Raveen", "Priya"]
+        },
+        "text": {
           "type": "string",
           "description": "The text content of the message."
         },
+        "audioUrl": {
+            "type": "string",
+            "format": "uri"
+        },
         "timestamp": {
           "type": "string",
-          "description": "The date and time the message was sent.",
           "format": "date-time"
         },
-        "voiceNoteUrl": {
-          "type": "string",
-          "description": "URL to the voice note file, if the message is a voice note.  Null if it is not a voice note.",
-          "format": "uri"
+        "reactions": {
+            "type": "object"
+        },
+        "isEdited": {
+            "type": "boolean"
+        },
+        "replyTo": {
+            "type": "object"
         }
       },
       "required": [
-        "id",
         "senderId",
-        "content",
+        "sender",
         "timestamp"
       ]
     },
     "Note": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Note",
       "type": "object",
       "description": "Represents a note created by a user for a specific date.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the note."
+          "description": "Unique identifier for the note (yyyy-MM-dd)."
         },
-        "authorId": {
+        "author": {
           "type": "string",
-          "description": "Reference to the UserProfile of the note's author. (Relationship: UserProfile 1:N Note)"
+          "enum": ["Raveen", "Priya"]
         },
-        "date": {
-          "type": "string",
-          "description": "The date the note is associated with.",
-          "format": "date"
+        "text": {
+          "type": "string"
         },
-        "content": {
+        "lastUpdated": {
           "type": "string",
-          "description": "The text content of the note."
-        },
-        "timestamp": {
-          "type": "string",
-          "description": "The date and time the note was created.",
           "format": "date-time"
         }
       },
       "required": [
         "id",
-        "authorId",
-        "date",
-        "content",
-        "timestamp"
+        "author",
+        "text",
+        "lastUpdated"
       ]
     },
     "ImportantDate": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ImportantDate",
       "type": "object",
       "description": "Represents an important date or event.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the important date."
-        },
         "date": {
           "type": "string",
-          "description": "The date of the event.",
-          "format": "date"
+          "format": "date-time"
         },
         "title": {
-          "type": "string",
-          "description": "A short title for the event."
+          "type": "string"
         },
         "description": {
-          "type": "string",
-          "description": "A more detailed description of the event."
+          "type": "string"
+        },
+        "authorId": {
+            "type": "string"
+        },
+        "createdAt": {
+            "type": "string",
+            "format": "date-time"
         }
       },
       "required": [
-        "id",
         "date",
         "title",
-        "description"
+        "authorId",
+        "createdAt"
       ]
     },
+    "Sticker": {
+        "title": "Sticker",
+        "type": "object",
+        "properties": {
+            "id": {"type": "string"},
+            "emoji": {"type": "string"}
+        },
+        "required": ["id", "emoji"]
+    },
     "ToDoTask": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ToDoTask",
       "type": "object",
       "description": "Represents a task in the shared to-do list.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the to-do task."
-        },
-        "creatorId": {
-          "type": "string",
-          "description": "Reference to the UserProfile who created the task. (Relationship: UserProfile 1:N ToDoTask)"
-        },
-        "description": {
-          "type": "string",
-          "description": "The description of the task."
-        },
-        "isCompleted": {
-          "type": "boolean",
-          "description": "Indicates whether the task has been completed."
-        }
+        "text": { "type": "string" },
+        "completedAt": { "type": ["string", "null"], "format": "date-time" },
+        "assignee": { "type": "string", "enum": ["Raveen", "Priya"] },
+        "creator": { "type": "string", "enum": ["Raveen", "Priya"] },
+        "createdAt": { "type": "string", "format": "date-time"}
       },
       "required": [
-        "id",
-        "creatorId",
-        "description",
-        "isCompleted"
+        "text",
+        "assignee",
+        "creator",
+        "createdAt"
       ]
     },
     "Photo": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Photo",
       "type": "object",
-      "description": "Represents a photo in the shared photo album or the private 'My Eyes Only' album.",
+      "description": "Represents a photo in the albums.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the photo."
-        },
-        "url": {
-          "type": "string",
-          "description": "URL to the photo file.",
-          "format": "uri"
-        },
-        "albumType": {
-          "type": "string",
-          "description": "Indicates which album the photo belongs to ('shared' or 'private')."
-        },
-        "uploadTimestamp": {
-          "type": "string",
-          "description": "The date and time the photo was uploaded.",
-          "format": "date-time"
-        }
+        "url": { "type": "string", "format": "uri"},
+        "storagePath": { "type": "string" },
+        "description": { "type": "string" },
+        "uploader": { "type": "string" },
+        "isPrivate": {"type": "boolean"},
+        "createdAt": {"type": "string", "format": "date-time"}
       },
       "required": [
-        "id",
         "url",
-        "albumType",
-        "uploadTimestamp"
+        "storagePath",
+        "description",
+        "uploader",
+        "isPrivate",
+        "createdAt"
       ]
+    },
+    "DisciplineActivity": {
+        "title": "DisciplineActivity",
+        "type": "object",
+        "properties": {
+            "label": {"type": "string"},
+            "checks": {"type": "object"},
+            "creatorId": {"type": "string"}
+        },
+        "required": ["label", "creatorId"]
     }
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "password"
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/userProfiles/{userId}",
-        "definition": {
-          "entityName": "UserProfile",
-          "schema": {
-            "$ref": "#/backend/entities/UserProfile"
-          },
-          "description": "Stores user profile information.  'userId' corresponds to Firebase auth UID.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique ID of the user, matching the Firebase Authentication UID."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/privateChats/{chatId}/chatMessages/{messageId}",
-        "definition": {
-          "entityName": "ChatMessage",
-          "schema": {
-            "$ref": "#/backend/entities/ChatMessage"
-          },
-          "description": "Stores chat messages for the private chat. Includes denormalized 'members' map for authorization independence.",
-          "params": [
-            {
-              "name": "chatId",
-              "description": "The unique ID of the chat. Fixed value since only two users."
-            },
-            {
-              "name": "messageId",
-              "description": "The unique ID of the chat message."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/userProfiles/{userId}/notes/{noteId}",
-        "definition": {
-          "entityName": "Note",
-          "schema": {
-            "$ref": "#/backend/entities/Note"
-          },
-          "description": "Stores notes for each user, organized by date. 'userId' corresponds to Firebase auth UID.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique ID of the user, matching the Firebase Authentication UID."
-            },
-            {
-              "name": "noteId",
-              "description": "The unique ID of the note."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/importantDates/{dateId}",
-        "definition": {
-          "entityName": "ImportantDate",
-          "schema": {
-            "$ref": "#/backend/entities/ImportantDate"
-          },
-          "description": "Stores important dates. Includes 'authorId' and 'members' map for authorization.",
-          "params": [
-            {
-              "name": "dateId",
-              "description": "The unique ID of the important date."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/toDoTasks/{taskId}",
-        "definition": {
-          "entityName": "ToDoTask",
-          "schema": {
-            "$ref": "#/backend/entities/ToDoTask"
-          },
-          "description": "Stores to-do tasks for the shared to-do list. Includes 'members' map for authorization.",
-          "params": [
-            {
-              "name": "taskId",
-              "description": "The unique ID of the to-do task."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/photos/{photoId}",
-        "definition": {
-          "entityName": "Photo",
-          "schema": {
-            "$ref": "#/backend/entities/Photo"
-          },
-          "description": "Stores photos for the shared and private albums. Includes 'members' map for authorization.",
-          "params": [
-            {
-              "name": "photoId",
-              "description": "The unique ID of the photo."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to ensure security, scalability, and ease of debugging for the Amorem Duo application, which is intended for exactly two users. It focuses on authorization independence to facilitate secure operations and clear access control. The core principle is to denormalize authorization data, avoiding the need for `get()` calls in security rules, which enhances security and allows for atomic operations.\n\n*   **User Profiles:** User profiles are stored under `/userProfiles/{userId}`. Security rules ensure that only authenticated users can access their own profile. No denormalization is needed here because access is based solely on `request.auth.uid`.\n*   **Chat Messages:** Chat messages are stored in a subcollection `/chatMessages/{messageId}` under `/privateChats/{chatId}`. Given only 2 users, we ensure `chatId` is fixed. To enforce authorization, the `privateChats` document includes a `members` map that contains the `userId` for each user.  This `members` map is denormalized into each `ChatMessage` to ensure that only members of the chat can read/write messages. This eliminates the need for `get()` calls in security rules.\n*   **Notes:** Notes are stored in a subcollection `/notes/{noteId}` under `/userProfiles/{userId}`.  This structure enforces ownership and allows for simple security rules that only allow the owning user to read/write their own notes.\n*   **Important Dates:** Important dates are stored under the `/importantDates/{dateId}` collection. Given only 2 users, it is important to denote authorship and to ensure that each user can at least view these dates. Given this, the `authorId` and a `members` map denoting the allowed users are added to each date. Security rules can then easily check that the user is in the `members` map or the author of the date.\n*   **To-Do Tasks:**  To-do tasks are stored in `/toDoTasks/{taskId}`. Tasks can be created by either user. A `members` map stores the `userId` of each user to facilitate easy checking.\n*   **Photos:** The photos are stored under the `/photos/{photoId}` collection. Photos can be in either a `shared` or `private` album.  Both albums include a `members` map that stores the `userId` of each user. The private album's access will be gated by a separate mechanism in the UI that is out of the scope of the database design and security rules.\n\nThis structure adheres to the principle of **Authorization Independence** by denormalizing authorization data (specifically, the `members` map) into subcollections, eliminating the need for `get()` calls in security rules. It also follows **Structural Segregation** by storing entities with different access requirements (private vs. shared photos) in separate collections with distinct security rules.\n\n**QAPs (Rules are not Filters):** The structure supports secure `list` operations by ensuring that the authorization context (membership) is readily available within each document.  For example, listing chat messages only requires checking the `members` field within each message, without needing to traverse up the hierarchy."
+    "/userProfiles/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores user profile data."
+    },
+    "/privateChats/mainChat/chatMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Stores all chat messages."
+    },
+    "/userProfiles/{userId}/notes/{noteId}": {
+      "schema": { "$ref": "#/entities/Note"},
+      "description": "Notes for a specific user."
+    },
+    "/importantDates/{dateId}": {
+        "schema": {"$ref": "#/entities/ImportantDate"},
+        "description": "Shared calendar events."
+    },
+    "/stickers/{stickerId}": {
+        "schema": {"$ref": "#/entities/Sticker"},
+        "description": "Emoji stickers for calendar dates."
+    },
+    "/toDoTasks/{taskId}": {
+        "schema": {"$ref": "#/entities/ToDoTask"},
+        "description": "Shared to-do list tasks."
+    },
+    "/photos/{photoId}": {
+        "schema": {"$ref": "#/entities/Photo"},
+        "description": "Shared and private photos."
+    },
+    "/disciplineActivities/{activityId}": {
+        "schema": {"$ref": "#/entities/DisciplineActivity"},
+        "description": "Discipline tracker activities."
+    }
   }
 }

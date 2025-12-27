@@ -4,65 +4,57 @@
 import {
   createContext,
   useContext,
-  useState,
   type ReactNode,
-  useCallback
+  useCallback,
 } from 'react';
-import { type User } from './auth-context';
+import { useAuth, type User } from './auth-context';
 import { format } from 'date-fns';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 
 export type Task = {
-  id: number;
+  id: string;
   text: string;
-  completedAt: string | null; // Date string 'yyyy-MM-dd'
+  completedAt: string | null;
   assignee: User;
   creator: User;
-  createdAt: string; // Date string 'yyyy-MM-dd'
+  createdAt: any;
 };
-
-const initialTasks: Task[] = [
-    { id: 1, text: 'Buy groceries for dinner', completedAt: null, assignee: 'Priya', creator: 'Raveen', createdAt: format(new Date(), 'yyyy-MM-dd') },
-    { id: 2, text: 'Book flights for vacation', completedAt: '2024-05-20', assignee: 'Raveen', creator: 'Raveen', createdAt: '2024-05-18' },
-    { id: 3, text: 'Call the plumber about the leaky faucet', completedAt: null, assignee: 'Raveen', creator: 'Priya', createdAt: format(new Date(), 'yyyy-MM-dd') },
-];
 
 interface TasksContextType {
   tasks: Task[];
   addTask: (text: string, currentUser: User) => void;
-  toggleTask: (taskId: number) => void;
+  toggleTask: (taskId: string) => void;
 }
 
 const TasksContext = createContext<TasksContextType | undefined>(undefined);
 
 export function TasksProvider({ children }: { children: ReactNode }) {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const { firestore } = useFirebase();
+  const tasksCollectionRef = useMemoFirebase(() => collection(firestore, 'toDoTasks'), [firestore]);
+  const { data: tasks } = useCollection<Task>(tasksCollectionRef);
 
   const addTask = useCallback((text: string, currentUser: User) => {
-    const newTask: Task = {
-      id: Date.now(),
+    addDoc(tasksCollectionRef, {
       text: text,
       completedAt: null,
       assignee: currentUser, // By default, assign to self
       creator: currentUser,
-      createdAt: format(new Date(), 'yyyy-MM-dd'),
-    };
-    setTasks(prev => [newTask, ...prev]);
-  }, []);
+      createdAt: serverTimestamp(),
+    });
+  }, [tasksCollectionRef]);
 
-  const toggleTask = useCallback((taskId: number) => {
-    setTasks(prev =>
-      prev.map(task =>
-        task.id === taskId
-          ? {
-              ...task,
-              completedAt: task.completedAt ? null : format(new Date(), 'yyyy-MM-dd'),
-            }
-          : task
-      )
-    );
-  }, []);
+  const toggleTask = useCallback((taskId: string) => {
+    const task = tasks?.find(t => t.id === taskId);
+    if (!task) return;
 
-  const value = { tasks, addTask, toggleTask };
+    const taskRef = doc(firestore, 'toDoTasks', taskId);
+    updateDoc(taskRef, {
+      completedAt: task.completedAt ? null : format(new Date(), 'yyyy-MM-dd'),
+    });
+  }, [tasks, firestore]);
+
+  const value = { tasks: tasks || [], addTask, toggleTask };
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
 }
@@ -74,5 +66,3 @@ export function useTasks() {
   }
   return context;
 }
-
-    

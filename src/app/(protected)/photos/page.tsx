@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Plus, Lock, Trash2, X } from 'lucide-react';
+import { Image as ImageIcon, Plus, Lock, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
@@ -18,30 +18,31 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { useToast } from '@/hooks/use-toast';
 
 type Photo = {
   id: string;
   url: string;
+  storagePath: string;
   description: string;
   uploader: string;
   isPrivate: boolean;
+  createdAt: any;
 };
 
-const initialPhotos: Photo[] = PlaceHolderImages.map(p => ({
-    id: p.id,
-    url: p.imageUrl,
-    description: p.description,
-    uploader: Math.random() > 0.5 ? 'Raveen' : 'Priya',
-    isPrivate: false,
-}));
-
 export default function PhotosPage() {
-  const { user } = useAuth();
-  const [photos, setPhotos] = useState(initialPhotos);
+  const { user, firebaseUser } = useAuth();
+  const { firestore, storage } = useFirebase();
+  const { toast } = useToast();
+  
+  const photosCollectionRef = useMemoFirebase(() => collection(firestore, 'photos'), [firestore]);
+  const { data: photos } = useCollection<Photo>(photosCollectionRef);
+
   const [activeTab, setActiveTab] = useState('shared');
   
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
@@ -61,14 +62,15 @@ export default function PhotosPage() {
   const SPECIAL_PIN = '2107';
 
   const displayedPhotos = useMemo(() => {
+    if (!photos) return [];
     if (activeTab === 'shared') {
-      return photos.filter(p => !p.isPrivate);
+      return photos.filter(p => !p.isPrivate).sort((a,b) => b.createdAt?.seconds - a.createdAt?.seconds);
     }
     if (isPrivateAlbumLocked) {
       return [];
     }
-    return photos.filter(p => p.isPrivate && p.uploader === user);
-  }, [photos, activeTab, user, isPrivateAlbumLocked]);
+    return photos.filter(p => p.isPrivate && p.uploader === firebaseUser?.uid).sort((a,b) => b.createdAt?.seconds - a.createdAt?.seconds);
+  }, [photos, activeTab, firebaseUser, isPrivateAlbumLocked]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -80,32 +82,63 @@ export default function PhotosPage() {
     }
   };
 
-  const handleUpload = () => {
-    if (!uploadFile || !user) return;
+  const handleUpload = async () => {
+    if (!uploadFile || !firebaseUser) return;
+    
+    const toastId = toast({ title: 'Uploading photo...'}).id;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const imageUrl = e.target?.result as string;
-      const newPhoto: Photo = {
-        id: new Date().toISOString(),
-        url: imageUrl,
-        description: uploadDescription,
-        uploader: user,
-        isPrivate: uploadIsPrivate,
-      };
+    const fileId = new Date().toISOString();
+    const storagePath = `photos/${firebaseUser.uid}/${fileId}-${uploadFile.name}`;
+    const storageRef = ref(storage, storagePath);
 
-      setPhotos(prev => [newPhoto, ...prev]);
-      setUploadModalOpen(false);
-      setUploadFile(null);
-      setUploadDescription('');
-      setUploadIsPrivate(false);
-    };
-    reader.readAsDataURL(uploadFile);
+    try {
+        await uploadBytes(storageRef, uploadFile);
+        const downloadUrl = await getDownloadURL(storageRef);
+
+        await addDoc(photosCollectionRef, {
+            url: downloadUrl,
+            storagePath,
+            description: uploadDescription,
+            uploader: firebaseUser.uid,
+            isPrivate: uploadIsPrivate,
+            createdAt: serverTimestamp(),
+        });
+        
+        toast({id: toastId, title: 'Upload complete!', description: 'Your photo has been added.'});
+
+        setUploadModalOpen(false);
+        setUploadFile(null);
+        setUploadDescription('');
+        setUploadIsPrivate(false);
+
+    } catch (e) {
+        console.error("Error uploading photo:", e);
+        toast({
+            id: toastId,
+            variant: "destructive",
+            title: "Upload failed",
+            description: "Could not upload your photo."
+        });
+    }
   };
 
-  const handleDeletePhoto = (id: string) => {
-    setPhotos(prev => prev.filter(p => p.id !== id));
-    closeViewer();
+  const handleDeletePhoto = async (photo: Photo) => {
+    if (!photo) return;
+    
+    const toastId = toast({title: 'Deleting photo...'}).id;
+
+    const photoDocRef = doc(firestore, 'photos', photo.id);
+    const photoStorageRef = ref(storage, photo.storagePath);
+
+    try {
+        await deleteObject(photoStorageRef);
+        await deleteDoc(photoDocRef);
+        toast({id: toastId, title: 'Photo deleted'});
+        closeViewer();
+    } catch(e) {
+        console.error("Error deleting photo:", e);
+        toast({id: toastId, variant: 'destructive', title: 'Error', description: 'Could not delete photo.'});
+    }
   };
   
   const handleTabChange = useCallback((value: string) => {
@@ -173,7 +206,7 @@ export default function PhotosPage() {
   if (!user) return null;
   
   const pinDisplay = '●'.repeat(passwordInput.length).padEnd(4, '○');
-  const isViewingPhotoOwner = viewingPhoto?.uploader === user;
+  const isViewingPhotoOwner = viewingPhoto?.uploader === firebaseUser?.uid;
 
   return (
     <div className="flex h-full flex-col p-4 md:p-8">
@@ -185,35 +218,31 @@ export default function PhotosPage() {
               {viewingPhoto ? `Viewing photo: ${viewingPhoto.description}` : 'Photo viewer'}
           </DialogTitle>
           {viewingPhoto && (
-            <div className="relative rounded-lg overflow-hidden shadow-2xl bg-card/80 backdrop-blur-sm">
-                <Image
-                    src={viewingPhoto.url}
-                    alt={viewingPhoto.description}
-                    width={2000}
-                    height={2000}
-                    className="object-contain w-auto h-auto max-w-full max-h-full"
-                    style={{ maxHeight: '90vh', maxWidth: '90vw' }}
-                    priority
-                />
-                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent">
-                  <div className="flex items-end justify-between gap-4">
-                    <p className="text-sm font-semibold text-white text-left drop-shadow-md">
-                      {viewingPhoto.description}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      {isViewingPhotoOwner && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeletePhoto(viewingPhoto.id)}
-                          className="flex-shrink-0 text-white/80 hover:bg-white/20 hover:text-white h-8 w-8 rounded-full"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      )}
-                    </div>
+            <div className="relative rounded-lg overflow-hidden shadow-2xl">
+              <Image
+                src={viewingPhoto.url}
+                alt={viewingPhoto.description}
+                width={2000}
+                height={2000}
+                className="object-contain w-auto h-auto max-w-full max-h-full"
+                style={{ maxHeight: '90vh', maxWidth: '90vw' }}
+                priority
+              />
+              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-sm font-semibold text-white drop-shadow-md">{viewingPhoto.description}</p>
+                    {isViewingPhotoOwner && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeletePhoto(viewingPhoto)}
+                        className="text-white/80 hover:bg-white/20 hover:text-white h-8 w-8 rounded-full"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    )}
                   </div>
-                </div>
+              </div>
             </div>
           )}
         </DialogContent>
@@ -280,7 +309,7 @@ export default function PhotosPage() {
             <Dialog open={isPasswordDialogOpen} onOpenChange={setPasswordDialogOpen}>
               <DialogContent className="max-w-xs">
                 <DialogHeader>
-                  <DialogTitle>Enter PIN</DialogTitle>
+                  <DialogTitle className="text-center">Enter PIN</DialogTitle>
                   <DialogDescription className="text-center">
                     This album is locked.
                   </DialogDescription>
@@ -360,5 +389,3 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-    

@@ -40,6 +40,8 @@ import { Textarea } from '@/components/ui/textarea';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/auth-context';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, addDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 
 type CalendarEvent = {
@@ -50,7 +52,7 @@ type CalendarEvent = {
 };
 
 type CalendarSticker = {
-  date: string; // 'yyyy-MM-dd'
+  id: string; // yyyy-MM-dd
   emoji: string;
 };
 
@@ -58,11 +60,15 @@ type ViewMode = 'add' | 'view';
 
 export default function CalendarPage() {
   const { user } = useAuth();
+  const { firestore } = useFirebase();
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  const eventsCollectionRef = useMemoFirebase(() => collection(firestore, 'importantDates'), [firestore]);
+  const stickersCollectionRef = useMemoFirebase(() => collection(firestore, 'stickers'), [firestore]);
   
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [stickers, setStickers] = useState<CalendarSticker[]>([]);
-  
+  const { data: events } = useCollection<CalendarEvent>(eventsCollectionRef);
+  const { data: stickers } = useCollection<CalendarSticker>(stickersCollectionRef);
+
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [eventTitle, setEventTitle] = useState('');
@@ -95,7 +101,7 @@ export default function CalendarPage() {
     setEventTitle('');
     setEventDesc('');
     
-    const dayHasEvents = events.some(e => isSameDay(new Date(e.date), day));
+    const dayHasEvents = events?.some(e => isSameDay(new Date(e.date), day));
     if (dayHasEvents) {
       setViewMode('view');
     } else {
@@ -108,42 +114,41 @@ export default function CalendarPage() {
   const onEmojiClick = (emojiData: EmojiClickData) => {
     if (selectedDate) {
       const dateKey = format(selectedDate, 'yyyy-MM-dd');
-      setStickers(prev => {
-        const existing = prev.find(s => s.date === dateKey);
-        if (existing) {
-          return prev.map(s => s.date === dateKey ? { ...s, emoji: emojiData.emoji } : s);
-        }
-        return [...prev, { date: dateKey, emoji: emojiData.emoji }];
-      });
+      const stickerRef = doc(firestore, 'stickers', dateKey);
+      setDoc(stickerRef, { emoji: emojiData.emoji, id: dateKey });
     }
   };
 
   const handleAddEvent = () => {
-    if (selectedDate && eventTitle) {
-      const newEvent: CalendarEvent = {
-        id: new Date().toISOString(),
+    if (selectedDate && eventTitle && user) {
+      addDoc(eventsCollectionRef, {
         date: selectedDate.toISOString(),
         title: eventTitle,
         description: eventDesc,
-      };
-      setEvents(prev => [...prev, newEvent]);
+        authorId: user,
+        createdAt: serverTimestamp(),
+      });
       setPopoverOpen(false);
       setSelectedDate(null);
     }
   };
   
-  const dayEvents = useMemo(() => selectedDate ? events.filter((e) => isSameDay(new Date(e.date), selectedDate)) : [], [events, selectedDate]);
+  const dayEvents = useMemo(() => {
+    if (!selectedDate || !events) return [];
+    return events.filter((e) => isSameDay(new Date(e.date), selectedDate));
+  }, [events, selectedDate]);
+  
   const selectedSticker = useMemo(() => {
-    if (!selectedDate) return undefined;
+    if (!selectedDate || !stickers) return undefined;
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
-    return stickers.find(s => s.date === dateKey)?.emoji;
+    return stickers.find(s => s.id === dateKey)?.emoji;
   }, [stickers, selectedDate]);
 
 
   const renderPopoverContent = () => {
     if (!selectedDate) return null;
 
-    if (viewMode === 'view') {
+    if (viewMode === 'view' && dayEvents.length > 0) {
       return (
         <div className="grid gap-4">
           <div className="space-y-2">
@@ -159,22 +164,18 @@ export default function CalendarPage() {
               Your events for this day.
             </p>
           </div>
-          {dayEvents && dayEvents.length > 0 ? (
-            <Accordion type="single" collapsible className="w-full">
-              {dayEvents.map(event => (
-                <AccordionItem key={event.id} value={event.id}>
-                  <AccordionTrigger className="truncate">{event.title}</AccordionTrigger>
-                  <AccordionContent>
-                    <ScrollArea className="h-24 pr-4">
-                      {event.description || <p className="text-sm text-muted-foreground italic">No description provided.</p>}
-                    </ScrollArea>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          ) : (
-             <p className="text-sm text-muted-foreground italic text-center py-4">No events for this day.</p>
-          )}
+          <Accordion type="single" collapsible className="w-full">
+            {dayEvents.map(event => (
+              <AccordionItem key={event.id} value={event.id}>
+                <AccordionTrigger className="truncate">{event.title}</AccordionTrigger>
+                <AccordionContent>
+                  <ScrollArea className="h-24 pr-4">
+                    {event.description || <p className="text-sm text-muted-foreground italic">No description provided.</p>}
+                  </ScrollArea>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       );
     }
@@ -262,8 +263,8 @@ export default function CalendarPage() {
 
             {days.map((day) => {
               const dateKey = format(day, 'yyyy-MM-dd');
-              const dayEvents = events.filter((e) => isSameDay(new Date(e.date), day));
-              const stickerEmoji = stickers.find(s => s.date === dateKey)?.emoji;
+              const dayEvents = events?.filter((e) => isSameDay(new Date(e.date), day)) || [];
+              const stickerEmoji = stickers?.find(s => s.id === dateKey)?.emoji;
               
               return (
                 <Popover
