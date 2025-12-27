@@ -287,7 +287,7 @@ export default function PhotosPage() {
             <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
               <DialogContent 
                 className="bg-transparent border-0 shadow-none p-0 max-w-none w-auto h-auto"
-                onInteractOutside={() => setViewingPhoto(null)}
+                onPointerDownOutside={() => setViewingPhoto(null)}
               >
                  {viewingPhoto && (
                   <>
@@ -375,9 +375,7 @@ export default function PhotosPage() {
                          <Button type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick('0')}>
                            0
                          </Button>
-                         <Button type="button" variant="outline" size="icon" className="h-14" onClick={handlePinPadBackspace}>
-                           <Delete className="h-6 w-6" />
-                         </Button>
+                         <div />
                     </div>
                   </div>
                   <DialogFooter className="sm:justify-center">
@@ -417,5 +415,3 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-    
