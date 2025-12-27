@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/auth-context';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -63,7 +63,7 @@ export default function PhotosPage() {
     }
     return photos.filter(p => p.isPrivate && p.uploader === user);
   }, [photos, activeTab, user, isPrivateAlbumLocked]);
-  
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -154,6 +154,7 @@ export default function PhotosPage() {
       }
   }, [isPasswordDialogOpen, handlePinPadClick, handlePinPadBackspace]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Using handleKeyDown which is not a dependency
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => {
@@ -171,21 +172,22 @@ export default function PhotosPage() {
     <div className="flex h-full flex-col p-4 md:p-8">
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
         <DialogContent
-          className="p-0 bg-transparent border-0 shadow-none inline-block w-auto"
+          className="p-4 bg-transparent border-0 shadow-none w-screen h-screen flex items-center justify-center"
+          onInteractOutside={() => setViewingPhoto(null)}
         >
           <DialogTitle className="sr-only">Viewing Photo: {viewingPhoto?.description}</DialogTitle>
           {viewingPhoto && (
-            <div className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden">
+            <div className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-w-[95vw] max-h-[95vh]">
                 <div className="relative flex-shrink-0">
                     <Image
                         src={viewingPhoto.url}
                         alt={viewingPhoto.description}
                         width={1920}
                         height={1080}
-                        className="object-contain w-auto h-auto max-h-[115vh]"
+                        className="object-contain w-auto h-auto max-w-full max-h-[calc(95vh-52px)]"
                     />
                 </div>
-                <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t">
+                <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t h-[52px]">
                     <p className="font-semibold text-card-foreground text-sm truncate pr-4">{viewingPhoto.description}</p>
                     {isViewingPhotoOwner && (
                         <Button variant="ghost" size="icon" onClick={() => handleDeletePhoto(viewingPhoto.id)} className="text-destructive hover:bg-destructive/10 hover:text-destructive flex-shrink-0">
@@ -280,9 +282,7 @@ export default function PhotosPage() {
                          <Button key="0" type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick('0')}>
                            0
                          </Button>
-                         <Button key="backspace" type="button" variant="outline" className="h-14 text-xl" onClick={handlePinPadBackspace}>
-                           <Trash2 className="h-6 w-6" />
-                         </Button>
+                         <div />
                     </div>
                   </div>
                   <DialogFooter className="sm:justify-center mt-2">
