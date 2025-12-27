@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ListChecks, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { isBefore, startOfToday } from 'date-fns';
+import { isBefore, startOfToday, format } from 'date-fns';
 import { useTasks, type Task } from '@/context/todo-context';
 
 
@@ -29,7 +29,7 @@ export default function TodoPage() {
       const completedDate = new Date(task.completedAt);
       return !isBefore(completedDate, today);
     });
-    setVisibleTasks(filteredTasks.sort((a,b) => (a.completedAt ? 1 : -1) - (b.completedAt ? 1 : -1) || b.id - a.id));
+    setVisibleTasks(filteredTasks.sort((a, b) => (a.completedAt ? 1 : -1) - (b.completedAt ? 1 : -1) || b.id - a.id));
   }, [tasks]);
 
   const handleAddTask = (e: React.FormEvent) => {
@@ -69,14 +69,17 @@ export default function TodoPage() {
               visibleTasks.map(task => {
                 const isCompleted = !!task.completedAt;
                 const canToggle = task.assignee === currentUserRole;
+
+                const creatorStyle = task.creator === 'Priya' 
+                  ? 'bg-accent text-accent-foreground'
+                  : 'bg-card text-card-foreground';
+                
                 return (
                 <div
                   key={task.id}
                   className={cn(
                     'flex items-center gap-4 rounded-lg p-3 transition-colors',
-                     task.creator === 'Priya'
-                      ? 'bg-accent text-accent-foreground'
-                      : 'bg-card text-card-foreground',
+                    creatorStyle,
                     isCompleted ? 'opacity-60' : 'opacity-100'
                   )}
                 >
