@@ -179,47 +179,41 @@ export default function PhotosPage() {
     <div className="flex h-full flex-col p-4 md:p-8">
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
         <DialogContent
-          className="p-4 bg-background/80 backdrop-blur-sm border-white/10 rounded-xl shadow-2xl w-auto inline-block"
-          onInteractOutside={closeViewer}
+          className="p-0 bg-transparent border-0 shadow-none w-auto max-w-[90vw] max-h-[90vh] flex items-center justify-center"
         >
           <DialogTitle className="sr-only">
               {viewingPhoto ? `Viewing photo: ${viewingPhoto.description}` : 'Photo viewer'}
           </DialogTitle>
           {viewingPhoto && (
-            <div className="relative">
-              <Image
-                src={viewingPhoto.url}
-                alt={viewingPhoto.description}
-                width={2000}
-                height={2000}
-                className="object-contain rounded-lg max-w-[90vw] max-h-[90vh]"
-                priority
-              />
-              <div className="mt-4 flex items-center justify-between gap-4">
-                <p className="text-sm font-semibold text-card-foreground text-left truncate">
-                  {viewingPhoto.description}
-                </p>
-                <div className="flex items-center gap-2">
-                  {isViewingPhotoOwner && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeletePhoto(viewingPhoto.id)}
-                      className="flex-shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8 rounded-full"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
-                  )}
-                  <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={closeViewer}
-                      className="flex-shrink-0 text-card-foreground hover:bg-white/20 h-8 w-8 rounded-full"
-                  >
-                      <X className="h-5 w-5" />
-                  </Button>
+            <div className="relative rounded-lg overflow-hidden shadow-2xl bg-card/80 backdrop-blur-sm">
+                <Image
+                    src={viewingPhoto.url}
+                    alt={viewingPhoto.description}
+                    width={2000}
+                    height={2000}
+                    className="object-contain w-auto h-auto max-w-full max-h-full"
+                    style={{ maxHeight: '90vh', maxWidth: '90vw' }}
+                    priority
+                />
+                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent">
+                  <div className="flex items-end justify-between gap-4">
+                    <p className="text-sm font-semibold text-white text-left drop-shadow-md">
+                      {viewingPhoto.description}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      {isViewingPhotoOwner && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeletePhoto(viewingPhoto.id)}
+                          className="flex-shrink-0 text-white/80 hover:bg-white/20 hover:text-white h-8 w-8 rounded-full"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
             </div>
           )}
         </DialogContent>
