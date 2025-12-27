@@ -74,7 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
           throw new Error('Could not create an account. Please try again.');
         }
-      } else {
+      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        setLoading(false);
+        throw new Error('That\'s not the right magic word. Please try again.');
+      }
+      else {
         console.error("Error signing in:", error);
         setLoading(false);
         throw new Error('An unexpected error occurred. Please try again.');
