@@ -32,6 +32,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { NotesProvider, useNotes } from '@/context/notes-context';
+import { isToday, format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 
 const navItems = [
@@ -43,12 +46,50 @@ const navItems = [
   { href: '/discipline', icon: ShieldCheck, label: 'Discipline' },
 ];
 
+function NavMenuItems() {
+  const { user } = useAuth();
+  const { notes } = useNotes();
+  const pathname = usePathname();
+
+  const otherUser = user === 'Him' ? 'Her' : 'Him';
+  const todayKey = format(new Date(), 'yyyy-MM-dd');
+  const otherUserHasNoteToday = notes.some(
+    (note) =>
+      note.date === todayKey && note.author === otherUser && note.text.trim() !== ''
+  );
+
+  return (
+    <>
+      {navItems.map((item) => {
+        const showNotification =
+          item.href === '/notes' && otherUserHasNoteToday;
+        return (
+          <SidebarMenuItem key={item.href}>
+            <SidebarMenuButton
+              as={Link}
+              href={item.href}
+              isActive={pathname.startsWith(item.href)}
+              tooltip={{ children: item.label }}
+            >
+              <item.icon />
+              <span>{item.label}</span>
+              {showNotification && (
+                <span className="absolute left-2 top-2 h-2 w-2 rounded-full bg-red-500" />
+              )}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        );
+      })}
+    </>
+  );
+}
+
 
 function AppWithSidebar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const { toggleSidebar, isMobile } = useSidebar();
-
+  
   return (
     <div className="flex h-full">
       <Sidebar>
@@ -57,19 +98,7 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
             <Logo className="text-3xl" />
           </SidebarHeader>
           <SidebarMenu className="flex-1">
-            {navItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  as={Link}
-                  href={item.href}
-                  isActive={pathname.startsWith(item.href)}
-                  tooltip={{ children: item.label }}
-                >
-                  <item.icon />
-                  <span>{item.label}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            <NavMenuItems />
           </SidebarMenu>
           <SidebarFooter className="items-center">
             <div className="flex w-full items-center justify-between p-2">
@@ -120,9 +149,11 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
 function MainAppLayout({ children }: { children: React.ReactNode }) {
   return (
       <SidebarProvider>
-        <AppWithSidebar>
-          {children}
-        </AppWithSidebar>
+        <NotesProvider>
+            <AppWithSidebar>
+              {children}
+            </AppWithSidebar>
+        </NotesProvider>
       </SidebarProvider>
   );
 }

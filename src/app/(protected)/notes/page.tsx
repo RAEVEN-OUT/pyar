@@ -9,14 +9,7 @@ import { NotebookText, Edit, Save, ChevronLeft, ChevronRight } from 'lucide-reac
 import { isFuture, isSameMonth, isToday, format, add, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-
-type Note = {
-  id: string; // "yyyy-MM-dd-Him" or "yyyy-MM-dd-Her"
-  author: User;
-  date: string; // 'yyyy-MM-dd'
-  text: string;
-  lastUpdated: string;
-};
+import { useNotes, type Note } from '@/context/notes-context';
 
 const NoteEditor = ({
   noteUser,
@@ -208,7 +201,7 @@ const NotesCalendar = ({
 
 export default function NotesPage() {
   const { user: currentUser } = useAuth();
-  const [notes, setNotes] = useState<Note[]>([]);
+  const { notes, saveNote } = useNotes();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   const dailyNotes = useMemo(() => {
@@ -219,31 +212,7 @@ export default function NotesPage() {
   
   const handleSaveNote = (userToSave: User) => (text: string) => {
     if (!currentUser) return;
-    
-    const dateKey = format(selectedDate, 'yyyy-MM-dd');
-    const noteId = `${dateKey}-${userToSave}`;
-    const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-
-    setNotes(prevNotes => {
-      const existingNoteIndex = prevNotes.findIndex(n => n.id === noteId);
-      
-      if (existingNoteIndex > -1) {
-        // Update existing note
-        return prevNotes.map((note, index) => 
-          index === existingNoteIndex ? { ...note, text, lastUpdated: now } : note
-        );
-      } else {
-        // Add new note
-        const newNote: Note = {
-          id: noteId,
-          author: userToSave,
-          date: dateKey,
-          text,
-          lastUpdated: now,
-        };
-        return [...prevNotes, newNote];
-      }
-    });
+    saveNote(userToSave, selectedDate, text);
   };
 
   if (!currentUser) return null;
