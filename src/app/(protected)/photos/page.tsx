@@ -256,10 +256,13 @@ export default function PhotosPage() {
   };
   
   const handleTabChange = (value: string) => {
-    if (value === 'private' && isPrivateAlbumLocked) {
+     if (value === 'private' && isPrivateAlbumLocked) {
       setPasswordDialogOpen(true);
     } else {
       setActiveTab(value);
+    }
+     if (value !== 'private') {
+      setPrivateAlbumLocked(true);
     }
   };
 
@@ -300,7 +303,6 @@ export default function PhotosPage() {
       } else if (e.key === 'Backspace') {
         handlePinPadBackspace();
       } else if (e.key === 'Enter') {
-        // Form submission is the default behavior for Enter
         const form = document.querySelector('form[data-form-id="pin-form"]');
         if(form) {
             form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
@@ -354,43 +356,42 @@ export default function PhotosPage() {
           />
         </CardHeader>
         <CardContent className="pt-6">
-            {viewingPhoto && (
-              <div 
-                className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-                onClick={() => setViewingPhoto(null)}
-              >
-                <div 
-                  className="relative w-full max-w-4xl h-auto max-h-full bg-card rounded-lg shadow-xl flex flex-col overflow-hidden"
-                  onClick={(e) => e.stopPropagation()}
+            <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
+               {viewingPhoto && (
+                <DialogContent 
+                  className="bg-transparent border-0 shadow-none p-0 max-w-4xl w-full"
+                  onClick={() => setViewingPhoto(null)}
                 >
-                  <DialogHeader className="sr-only">
-                    <DialogTitle>{viewingPhoto.description}</DialogTitle>
-                    <DialogDescription>
-                      A photo uploaded by {viewingPhoto.uploader}.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="relative aspect-video flex-1">
-                     <Image
-                        src={viewingPhoto.url}
-                        alt={viewingPhoto.description}
-                        fill
-                        className="object-contain"
-                     />
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t">
-                      <p className="font-semibold text-card-foreground text-sm truncate pr-4">{viewingPhoto.description}</p>
-                      {isViewingPhotoOwner && (
-                          <Button variant="ghost" size="icon" onClick={() => handleDeletePhoto(viewingPhoto!.id)} className="text-destructive hover:bg-destructive/10 hover:text-destructive flex-shrink-0">
-                              <Trash2 className="h-5 w-5" />
-                          </Button>
-                      )}
-                   </div>
-                </div>
-                 <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-white bg-black/30 hover:bg-black/60 rounded-full" onClick={() => setViewingPhoto(null)}>
-                    <X className="h-5 w-5" />
-                 </Button>
-              </div>
-            )}
+                    <div 
+                      className="relative w-full h-auto bg-card rounded-lg shadow-xl flex flex-col overflow-hidden"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DialogHeader className="sr-only">
+                        <DialogTitle>{viewingPhoto.description}</DialogTitle>
+                        <DialogDescription>A photo uploaded by {viewingPhoto.uploader}.</DialogDescription>
+                      </DialogHeader>
+
+                      <div className="relative aspect-video flex-1">
+                         <Image
+                            src={viewingPhoto.url}
+                            alt={viewingPhoto.description}
+                            fill
+                            className="object-contain"
+                         />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t">
+                          <p className="font-semibold text-card-foreground text-sm truncate pr-4">{viewingPhoto.description}</p>
+                          {isViewingPhotoOwner && (
+                              <Button variant="ghost" size="icon" onClick={() => handleDeletePhoto(viewingPhoto!.id)} className="text-destructive hover:bg-destructive/10 hover:text-destructive flex-shrink-0">
+                                  <Trash2 className="h-5 w-5" />
+                              </Button>
+                          )}
+                       </div>
+                    </div>
+                </DialogContent>
+              )}
+            </Dialog>
 
             <Dialog open={isUploadModalOpen} onOpenChange={setUploadModalOpen}>
                 <DialogContent>
@@ -495,3 +496,4 @@ export default function PhotosPage() {
   );
 }
  
+    
