@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Image as ImageIcon, Plus, Lock, Trash2, X } from 'lucide-react';
 import Image from 'next/image';
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -257,7 +257,7 @@ export default function PhotosPage() {
     }
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (passwordInput === SPECIAL_PIN) {
       setPrivateAlbumLocked(false);
@@ -269,21 +269,43 @@ export default function PhotosPage() {
       setPasswordError('Incorrect PIN. Please try again.');
       setPasswordInput('');
     }
-  };
+  }, [passwordInput]);
 
-  const handlePinPadClick = (value: string) => {
+  const handlePinPadClick = useCallback((value: string) => {
     setPasswordError('');
     if (passwordInput.length < 4) {
       setPasswordInput(prev => prev + value);
     }
-  };
+  }, [passwordInput.length]);
 
-  const handlePinPadBackspace = () => {
+  const handlePinPadBackspace = useCallback(() => {
     setPasswordError('');
     setPasswordInput(prev => prev.slice(0, -1));
-  };
+  }, []);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isPasswordDialogOpen) return;
+
+      if (e.key >= '0' && e.key <= '9') {
+        handlePinPadClick(e.key);
+      } else if (e.key === 'Backspace') {
+        handlePinPadBackspace();
+      } else if (e.key === 'Enter') {
+        // Form submission is the default behavior for Enter
+        // We can trigger it programmatically if needed, but a form element handles it
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isPasswordDialogOpen, handlePinPadClick, handlePinPadBackspace]);
+
 
   if (!user) return null;
 
@@ -332,6 +354,12 @@ export default function PhotosPage() {
                   className="relative w-full max-w-4xl h-auto max-h-full bg-card rounded-lg shadow-xl flex flex-col overflow-hidden"
                   onClick={(e) => e.stopPropagation()}
                 >
+                  <DialogHeader className="sr-only">
+                    <DialogTitle>{viewingPhoto.description}</DialogTitle>
+                    <DialogDescription>
+                      A photo uploaded by {viewingPhoto.uploader}.
+                    </DialogDescription>
+                  </DialogHeader>
                   <div className="relative aspect-video flex-1">
                      <Image
                         src={viewingPhoto.url}
@@ -458,3 +486,5 @@ export default function PhotosPage() {
   );
 }
  
+
+    
