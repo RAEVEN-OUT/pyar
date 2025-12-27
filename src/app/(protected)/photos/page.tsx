@@ -3,12 +3,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Plus, Lock, Trash2, X, Delete } from 'lucide-react';
+import { Image as ImageIcon, Plus, Lock, Trash2, Delete } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/auth-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -194,7 +194,7 @@ export default function PhotosPage() {
     }
   };
 
-  const handlePasswordSubmit = useCallback((e: React.FormEvent) => {
+  const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordInput === SPECIAL_PIN) {
       setPrivateAlbumLocked(false);
@@ -206,8 +206,8 @@ export default function PhotosPage() {
       setPasswordError('Incorrect PIN. Please try again.');
       setPasswordInput('');
     }
-  }, [passwordInput]);
-
+  };
+  
   const handlePinPadClick = useCallback((value: string) => {
     setPasswordError('');
     if (passwordInput.length < 4) {
@@ -287,7 +287,6 @@ export default function PhotosPage() {
             <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
               <DialogContent 
                 className="bg-transparent border-0 shadow-none p-0 max-w-none w-full h-full"
-                onInteractOutside={() => setViewingPhoto(null)}
               >
                  {viewingPhoto && (
                   <>
@@ -295,11 +294,13 @@ export default function PhotosPage() {
                     <DialogTitle>{viewingPhoto.description}</DialogTitle>
                     <DialogDescription>A photo uploaded by {viewingPhoto.uploader}.</DialogDescription>
                   </DialogHeader>
-                  <div 
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                   <div 
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+                    onClick={() => setViewingPhoto(null)}
                   >
                     <div 
                       className="relative w-full h-auto bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-w-4xl max-h-[90vh]"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <div className="relative aspect-video flex-1">
                          <Image
