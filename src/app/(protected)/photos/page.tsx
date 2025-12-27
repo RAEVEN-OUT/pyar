@@ -7,10 +7,92 @@ import { Image as ImageIcon, Plus } from 'lucide-react';
 import Image from 'next/image';
 import { PlaceHolderImages, type ImagePlaceholder } from '@/lib/placeholder-images';
 import { useState, useRef } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { cn } from '@/lib/utils';
+
+function SortablePhoto({ photo }: { photo: ImagePlaceholder }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: photo.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 'auto',
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        'overflow-hidden rounded-lg shadow-md aspect-video relative',
+        isDragging && 'opacity-75'
+      )}
+    >
+      <Image
+        src={photo.imageUrl}
+        alt={photo.description}
+        width={800}
+        height={600}
+        data-ai-hint={photo.imageHint}
+        className="h-full w-full object-cover transition-transform hover:scale-105"
+        priority
+      />
+    </div>
+  );
+}
+
 
 export default function PhotosPage() {
   const [photos, setPhotos] = useState<ImagePlaceholder[]>(PlaceHolderImages);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+        activationConstraint: {
+          distance: 8,
+        },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setPhotos((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
 
   const handleAddPhotoClick = () => {
     fileInputRef.current?.click();
@@ -63,23 +145,19 @@ export default function PhotosPage() {
               Your photo album is empty. Click the '+' to add your first memory!
             </p>
           ) : (
-             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {photos.map((photo) => (
-                <div
-                  key={photo.id}
-                  className="overflow-hidden rounded-lg shadow-md aspect-video"
-                >
-                  <Image
-                    src={photo.imageUrl}
-                    alt={photo.description}
-                    width={800}
-                    height={600}
-                    data-ai-hint={photo.imageHint}
-                    className="h-full w-full object-cover transition-transform hover:scale-105"
-                  />
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={photos} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {photos.map((photo) => (
+                    <SortablePhoto key={photo.id} photo={photo} />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           )}
         </CardContent>
       </Card>
