@@ -179,27 +179,27 @@ export default function PhotosPage() {
     <div className="flex h-full flex-col p-4 md:p-8">
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
          <DialogContent
-            className="p-0 bg-transparent border-0 shadow-none inline-block w-auto"
+            className="p-0 bg-transparent border-0 shadow-none w-auto inline-block"
             onInteractOutside={closeViewer}
           >
           {viewingPhoto && (
-            <div className="relative rounded-lg shadow-xl flex flex-col overflow-hidden bg-card/80 backdrop-blur-sm">
+            <div className="rounded-lg shadow-xl flex flex-col overflow-hidden bg-card/80 backdrop-blur-sm">
                 <DialogHeader className="sr-only">
                     <DialogTitle>Viewing Photo: {viewingPhoto.description}</DialogTitle>
                 </DialogHeader>
-
-                <div className="relative">
-                    <Image
+                
+                <div className="relative w-[90vw] h-[90vh]">
+                   <Image
                       src={viewingPhoto.url}
                       alt={viewingPhoto.description}
-                      width={1920}
-                      height={1080}
-                      className="object-contain max-w-[90vw] max-h-[90vh] rounded-t-lg"
+                      fill
+                      className="object-contain"
                       priority
                     />
                 </div>
+
                  <div className="flex items-center justify-between gap-4 p-3">
-                    <p className="flex-1 text-sm font-semibold text-card-foreground">
+                    <p className="flex-1 text-sm font-semibold text-card-foreground truncate">
                         {viewingPhoto.description}
                     </p>
                     {isViewingPhotoOwner && (
@@ -358,3 +358,5 @@ export default function PhotosPage() {
     </div>
   );
 }
+
+    
