@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/auth-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { Label } from '@/components/ui/label';
 
 type Photo = {
   id: string;
@@ -148,10 +149,18 @@ export default function PhotosPage() {
   const { user } = useAuth();
   const [photos, setPhotos] = useState(initialPhotos);
   const [activeTab, setActiveTab] = useState('shared');
+  
   const [isUploadModalOpen, setUploadModalOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploadIsPrivate, setUploadIsPrivate] = useState(false);
+  
+  const [isPrivateAlbumLocked, setPrivateAlbumLocked] = useState(true);
+  const [isPasswordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  const SPECIAL_PASSWORD = 'amorem';
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -168,8 +177,12 @@ export default function PhotosPage() {
     if (activeTab === 'shared') {
       return photos.filter(p => !p.isPrivate);
     }
+    // For 'private' tab, only show if unlocked
+    if (isPrivateAlbumLocked) {
+      return [];
+    }
     return photos.filter(p => p.isPrivate && p.uploader === user);
-  }, [photos, activeTab, user]);
+  }, [photos, activeTab, user, isPrivateAlbumLocked]);
   
   const [orderedPhotos, setOrderedPhotos] = useState(displayedPhotos);
 
@@ -226,6 +239,27 @@ export default function PhotosPage() {
     setPhotos(prev => prev.map(p => p.id === id ? { ...p, description: newDescription } : p));
   };
   
+  const handleTabChange = (value: string) => {
+    if (value === 'private' && isPrivateAlbumLocked) {
+      setPasswordDialogOpen(true);
+    } else {
+      setActiveTab(value);
+    }
+  };
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput === SPECIAL_PASSWORD) {
+      setPrivateAlbumLocked(false);
+      setPasswordDialogOpen(false);
+      setPasswordError('');
+      setPasswordInput('');
+      setActiveTab('private');
+    } else {
+      setPasswordError('Incorrect password. Please try again.');
+    }
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!user) return null;
@@ -239,7 +273,7 @@ export default function PhotosPage() {
             Photos
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
                 <TabsList>
                     <TabsTrigger value="shared">Shared Album</TabsTrigger>
                     <TabsTrigger value="private">My Eyes Only</TabsTrigger>
@@ -289,10 +323,50 @@ export default function PhotosPage() {
                 </DialogContent>
             </Dialog>
 
+            <Dialog open={isPasswordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Enter Password</DialogTitle>
+                  <DialogDescription>
+                    This album is locked. Please enter the special password to view it.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handlePasswordSubmit}>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="password" className="text-right">
+                        Password
+                      </Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        className="col-span-3"
+                      />
+                    </div>
+                    {passwordError && <p className="text-sm text-destructive text-center col-span-4">{passwordError}</p>}
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setPasswordDialogOpen(false)}>Cancel</Button>
+                    <Button type="submit">Unlock</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+
           {orderedPhotos.length === 0 ? (
-            <p className="text-muted-foreground text-center mb-4">
-              This album is empty. Click the '+' to add a memory!
-            </p>
+            <div className="text-muted-foreground text-center mb-4">
+              {activeTab === 'private' && isPrivateAlbumLocked ? (
+                <div className="flex flex-col items-center gap-4 py-8">
+                  <Lock className="h-12 w-12 text-muted-foreground" />
+                  <p>This album is locked.</p>
+                  <Button onClick={() => setPasswordDialogOpen(true)}>Unlock "My Eyes Only"</Button>
+                </div>
+              ) : (
+                <p>This album is empty. Click the '+' to add a memory!</p>
+              )}
+            </div>
           ) : (
             <DndContext
               sensors={sensors}
@@ -319,3 +393,5 @@ export default function PhotosPage() {
     </div>
   );
 }
+
+    
