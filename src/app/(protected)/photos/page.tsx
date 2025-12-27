@@ -195,6 +195,12 @@ export default function PhotosPage() {
     setOrderedPhotos(displayedPhotos);
   }, [displayedPhotos]);
 
+  useEffect(() => {
+    if (activeTab !== 'private') {
+      setPrivateAlbumLocked(true);
+    }
+  }, [activeTab]);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
@@ -295,7 +301,10 @@ export default function PhotosPage() {
         handlePinPadBackspace();
       } else if (e.key === 'Enter') {
         // Form submission is the default behavior for Enter
-        // We can trigger it programmatically if needed, but a form element handles it
+        const form = document.querySelector('form[data-form-id="pin-form"]');
+        if(form) {
+            form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
       }
     };
 
@@ -418,7 +427,7 @@ export default function PhotosPage() {
                     This album is locked.
                   </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handlePasswordSubmit}>
+                <form onSubmit={handlePasswordSubmit} data-form-id="pin-form">
                   <div className="flex flex-col items-center gap-4 py-4">
                     <div className="flex h-10 items-center justify-center gap-3 text-2xl tracking-widest text-muted-foreground">
                       {pinDisplay.split('').map((char, i) => <span key={i}>{char}</span>)}
@@ -486,5 +495,3 @@ export default function PhotosPage() {
   );
 }
  
-
-    
