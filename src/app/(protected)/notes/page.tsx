@@ -65,23 +65,24 @@ const NoteEditor = ({
   useEffect(() => {
     setText(note?.content || '');
   }, [note]);
-
-  const autoResizeTextarea = (el: HTMLTextAreaElement) => {
-    el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
+  
+  const autoResizeTextarea = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
   };
 
   useEffect(() => {
-    if (isEditing && textareaRef.current) {
-      autoResizeTextarea(textareaRef.current);
+    if (isEditing) {
+      autoResizeTextarea();
     }
   }, [isEditing, text]);
   
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
-    if(textareaRef.current) {
-      autoResizeTextarea(textareaRef.current);
-    }
+    autoResizeTextarea();
   };
 
   const handleSave = () => {
@@ -92,9 +93,7 @@ const NoteEditor = ({
   const handleEdit = () => {
     setIsEditing(true);
     setTimeout(() => {
-      if (textareaRef.current) {
-        autoResizeTextarea(textareaRef.current);
-      }
+      autoResizeTextarea();
     }, 0);
   }
 
@@ -281,7 +280,7 @@ export default function NotesPage() {
         <h2 className="text-xl font-headline text-primary">
           {format(selectedDate, 'MMMM d, yyyy')}
         </h2>
-        <div className="grid flex-1 items-stretch gap-4 md:grid-cols-2">
+        <div className="grid flex-1 items-start gap-4 md:grid-cols-2">
           <NoteEditor
             noteUser={user}
             currentUser={user}
