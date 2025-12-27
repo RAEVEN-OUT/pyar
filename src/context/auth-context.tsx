@@ -57,7 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Could not access local storage:", e);
       }
       router.push('/chat');
-      // No need to set loading to false here, as the page will redirect and the state will be fresh.
+      // Set loading to false after initiating redirect
+      setLoading(false);
     } else {
       setLoading(false);
       throw new Error('That\'s not the right magic word. Please try again.');
