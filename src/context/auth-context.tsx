@@ -58,27 +58,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const credentials = USER_CREDENTIALS[selectedUser];
 
     try {
-      // Attempt to sign in directly. Firebase will be the source of truth.
       await signInWithEmailAndPassword(auth, credentials.email, magicWord);
       router.push('/chat');
     } catch (error: any) {
-      // If the user doesn't exist, create a new account.
-      if (error.code === 'auth/user-not-found') {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
         try {
+          // Try to create the user if they don't exist.
           await createUserWithEmailAndPassword(auth, credentials.email, magicWord);
-           router.push('/chat');
-        } catch (creationError) {
+          router.push('/chat');
+        } catch (creationError: any) {
+          // If creation also fails, it's likely because the user exists but the password is wrong.
+          if(creationError.code === 'auth/email-already-in-use' || error.code === 'auth/invalid-credential') {
+             setLoading(false);
+             throw new Error("That's not the right magic word. Please try again.");
+          }
           console.error("Error creating user:", creationError);
           setLoading(false);
           throw new Error('Could not create an account. Please try again.');
         }
       } 
-      // If the user exists but the password ("magic word") is wrong.
-      else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-        setLoading(false);
-        throw new Error('That\'s not the right magic word. Please try again.');
-      }
-      // Handle any other unexpected errors.
       else {
         console.error("Error signing in:", error);
         setLoading(false);
