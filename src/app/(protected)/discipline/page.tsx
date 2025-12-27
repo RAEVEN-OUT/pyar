@@ -153,35 +153,37 @@ export default function DisciplinePage() {
     Her: {},
   });
   
+  const otherUser = user === 'Him' ? 'Her' : 'Him';
+  const prevCheckedRef = useRef<CheckedState>();
+  
   if (!user) {
     return null;
   }
-  
-  const otherUser = user === 'Him' ? 'Her' : 'Him';
-  const otherUserScore = Object.values(checked[otherUser]).filter(Boolean).length;
-  const prevOtherUserScore = useRef(otherUserScore);
-
 
   useEffect(() => {
     // Reset daily checks at midnight
     const today = new Date().toISOString().slice(0, 10);
     const lastReset = localStorage.getItem('disciplineLastReset');
     
+    let loadedChecks: CheckedState = { Him: {}, Her: {} };
+
     if (lastReset !== today) {
-      setChecked({ Him: {}, Her: {} });
       localStorage.setItem('disciplineLastReset', today);
+      localStorage.removeItem('disciplineChecks');
+    } else {
+       // Load persisted checks from localStorage
+      const savedChecks = localStorage.getItem('disciplineChecks');
+      if (savedChecks) {
+          try {
+              const parsedChecks = JSON.parse(savedChecks);
+              loadedChecks = parsedChecks;
+          } catch (e) {
+              console.error("Failed to parse discipline checks from localStorage", e);
+          }
+      }
     }
-    
-    // Load persisted checks from localStorage
-    const savedChecks = localStorage.getItem('disciplineChecks');
-    if (savedChecks && lastReset === today) {
-        try {
-            const parsedChecks = JSON.parse(savedChecks);
-            setChecked(parsedChecks);
-        } catch (e) {
-            console.error("Failed to parse discipline checks from localStorage", e);
-        }
-    }
+    setChecked(loadedChecks);
+    prevCheckedRef.current = loadedChecks;
   }, []);
 
   useEffect(() => {
@@ -191,17 +193,33 @@ export default function DisciplinePage() {
     } catch (e) {
         console.error("Failed to save discipline checks to localStorage", e);
     }
-  }, [checked]);
 
-  useEffect(() => {
-    if (otherUserScore > prevOtherUserScore.current) {
-      toast({
-        title: `${otherUser} scored a point! 🎉`,
-        description: `They now have ${otherUserScore} points. Keep it up!`,
-      });
+    if (prevCheckedRef.current && user) {
+        const prevOtherUserChecks = prevCheckedRef.current[otherUser] || {};
+        const currentOtherUserChecks = checked[otherUser] || {};
+
+        const prevScore = Object.values(prevOtherUserChecks).filter(Boolean).length;
+        const currentScore = Object.values(currentOtherUserChecks).filter(Boolean).length;
+        
+        if (currentScore > prevScore) {
+            const completedActivityId = Object.keys(currentOtherUserChecks).find(
+                (id) => currentOtherUserChecks[id] && !prevOtherUserChecks[id]
+            );
+
+            if (completedActivityId) {
+                const activity = activities.find(a => a.id === completedActivityId);
+                if (activity) {
+                     toast({
+                        title: `${otherUser} completed a task! 🎉`,
+                        description: `${otherUser === 'Her' ? 'She' : 'He'} finished '${activity.label}'. Way to go!`,
+                    });
+                }
+            }
+        }
     }
-    prevOtherUserScore.current = otherUserScore;
-  }, [otherUserScore, otherUser, toast]);
+    prevCheckedRef.current = checked;
+
+  }, [checked, user, otherUser, activities, toast]);
 
 
   const handleCheckChange = (checkedUser: User, activityId: string) => {
@@ -236,7 +254,8 @@ export default function DisciplinePage() {
     });
   };
 
-  const userScore = Object.values(checked[user]).filter(Boolean).length;
+  const userScore = Object.values(checked[user] || {}).filter(Boolean).length;
+  const otherUserScore = Object.values(checked[otherUser] || {}).filter(Boolean).length;
   
   return (
     <div className="flex h-full flex-col items-center justify-center p-4 md:p-8">
