@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/auth-context';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -32,6 +32,11 @@ const initialPhotos: Photo[] = PlaceHolderImages.map(p => ({
     isPrivate: false,
 }));
 
+type ImageDimensions = {
+  width: number;
+  height: number;
+};
+
 
 export default function PhotosPage() {
   const { user } = useAuth();
@@ -49,6 +54,8 @@ export default function PhotosPage() {
   const [passwordError, setPasswordError] = useState('');
 
   const [viewingPhoto, setViewingPhoto] = useState<Photo | null>(null);
+  const [viewingPhotoDimensions, setViewingPhotoDimensions] = useState<ImageDimensions | null>(null);
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,7 +120,6 @@ export default function PhotosPage() {
     }
   }, [isPrivateAlbumLocked]);
   
-
   const handlePasswordSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (passwordInput === SPECIAL_PIN) {
@@ -160,6 +166,11 @@ export default function PhotosPage() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [handleKeyDown]);
+  
+  const closeViewer = () => {
+    setViewingPhoto(null);
+    setViewingPhotoDimensions(null);
+  };
 
 
   if (!user) return null;
@@ -167,35 +178,72 @@ export default function PhotosPage() {
   const pinDisplay = '●'.repeat(passwordInput.length).padEnd(4, '○');
   const isViewingPhotoOwner = viewingPhoto?.uploader === user;
 
+  const isPortrait = viewingPhotoDimensions ? viewingPhotoDimensions.height > viewingPhotoDimensions.width : false;
+
+
   return (
     <div className="flex h-full flex-col p-4 md:p-8">
-       <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
+       <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
         <DialogContent
           className="p-0 bg-transparent border-0 shadow-none w-screen h-screen flex items-center justify-center"
         >
           {viewingPhoto && (
-             <div className="relative inline-block bg-card rounded-lg shadow-xl flex-col overflow-hidden">
-                <DialogTitle className="sr-only">Viewing Photo: {viewingPhoto?.description}</DialogTitle>
-                <div className="relative flex-shrink-0">
-                    <Image
-                        src={viewingPhoto.url}
-                        alt={viewingPhoto.description}
-                        width={1920}
-                        height={1080}
-                        className="object-contain"
-                        style={{ maxWidth: '95vw', maxHeight: '95vh'}}
-                    />
+            <div
+              className="relative inline-block bg-card rounded-lg shadow-xl flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <DialogHeader>
+                <DialogTitle className="sr-only">
+                  Viewing Photo: {viewingPhoto?.description}
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="relative">
+                <Image
+                  src={viewingPhoto.url}
+                  alt={viewingPhoto.description}
+                  width={1920}
+                  height={1080}
+                  onLoad={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    setViewingPhotoDimensions({
+                      width: target.naturalWidth,
+                      height: target.naturalHeight,
+                    });
+                  }}
+                  className={cn(
+                    'object-contain transition-opacity duration-300',
+                    !viewingPhotoDimensions && 'opacity-0', // Hide until loaded
+                    isPortrait ? 'h-[95vh] w-auto' : 'w-[95vw] h-auto'
+                  )}
+                  priority
+                />
+                {!viewingPhotoDimensions && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-card">
+                     <ImageIcon className="h-16 w-16 text-muted-foreground animate-pulse" />
+                  </div>
+                )}
+              </div>
+              
+              {viewingPhotoDimensions && (
+                <div className="flex h-[52px] items-center justify-between border-t bg-card/80 p-3 backdrop-blur-sm">
+                  <p className="truncate pr-4 text-sm font-semibold text-card-foreground">
+                    {viewingPhoto.description}
+                  </p>
+                  {isViewingPhotoOwner && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeletePhoto(viewingPhoto.id)}
+                      className="flex-shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
+                  )}
                 </div>
-                <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t h-[52px]">
-                    <p className="font-semibold text-card-foreground text-sm truncate pr-4">{viewingPhoto.description}</p>
-                    {isViewingPhotoOwner && (
-                        <Button variant="ghost" size="icon" onClick={() => handleDeletePhoto(viewingPhoto.id)} className="text-destructive hover:bg-destructive/10 hover:text-destructive flex-shrink-0">
-                            <Trash2 className="h-5 w-5" />
-                        </Button>
-                    )}
-                </div>
+              )}
             </div>
-            )}
+          )}
         </DialogContent>
       </Dialog>
     
@@ -233,7 +281,6 @@ export default function PhotosPage() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Upload a new photo</DialogTitle>
-
                         <DialogDescription>Add a description and choose if this photo should be private.</DialogDescription>
                     </DialogHeader>
                     {uploadFile && <Image src={URL.createObjectURL(uploadFile)} alt="Preview" width={400} height={300} className="rounded-md object-contain mx-auto max-h-60" />}
@@ -339,4 +386,5 @@ export default function PhotosPage() {
       </Card>
     </div>
   );
-}
+
+    
