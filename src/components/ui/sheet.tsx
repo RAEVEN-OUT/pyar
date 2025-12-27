@@ -65,7 +65,6 @@ const SheetContent = React.forwardRef<
       {...props}
     >
       {children}
-      
     </SheetPrimitive.Content>
   </SheetPortal>
 ))
