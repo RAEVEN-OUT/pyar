@@ -292,7 +292,7 @@ export default function PhotosPage() {
     setPasswordInput(prev => prev.slice(0, -1));
   }, []);
 
-  fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -357,17 +357,22 @@ export default function PhotosPage() {
         </CardHeader>
         <CardContent className="pt-6">
             <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
-              {viewingPhoto && (
-                  <DialogContent 
-                    className="bg-transparent border-0 shadow-none p-0 max-w-4xl w-full"
+              <DialogContent 
+                className="bg-transparent border-0 shadow-none p-0 max-w-none w-full h-full"
+                onClick={() => setViewingPhoto(null)}
+              >
+                 {viewingPhoto && (
+                  <>
+                  <DialogHeader className="sr-only">
+                    <DialogTitle>{viewingPhoto.description}</DialogTitle>
+                    <DialogDescription>A photo uploaded by {viewingPhoto.uploader}.</DialogDescription>
+                  </DialogHeader>
+                  <div 
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
                     onClick={() => setViewingPhoto(null)}
                   >
-                     <DialogHeader className="sr-only">
-                        <DialogTitle>{viewingPhoto.description}</DialogTitle>
-                        <DialogDescription>A photo uploaded by {viewingPhoto.uploader}.</DialogDescription>
-                    </DialogHeader>
                     <div 
-                      className="relative w-full h-auto bg-card rounded-lg shadow-xl flex flex-col overflow-hidden"
+                      className="relative w-full h-auto bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-w-4xl max-h-[90vh]"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="relative aspect-video flex-1">
@@ -388,8 +393,10 @@ export default function PhotosPage() {
                           )}
                        </div>
                     </div>
-                  </DialogContent>
-              )}
+                  </div>
+                  </>
+                 )}
+              </DialogContent>
             </Dialog>
 
             <Dialog open={isUploadModalOpen} onOpenChange={setUploadModalOpen}>
