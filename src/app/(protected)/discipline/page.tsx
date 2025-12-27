@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -150,6 +150,38 @@ export default function DisciplinePage() {
     Him: {},
     Her: {},
   });
+  
+  useEffect(() => {
+    // Reset daily checks at midnight
+    const today = new Date().toISOString().slice(0, 10);
+    const lastReset = localStorage.getItem('disciplineLastReset');
+    
+    if (lastReset !== today) {
+      setChecked({ Him: {}, Her: {} });
+      localStorage.setItem('disciplineLastReset', today);
+    }
+    
+    // Load persisted checks from localStorage
+    const savedChecks = localStorage.getItem('disciplineChecks');
+    if (savedChecks && lastReset === today) {
+        try {
+            const parsedChecks = JSON.parse(savedChecks);
+            setChecked(parsedChecks);
+        } catch (e) {
+            console.error("Failed to parse discipline checks from localStorage", e);
+        }
+    }
+  }, []);
+
+  useEffect(() => {
+    // Persist checks to localStorage whenever they change
+    try {
+        localStorage.setItem('disciplineChecks', JSON.stringify(checked));
+    } catch (e) {
+        console.error("Failed to save discipline checks to localStorage", e);
+    }
+  }, [checked]);
+
 
   const handleCheckChange = (checkedUser: User, activityId: string) => {
     setChecked((prev) => ({
