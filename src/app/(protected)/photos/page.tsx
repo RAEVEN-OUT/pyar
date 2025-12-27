@@ -285,9 +285,14 @@ export default function PhotosPage() {
         </CardHeader>
         <CardContent className="pt-6 flex-1 overflow-y-auto">
             <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
-              <DialogContent 
+              <DialogContent
                 className="bg-transparent border-0 shadow-none p-0 max-w-none w-auto h-auto"
-                onPointerDownOutside={() => setViewingPhoto(null)}
+                onPointerDownOutside={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (!target.closest('[data-photo-frame]')) {
+                        setViewingPhoto(null);
+                    }
+                }}
               >
                  {viewingPhoto && (
                   <>
@@ -375,7 +380,9 @@ export default function PhotosPage() {
                          <Button type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick('0')}>
                            0
                          </Button>
-                         <div />
+                         <Button type="button" variant="ghost" className="h-14 text-xl" onClick={handlePinPadBackspace}>
+                           <Delete className="h-6 w-6" />
+                         </Button>
                     </div>
                   </div>
                   <DialogFooter className="sm:justify-center">
@@ -415,3 +422,5 @@ export default function PhotosPage() {
     </div>
   );
 }
+
+    
