@@ -4,7 +4,7 @@ import { AuthProvider } from '@/context/auth-context';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'Pyar',
+  title: 'Only Mine',
   description: 'A private app for just two.',
 };
 

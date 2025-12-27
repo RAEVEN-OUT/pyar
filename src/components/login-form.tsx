@@ -99,7 +99,7 @@ export default function LoginForm() {
         </CardContent>
         <CardFooter className="justify-center">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Pyar
+            &copy; {new Date().getFullYear()} Only Mine
           </p>
         </CardFooter>
       </Card>
