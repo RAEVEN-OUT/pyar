@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Plus, Lock } from 'lucide-react';
+import { Image as ImageIcon, Plus, Lock, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useRef, useMemo, useEffect } from 'react';
 import {
@@ -52,10 +52,12 @@ function SortablePhoto({
   photo,
   onDescriptionChange,
   isOwner,
+  onDelete,
 }: { 
   photo: Photo,
   onDescriptionChange: (id: string, newDescription: string) => void;
   isOwner: boolean;
+  onDelete: (id: string) => void;
 }) {
   const {
     attributes,
@@ -107,6 +109,17 @@ function SortablePhoto({
         isDragging && 'opacity-75'
       )}
     >
+      {isOwner && (
+        <Button
+          variant="destructive"
+          size="icon"
+          className="absolute top-2 left-2 z-10 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => onDelete(photo.id)}
+          aria-label="Delete photo"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
       <div {...attributes} {...listeners} className="h-full w-full cursor-grab">
         <Image
           src={photo.url}
@@ -237,6 +250,10 @@ export default function PhotosPage() {
 
   const handleDescriptionChange = (id: string, newDescription: string) => {
     setPhotos(prev => prev.map(p => p.id === id ? { ...p, description: newDescription } : p));
+  };
+
+  const handleDeletePhoto = (id: string) => {
+    setPhotos(prev => prev.filter(p => p.id !== id));
   };
   
   const handleTabChange = (value: string) => {
@@ -382,6 +399,7 @@ export default function PhotosPage() {
                       photo={photo}
                       onDescriptionChange={handleDescriptionChange}
                       isOwner={photo.uploader === user}
+                      onDelete={handleDeletePhoto}
                     />
                   ))}
                 </div>
@@ -393,5 +411,3 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-    
