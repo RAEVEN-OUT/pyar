@@ -449,7 +449,7 @@ export default function ChatPage() {
           mood={mood}
           onMoodChange={setMood}
         />
-        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 chat-bg-pattern no-scrollbar" style={{scrollBehavior: 'smooth'}}>
+        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 no-scrollbar" style={{scrollBehavior: 'smooth'}}>
           {messages.map((msg) => {
             const isSender = msg.sender === user;
             const messageReactions = msg.reactions ? Object.entries(msg.reactions) : [];
