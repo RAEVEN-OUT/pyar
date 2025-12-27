@@ -103,7 +103,7 @@ const UserColumn = ({
                 <label
                   htmlFor={`${displayedUser}-${activity.id}`}
                   className={cn(
-                    'text-base font-medium flex-1',
+                    'text-base font-medium flex-1 break-words',
                     checked[displayedUser][activity.id] && 'line-through text-muted-foreground'
                   )}
                 >
@@ -225,7 +225,7 @@ export default function DisciplinePage() {
   const otherUserScore = Object.values(checked[otherUser]).filter(Boolean).length;
   
   return (
-    <div className="flex h-full flex-col items-center justify-start p-4 md:p-8">
+    <div className="flex h-full flex-col items-center justify-center p-4 md:p-8">
        <div className="flex w-full max-w-4xl flex-col items-center gap-4">
           <div className="flex items-center gap-2 text-3xl font-headline text-primary self-center mb-4">
             <ShieldCheck className="h-10 w-10 text-primary" />
