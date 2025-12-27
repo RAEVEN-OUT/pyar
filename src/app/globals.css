@@ -8,7 +8,7 @@
     --foreground: 20 15% 25%; /* Soft charcoal */
 
     --card: 39 100% 95%; /* #FFF5E4 */
-    --card-foreground: 339 79% 29%; /* #850E33 */
+    --card-foreground: 20 15% 25%; /* #403A3A - Swapped for readability */
 
     --popover: 39 100% 95%;
     --popover-foreground: 20 15% 25%;
@@ -23,7 +23,7 @@
     --muted-foreground: 20 10% 50%;
 
     --accent: 348 81% 67%; /* #EE6983 */
-    --accent-foreground: 39 100% 95%; /* #FFF5E4 */
+    --accent-foreground: 39 100% 95%; /* #FFF5E4 - Swapped for readability */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;

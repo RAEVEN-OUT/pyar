@@ -216,13 +216,11 @@ export default function NotesPage() {
   };
 
   if (!currentUser) return null;
-
-  const otherUser = currentUser === 'Him' ? 'Her' : 'Him';
   
   const canEditSelectedDate = isToday(selectedDate);
   
-  const currentUserNote = dailyNotes.find(n => n.author === currentUser);
-  const otherUserNote = dailyNotes.find(n => n.author === otherUser);
+  const hisNote = dailyNotes.find(n => n.author === 'Him');
+  const herNote = dailyNotes.find(n => n.author === 'Her');
 
   return (
     <div className="flex h-full flex-col p-4 md:flex-row md:gap-8 md:p-8">
@@ -244,21 +242,21 @@ export default function NotesPage() {
         </h2>
         <div className="grid flex-1 items-start gap-4 md:grid-cols-2">
           <NoteEditor
-            noteUser={currentUser}
+            noteUser="Him"
             currentUser={currentUser}
-            note={currentUserNote}
-            onSave={handleSaveNote(currentUser)}
+            note={hisNote}
+            onSave={handleSaveNote("Him")}
             colorClass="bg-card text-card-foreground"
             canEdit={canEditSelectedDate}
             selectedDate={selectedDate}
           />
           <NoteEditor
-            noteUser={otherUser}
+            noteUser="Her"
             currentUser={currentUser}
-            note={otherUserNote}
-            onSave={handleSaveNote(otherUser)}
+            note={herNote}
+            onSave={handleSaveNote("Her")}
             colorClass="bg-accent text-accent-foreground"
-            canEdit={false} // Only the current user can edit their own note
+            canEdit={canEditSelectedDate}
             selectedDate={selectedDate}
           />
         </div>
