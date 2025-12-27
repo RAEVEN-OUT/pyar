@@ -2,6 +2,19 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/context/auth-context';
 import { Toaster } from '@/components/ui/toaster';
+import { Alegreya, Belleza } from 'next/font/google';
+
+const belleza = Belleza({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-belleza',
+});
+
+const alegreya = Alegreya({
+  subsets: ['latin'],
+  style: ['normal', 'italic'],
+  variable: '--font-alegreya',
+});
 
 export const metadata: Metadata = {
   title: 'Only Mine',
@@ -14,12 +27,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&family=Belleza&display=swap" rel="stylesheet" />
-      </head>
+    <html lang="en" className={`${belleza.variable} ${alegreya.variable} h-full`}>
+      <head />
       <body className="font-body antialiased h-full">
           <AuthProvider>
             {children}

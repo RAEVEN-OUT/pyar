@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
-import { useDiscipline, type Activity } from '@/context/discipline-context';
+import { DisciplineProvider, useDiscipline, type Activity } from '@/context/discipline-context';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ShieldCheck, Award, Trash2, Plus } from 'lucide-react';
@@ -126,7 +126,7 @@ const UserColumn = ({
     );
   };
 
-export default function DisciplinePage() {
+function DisciplinePageContent() {
   const { user: currentUserRole } = useAuth();
   const { activities, addActivity, toggleActivity, deleteActivity } = useDiscipline();
   const { toast } = useToast();
@@ -223,4 +223,12 @@ export default function DisciplinePage() {
         </div>
     </div>
   );
+}
+
+export default function DisciplinePage() {
+    return (
+        <DisciplineProvider>
+            <DisciplinePageContent />
+        </DisciplineProvider>
+    );
 }

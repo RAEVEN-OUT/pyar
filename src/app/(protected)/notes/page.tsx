@@ -9,7 +9,7 @@ import { NotebookText, Edit, Save, ChevronLeft, ChevronRight } from 'lucide-reac
 import { isFuture, isSameMonth, isToday, format, add, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useNotes, type Note } from '@/context/notes-context';
+import { NotesProvider, useNotes, type Note } from '@/context/notes-context';
 
 
 const NoteEditor = ({
@@ -199,8 +199,7 @@ const NotesCalendar = ({
   );
 };
 
-
-export default function NotesPage() {
+function NotesPageContent() {
   const { user: currentUser } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
@@ -263,5 +262,13 @@ export default function NotesPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function NotesPage() {
+  return (
+    <NotesProvider>
+      <NotesPageContent />
+    </NotesProvider>
   );
 }

@@ -18,7 +18,8 @@ import {
   updateDoc,
   deleteDoc,
   query,
-  orderBy 
+  orderBy,
+  getDocs,
 } from 'firebase/firestore';
 
 export type Activity = {
@@ -44,6 +45,26 @@ export function DisciplineProvider({ children }: { children: ReactNode }) {
   const [activities, setActivities] = useState<Activity[]>([]);
 
   useEffect(() => {
+    const checkAndResetDailies = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const lastResetDate = localStorage.getItem('disciplineLastReset');
+
+      if (lastResetDate !== today) {
+        console.log('New day detected. Resetting daily discipline tasks.');
+        const activitiesQuery = query(collection(db, 'activities'));
+        const snapshot = await getDocs(activitiesQuery);
+        const updates: Promise<void>[] = [];
+        snapshot.forEach((doc) => {
+          updates.push(updateDoc(doc.ref, { checks: {} }));
+        });
+        await Promise.all(updates);
+        localStorage.setItem('disciplineLastReset', today);
+        console.log('Daily discipline tasks reset.');
+      }
+    };
+
+    checkAndResetDailies();
+
     const activitiesRef = collection(db, 'activities');
     const q = query(activitiesRef, orderBy('createdAt', 'asc'));
     

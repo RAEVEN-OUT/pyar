@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
-import { useTasks, type Task } from '@/context/todo-context';
+import { TasksProvider, useTasks, type Task } from '@/context/todo-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -70,8 +70,7 @@ const TaskItem = ({ task, currentUser, onToggle }: { task: Task, currentUser: Us
   );
 };
 
-
-export default function ToDoPage() {
+function ToDoPageContent() {
   const { user: currentUser } = useAuth();
   const { tasks, addTask, toggleTask } = useTasks();
   const [newTaskText, setNewTaskText] = useState('');
@@ -146,4 +145,12 @@ export default function ToDoPage() {
       </Card>
     </div>
   );
+}
+
+export default function ToDoPage() {
+    return (
+        <TasksProvider>
+            <ToDoPageContent />
+        </TasksProvider>
+    );
 }

@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Plus,
   Smile,
+  Trash2,
 } from 'lucide-react';
 import {
   startOfMonth,
@@ -46,6 +47,7 @@ import {
   onSnapshot, 
   doc, 
   setDoc,
+  deleteDoc,
   serverTimestamp,
   Timestamp,
   query 
@@ -170,8 +172,7 @@ export default function CalendarPage() {
           createdAt: serverTimestamp(),
         });
         
-        setPopoverOpen(false);
-        setSelectedDate(null);
+        setViewMode('view');
         setEventTitle('');
         setEventDesc('');
       } catch (error) {
@@ -180,10 +181,26 @@ export default function CalendarPage() {
     }
   };
   
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      await deleteDoc(doc(db, 'calendar_events', eventId));
+    } catch (error) {
+      console.error('Error deleting event:', error);
+    }
+  };
+
   const dayEvents = useMemo(() => {
     if (!selectedDate || !events) return [];
-    return events.filter((e) => isSameDay(new Date(e.date), selectedDate));
+    return events.filter((e) => isSameDay(new Date(e.date), selectedDate))
+                 .sort((a,b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
   }, [events, selectedDate]);
+  
+  // Switch to add mode if all events for a day are deleted
+  useEffect(() => {
+    if (popoverOpen && viewMode === 'view' && dayEvents.length === 0) {
+        setViewMode('add');
+    }
+  }, [dayEvents, popoverOpen, viewMode])
   
   const selectedSticker = useMemo(() => {
     if (!selectedDate || !stickers) return undefined;
@@ -213,7 +230,19 @@ export default function CalendarPage() {
           <Accordion type="single" collapsible className="w-full">
             {dayEvents.map(event => (
               <AccordionItem key={event.id} value={event.id}>
-                <AccordionTrigger className="truncate">{event.title}</AccordionTrigger>
+                <div className="flex items-center w-full group">
+                    <AccordionTrigger className="flex-1 truncate text-left">
+                        {event.title}
+                    </AccordionTrigger>
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 mr-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleDeleteEvent(event.id)}
+                    >
+                        <Trash2 className="h-4 w-4 text-muted-foreground"/>
+                    </Button>
+                </div>
                 <AccordionContent>
                   <ScrollArea className="h-24 pr-4">
                     {event.description || <p className="text-sm text-muted-foreground italic">No description provided.</p>}

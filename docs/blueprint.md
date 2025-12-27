@@ -8,7 +8,6 @@
 - Shared Notes: Calendar-organized notes section, with distinct notes for 'Him' and 'Her' on each date.
 - Important Dates Calendar: Calendar to store important dates with titles, descriptions, and notification to the other user upon creation/update.
 - Shared To-Do List: Collaborative to-do list where both users can add and complete tasks, marked with their respective colors.
-- Private Photo Album: Shared photo album and a separate hidden album, 'My Eyes Only,' accessible with a secondary password.
 
 ## Style Guidelines:
 

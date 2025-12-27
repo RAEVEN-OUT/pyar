@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -24,7 +23,6 @@ import {
   NotebookText,
   CalendarDays,
   ListChecks,
-  Image,
   ShieldCheck,
   LogOut,
   Heart,
@@ -38,13 +36,11 @@ import { TasksProvider, useTasks } from '@/context/todo-context';
 import { DisciplineProvider, useDiscipline } from '@/context/discipline-context';
 import { format } from 'date-fns';
 
-
 const navItems = [
   { href: '/chat', icon: MessagesSquare, label: 'Chat' },
   { href: '/notes', icon: NotebookText, label: 'Notes' },
   { href: '/calendar', icon: CalendarDays, label: 'Calendar' },
   { href: '/todo', icon: ListChecks, label: 'To-Do' },
-  { href: '/photos', icon: Image, label: 'Photos' },
   { href: '/discipline', icon: ShieldCheck, label: 'Discipline' },
 ];
 
@@ -67,7 +63,6 @@ function NavMenuItems() {
   const otherUserDisciplineScore = activities.filter(
     (a) => a.checks[otherUser]
   ).length;
-
 
   return (
     <>
@@ -112,42 +107,42 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
   
   return (
     <div className="flex h-full">
-      <Sidebar>
-        <SidebarContent>
-          <SidebarHeader>
-            <Logo className="text-3xl" />
-          </SidebarHeader>
-          <SidebarMenu className="flex-1">
-            <NavMenuItems />
-          </SidebarMenu>
-          <SidebarFooter className="items-center">
-            <div className="flex w-full items-center justify-between p-2">
-              <div className="flex items-center gap-2">
-                {user && (
-                  <>
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-accent text-accent-foreground">
-                        {user.slice(0, 1)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="font-semibold text-sm group-data-[collapsible=icon]:hidden">
-                      {user}
-                    </span>
-                  </>
-                )}
+        <Sidebar>
+          <SidebarContent>
+            <SidebarHeader>
+              <Logo className="text-3xl" />
+            </SidebarHeader>
+            <SidebarMenu className="flex-1">
+                <NavMenuItems />
+            </SidebarMenu>
+            <SidebarFooter className="items-center">
+              <div className="flex w-full items-center justify-between p-2">
+                <div className="flex items-center gap-2">
+                  {user && (
+                    <>
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-accent text-accent-foreground">
+                          {user.slice(0, 1)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-semibold text-sm group-data-[collapsible=icon]:hidden">
+                        {user}
+                      </span>
+                    </>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={logout}
+                  className="group-data-[collapsible=icon]:w-full"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={logout}
-                className="group-data-[collapsible=icon]:w-full"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          </SidebarFooter>
-        </SidebarContent>
-      </Sidebar>
+            </SidebarFooter>
+          </SidebarContent>
+        </Sidebar>
       <SidebarInset>
         {isMobile && (
            <div className="p-2 md:hidden flex items-center">
@@ -172,16 +167,13 @@ function MainAppLayout({ children }: { children: React.ReactNode }) {
         <NotesProvider>
           <TasksProvider>
             <DisciplineProvider>
-              <AppWithSidebar>
-                {children}
-              </AppWithSidebar>
+              <AppWithSidebar>{children}</AppWithSidebar>
             </DisciplineProvider>
           </TasksProvider>
         </NotesProvider>
       </SidebarProvider>
   );
 }
-
 
 export default function ProtectedLayout({
   children,
