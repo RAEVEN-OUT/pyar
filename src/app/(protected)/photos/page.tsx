@@ -25,7 +25,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
-import { restrictToHorizontalAxis } from '@dnd-kit/modifiers';
+import { restrictToParentElement } from '@dnd-kit/modifiers';
 
 function SortablePhoto({ photo }: { photo: ImagePlaceholder }) {
   const {
@@ -150,7 +150,7 @@ export default function PhotosPage() {
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
-              modifiers={[restrictToHorizontalAxis]}
+              modifiers={[restrictToParentElement]}
             >
               <SortableContext items={photos} strategy={rectSortingStrategy}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
