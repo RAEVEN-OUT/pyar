@@ -6,25 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Image as ImageIcon, Plus, Lock, Trash2, X, Delete } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  rectSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
-import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/auth-context';
@@ -49,7 +31,7 @@ const initialPhotos: Photo[] = PlaceHolderImages.map(p => ({
     isPrivate: false,
 }))
 
-function SortablePhoto({ 
+function PhotoItem({ 
   photo,
   onDescriptionChange,
   isOwner,
@@ -60,24 +42,9 @@ function SortablePhoto({
   isOwner: boolean;
   onPhotoClick: (photo: Photo) => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: photo.id });
-
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState(photo.description);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 10 : 'auto',
-  };
 
   const handleDescriptionClick = () => {
     if (!isOwner) return;
@@ -103,14 +70,9 @@ function SortablePhoto({
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        'overflow-hidden rounded-lg shadow-md aspect-video relative group',
-        isDragging && 'opacity-75'
-      )}
+      className='overflow-hidden rounded-lg shadow-md aspect-video relative group'
     >
-      <div {...attributes} {...listeners} onClick={() => onPhotoClick(photo)} className="h-full w-full cursor-pointer">
+      <div onClick={() => onPhotoClick(photo)} className="h-full w-full cursor-pointer">
         <Image
           src={photo.url}
           alt={photo.description}
@@ -167,17 +129,6 @@ export default function PhotosPage() {
 
   const SPECIAL_PIN = '2107';
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-        activationConstraint: {
-          distance: 8,
-        },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
   const displayedPhotos = useMemo(() => {
     if (activeTab === 'shared') {
       return photos.filter(p => !p.isPrivate);
@@ -188,29 +139,12 @@ export default function PhotosPage() {
     }
     return photos.filter(p => p.isPrivate && p.uploader === user);
   }, [photos, activeTab, user, isPrivateAlbumLocked]);
-  
-  const [orderedPhotos, setOrderedPhotos] = useState(displayedPhotos);
-
-  useEffect(() => {
-    setOrderedPhotos(displayedPhotos);
-  }, [displayedPhotos]);
 
   useEffect(() => {
     if (activeTab !== 'private') {
       setPrivateAlbumLocked(true);
     }
   }, [activeTab]);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setOrderedPhotos((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -359,7 +293,6 @@ export default function PhotosPage() {
             <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
               <DialogContent 
                 className="bg-transparent border-0 shadow-none p-0 max-w-none w-full h-full"
-                onClick={() => setViewingPhoto(null)}
               >
                  {viewingPhoto && (
                   <>
@@ -368,7 +301,7 @@ export default function PhotosPage() {
                     <DialogDescription>A photo uploaded by {viewingPhoto.uploader}.</DialogDescription>
                   </DialogHeader>
                   <div 
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
                     onClick={() => setViewingPhoto(null)}
                   >
                     <div 
@@ -462,7 +395,7 @@ export default function PhotosPage() {
               </DialogContent>
             </Dialog>
 
-          {orderedPhotos.length === 0 ? (
+          {displayedPhotos.length === 0 ? (
             <div className="text-muted-foreground text-center mb-4">
               {activeTab === 'private' && isPrivateAlbumLocked ? (
                 <div className="flex flex-col items-center gap-4 py-8">
@@ -475,26 +408,17 @@ export default function PhotosPage() {
               )}
             </div>
           ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-              modifiers={[restrictToParentElement]}
-            >
-              <SortableContext items={orderedPhotos.map(p => p.id)} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {orderedPhotos.map((photo) => (
-                    <SortablePhoto 
-                      key={photo.id} 
-                      photo={photo}
-                      onDescriptionChange={handleDescriptionChange}
-                      isOwner={photo.uploader === user}
-                      onPhotoClick={setViewingPhoto}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {displayedPhotos.map((photo) => (
+                <PhotoItem 
+                  key={photo.id} 
+                  photo={photo}
+                  onDescriptionChange={handleDescriptionChange}
+                  isOwner={photo.uploader === user}
+                  onPhotoClick={setViewingPhoto}
+                />
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -502,5 +426,3 @@ export default function PhotosPage() {
   );
 }
  
-
-    
