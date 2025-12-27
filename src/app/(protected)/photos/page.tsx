@@ -28,7 +28,7 @@ import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/auth-context';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogOverlay } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -325,29 +325,33 @@ export default function PhotosPage() {
         <CardContent className="pt-6">
             {viewingPhoto && (
               <div 
-                className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+                className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
                 onClick={() => setViewingPhoto(null)}
               >
-                <div className="relative w-full h-full p-4" onClick={(e) => e.stopPropagation()}>
-                   <Image
-                      src={viewingPhoto.url}
-                      alt={viewingPhoto.description}
-                      layout="fill"
-                      objectFit="contain"
-                      className="rounded-lg"
-                   />
-                   <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center text-white">
-                      <p className="font-semibold bg-black/50 p-2 rounded-md">{viewingPhoto.description}</p>
+                <div 
+                  className="relative w-full max-w-4xl h-auto max-h-full bg-card rounded-lg shadow-xl flex flex-col overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="relative aspect-video flex-1">
+                     <Image
+                        src={viewingPhoto.url}
+                        alt={viewingPhoto.description}
+                        fill
+                        className="object-contain"
+                     />
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t">
+                      <p className="font-semibold text-card-foreground text-sm truncate pr-4">{viewingPhoto.description}</p>
                       {isViewingPhotoOwner && (
-                          <Button variant="destructive" size="icon" onClick={() => handleDeletePhoto(viewingPhoto!.id)} className="bg-black/50 hover:bg-destructive/80">
+                          <Button variant="ghost" size="icon" onClick={() => handleDeletePhoto(viewingPhoto!.id)} className="text-destructive hover:bg-destructive/10 hover:text-destructive flex-shrink-0">
                               <Trash2 className="h-5 w-5" />
                           </Button>
                       )}
                    </div>
-                   <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-white bg-black/50" onClick={() => setViewingPhoto(null)}>
-                      <X className="h-6 w-6" />
-                   </Button>
                 </div>
+                 <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-white bg-black/30 hover:bg-black/60 rounded-full" onClick={() => setViewingPhoto(null)}>
+                    <X className="h-5 w-5" />
+                 </Button>
               </div>
             )}
 
@@ -402,7 +406,7 @@ export default function PhotosPage() {
                          <Button type="button" variant="outline" className="h-14 text-xl" onClick={() => handlePinPadClick('0')}>
                            0
                          </Button>
-                         <Button type="button" variant="outline" size="icon" className="h-14" onClick={() => handlePinPadBackspace}>
+                         <Button type="button" variant="outline" size="icon" className="h-14" onClick={handlePinPadBackspace}>
                            <X className="h-6 w-6" />
                          </Button>
                     </div>
@@ -453,5 +457,4 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-    
+ 
