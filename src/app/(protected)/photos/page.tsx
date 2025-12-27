@@ -112,6 +112,7 @@ export default function PhotosPage() {
       setPrivateAlbumLocked(true);
     }
   }, [isPrivateAlbumLocked]);
+  
 
   const handlePasswordSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -128,10 +129,8 @@ export default function PhotosPage() {
   }, [passwordInput]);
   
   const handlePinPadClick = useCallback((value: string) => {
-    if (passwordInput.length < 4) {
-      setPasswordInput(prev => prev + value);
-    }
-  }, [passwordInput]);
+    setPasswordInput((prev) => (prev + value).slice(0, 4));
+  }, []);
 
   const handlePinPadBackspace = useCallback(() => {
     setPasswordInput(prev => prev.slice(0, -1));
@@ -170,19 +169,18 @@ export default function PhotosPage() {
     <div className="flex h-full flex-col p-4 md:p-8">
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && setViewingPhoto(null)}>
         <DialogContent
-          className="p-0 bg-transparent border-0 shadow-none max-w-7xl w-full"
-          onInteractOutside={() => setViewingPhoto(null)}
+          className="p-0 bg-transparent border-0 shadow-none sm:rounded-lg w-auto inline-block"
         >
-            <DialogTitle className="sr-only">Viewing Photo: {viewingPhoto?.description}</DialogTitle>
-            {viewingPhoto && (
-            <div className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-h-[90vh] mx-auto">
-                <div className="relative w-full h-auto flex-1">
+          <DialogTitle className="sr-only">Viewing Photo: {viewingPhoto?.description}</DialogTitle>
+          {viewingPhoto && (
+            <div className="relative bg-card rounded-lg shadow-xl flex flex-col overflow-hidden max-h-[90vh]">
+                <div className="relative flex-shrink-0">
                     <Image
                         src={viewingPhoto.url}
                         alt={viewingPhoto.description}
                         width={1920}
                         height={1080}
-                        className="object-contain w-full h-full max-h-[calc(90vh-4rem)]"
+                        className="object-contain w-full h-auto max-h-[calc(90vh-4rem)]"
                     />
                 </div>
                 <div className="flex items-center justify-between p-3 bg-card/80 backdrop-blur-sm border-t">
@@ -336,5 +334,3 @@ export default function PhotosPage() {
     </div>
   );
 }
-
-    
