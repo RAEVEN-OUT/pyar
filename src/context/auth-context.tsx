@@ -59,17 +59,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithEmailAndPassword(auth, email, magicWord);
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
+        // If user is not found, try to create a new one
         try {
           await createUserWithEmailAndPassword(auth, email, magicWord);
         } catch (createError: any) {
            if (createError.code === 'auth/weak-password') {
              throw new Error('Magic word must be at least 6 characters long.');
            }
-           throw new Error('Could not create account. Please try again.');
+           // For other creation errors, provide a generic message
+           throw new Error('Could not create your account. Please try again.');
         }
       } else if (error.code === 'auth/invalid-credential') {
+        // This error is more specific than the old "auth/wrong-password"
         throw new Error('That\'s not the right magic word. Try again.');
       } else {
+        // For any other sign-in errors
         throw new Error('An unexpected error occurred. Please try again.');
       }
     }
