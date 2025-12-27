@@ -180,7 +180,7 @@ export default function PhotosPage() {
     <div className="flex h-full flex-col p-4 md:p-8">
        <Dialog open={!!viewingPhoto} onOpenChange={(open) => !open && closeViewer()}>
         <DialogContent
-          className="p-0 bg-transparent border-0 shadow-none w-auto inline-block"
+          className="p-0 bg-transparent border-0 shadow-none max-w-none w-auto inline-block"
           onInteractOutside={closeViewer}
         >
           {viewingPhoto && (
@@ -195,7 +195,7 @@ export default function PhotosPage() {
                       alt={viewingPhoto.description}
                       width={1920}
                       height={1080}
-                      className="object-contain max-w-[95vw] max-h-[95vh]"
+                      className="object-contain max-w-[95vw] max-h-[95vh] h-auto w-auto"
                       priority
                     />
                 </div>
