@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
@@ -13,7 +12,6 @@ import { Heart } from 'lucide-react';
 
 export default function LoginForm() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [magicWord, setMagicWord] = useState('');
   const [error, setError] = useState('');
   const { login, loading } = useAuth();
 
@@ -23,30 +21,11 @@ export default function LoginForm() {
       setError('Please select "Him" or "Her".');
       return;
     }
-    if (!magicWord) {
-      setError('Please enter the magic word.');
-      return;
-    }
     setError('');
     try {
-      await login(selectedUser, magicWord);
+      await login(selectedUser);
     } catch (err: any) {
-      switch (err.code) {
-        case 'auth/invalid-credential':
-        case 'auth/wrong-password':
-          setError('Invalid magic word. Please try again.');
-          break;
-        case 'auth/weak-password':
-          setError('The magic word must be at least 6 characters long.');
-          break;
-        case 'auth/invalid-email':
-           setError('An internal error occurred with the user role. Please contact support.');
-           break;
-        default:
-          setError('An unexpected error occurred. Please try again.');
-          console.error(err);
-          break;
-      }
+       setError(err.message || 'An unexpected error occurred. Please try again.');
     }
   };
 
@@ -62,7 +41,7 @@ export default function LoginForm() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <Label>Who are you?</Label>
+              <Label className="text-center block">Who are you?</Label>
               <div className="grid grid-cols-2 gap-4">
                 <Button
                   type="button"
@@ -88,19 +67,10 @@ export default function LoginForm() {
                 </Button>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="magic-word">Magic Word</Label>
-              <Input
-                id="magic-word"
-                type="password"
-                placeholder="••••••••••"
-                value={magicWord}
-                onChange={(e) => setMagicWord(e.target.value)}
-                className="h-12 text-center text-lg"
-              />
-            </div>
-            {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-            <Button type="submit" className="w-full h-12 text-lg" disabled={loading}>
+            
+            {error && <p className="text-sm font-medium text-destructive text-center">{error}</p>}
+
+            <Button type="submit" className="w-full h-12 text-lg" disabled={loading || !selectedUser}>
               {loading ? 'Entering...' : 'Enter'}
               <Heart className="ml-2 h-5 w-5 fill-current" />
             </Button>

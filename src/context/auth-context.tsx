@@ -18,15 +18,15 @@ interface AuthContextType {
   user: User | null;
   firebaseUser: FirebaseUser | null;
   loading: boolean;
-  login: (user: User, magicWord: string) => Promise<void>;
+  login: (user: User) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const roleEmails = {
-  'Him': 'him@amoremduo.app',
-  'Her': 'her@amoremduo.app'
+const userCredentials = {
+  'Him': { email: 'him@amoremduo.app', magicWord: '070805' },
+  'Her': { email: 'her@amoremduo.app', magicWord: '210406' }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if(!isUserLoading) {
       if (fbUser) {
-        const role = fbUser.email === roleEmails.Him ? 'Him' : 'Her';
+        const role = fbUser.email === userCredentials.Him.email ? 'Him' : 'Her';
         setUser(role);
         localStorage.setItem('amorem-duo-user', role);
       } else {
@@ -50,25 +50,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [fbUser, isUserLoading]);
 
-  const login = async (selectedUser: User, magicWord: string) => {
+  const login = async (selectedUser: User) => {
     if (!auth) throw new Error("Auth service not available");
     
-    const email = roleEmails[selectedUser];
+    const { email, magicWord } = userCredentials[selectedUser];
     
     try {
       await signInWithEmailAndPassword(auth, email, magicWord);
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
-        // If the user does not exist, try to create a new account.
         try {
           await createUserWithEmailAndPassword(auth, email, magicWord);
         } catch (createError: any) {
-           // This will catch errors during creation, like 'auth/weak-password'.
-           throw createError;
+           throw new Error('Could not create account. Please try again.');
         }
+      } else if (error.code === 'auth/invalid-credential') {
+        throw new Error('Internal authentication error. Magic words may be misconfigured.');
       } else {
-        // This will catch other sign-in errors like 'auth/invalid-credential'.
-        throw error;
+        throw new Error('An unexpected error occurred. Please try again.');
       }
     }
   };
