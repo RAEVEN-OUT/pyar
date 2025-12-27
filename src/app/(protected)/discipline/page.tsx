@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 const initialActivities = [
   { id: 'workout', label: 'Workout' },
@@ -144,6 +145,7 @@ const UserColumn = ({
 
 export default function DisciplinePage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [activities, setActivities] = useState<Activity[]>(initialActivities);
   const [newActivity, setNewActivity] = useState('');
   const [checked, setChecked] = useState<CheckedState>({
@@ -151,6 +153,15 @@ export default function DisciplinePage() {
     Her: {},
   });
   
+  if (!user) {
+    return null;
+  }
+  
+  const otherUser = user === 'Him' ? 'Her' : 'Him';
+  const otherUserScore = Object.values(checked[otherUser]).filter(Boolean).length;
+  const prevOtherUserScore = useRef(otherUserScore);
+
+
   useEffect(() => {
     // Reset daily checks at midnight
     const today = new Date().toISOString().slice(0, 10);
@@ -181,6 +192,16 @@ export default function DisciplinePage() {
         console.error("Failed to save discipline checks to localStorage", e);
     }
   }, [checked]);
+
+  useEffect(() => {
+    if (otherUserScore > prevOtherUserScore.current) {
+      toast({
+        title: `${otherUser} scored a point! 🎉`,
+        description: `They now have ${otherUserScore} points. Keep it up!`,
+      });
+    }
+    prevOtherUserScore.current = otherUserScore;
+  }, [otherUserScore, otherUser, toast]);
 
 
   const handleCheckChange = (checkedUser: User, activityId: string) => {
@@ -215,14 +236,7 @@ export default function DisciplinePage() {
     });
   };
 
-  if (!user) {
-    return null;
-  }
-
-  const otherUser = user === 'Him' ? 'Her' : 'Him';
-
   const userScore = Object.values(checked[user]).filter(Boolean).length;
-  const otherUserScore = Object.values(checked[otherUser]).filter(Boolean).length;
   
   return (
     <div className="flex h-full flex-col items-center justify-center p-4 md:p-8">
