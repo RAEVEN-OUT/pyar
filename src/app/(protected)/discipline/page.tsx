@@ -184,6 +184,7 @@ export default function DisciplinePage() {
 
 
   const handleCheckChange = (checkedUser: User, activityId: string) => {
+    if (checkedUser !== user) return;
     setChecked((prev) => ({
       ...prev,
       [checkedUser]: {
@@ -224,7 +225,7 @@ export default function DisciplinePage() {
   const otherUserScore = Object.values(checked[otherUser]).filter(Boolean).length;
   
   return (
-    <div className="flex h-full flex-col items-start justify-start p-4 md:p-8">
+    <div className="flex h-full flex-col items-center justify-start p-4 md:p-8">
        <div className="flex w-full max-w-4xl flex-col items-center gap-4">
           <div className="flex items-center gap-2 text-3xl font-headline text-primary self-center mb-4">
             <ShieldCheck className="h-10 w-10 text-primary" />
