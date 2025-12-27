@@ -58,16 +58,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithEmailAndPassword(auth, email, magicWord);
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
+        // If the user does not exist, create a new account.
         try {
           await createUserWithEmailAndPassword(auth, email, magicWord);
         } catch (createError: any) {
+           // This will catch errors during creation, like weak password.
            throw createError;
         }
       } else {
+        // This will catch other sign-in errors like 'auth/invalid-credential' or 'auth/wrong-password'.
         throw error;
       }
     } finally {
-       // setLoading will be handled by the useEffect watching the firebase user
+       // setLoading will be handled by the useEffect watching the firebase user state.
     }
   };
 
