@@ -33,7 +33,6 @@ import {
   setDoc,
 } from 'firebase/firestore';
 
-
 type Mood = {
   mood: string;
   emoji: string;
@@ -56,7 +55,7 @@ export type Message = {
   sender: User;
   text?: string;
   audioUrl?: string;
-  storagePath?: string; // Path in Firebase Storage
+  storagePath?: string;
   timestamp: Timestamp;
   reactions?: { [emoji: string]: string[] };
   isEdited?: boolean;
@@ -95,7 +94,6 @@ function MoodDisplay({
     return () => unsubscribe();
   }, [user, otherUser]);
 
-
   const onMoodChange = async (newMood: Mood) => {
     setCurrentUserMood(newMood);
     try {
@@ -115,10 +113,8 @@ function MoodDisplay({
     }
   };
 
-
   return (
     <div className="flex justify-between items-center p-4 border-b bg-card rounded-t-lg flex-shrink-0">
-
       <div className="flex items-center gap-3">
         <span className="text-4xl">{otherUserMood.emoji}</span>
         <div>
@@ -263,13 +259,15 @@ export default function ChatPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timer | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const shouldSendRef = useRef<boolean>(false);
 
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [editedText, setEditedText] = useState('');
 
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
-  // Listen to messages
   useEffect(() => {
     const messagesRef = collection(db, 'messages');
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
@@ -364,18 +362,15 @@ export default function ChatPage() {
     if (!message) return;
 
     try {
-      // If it's a voice note, delete from Storage first
       if (message.audioUrl && message.storagePath && message.senderId === user?.toLowerCase()) {
         try {
           const storageRef = ref(storage, message.storagePath);
           await deleteObject(storageRef);
         } catch (storageError) {
           console.error('Error deleting voice note from storage:', storageError);
-          // Continue with Firestore deletion even if storage deletion fails
         }
       }
 
-      // Delete from Firestore
       await deleteDoc(doc(db, 'messages', messageId));
       toast({ title: 'Message deleted' });
     } catch (error) {
@@ -418,33 +413,64 @@ export default function ChatPage() {
     }
   };
 
-  const stopRecording = (send: boolean) => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      if (!send) {
-        if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
-        if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
-        setIsRecording(false);
-        setRecordingTime(0);
-        mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
-      }
+  const cleanupRecording = () => {
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
     }
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+    setIsRecording(false);
+    setRecordingTime(0);
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      shouldSendRef.current = true;
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      shouldSendRef.current = false;
+      mediaRecorderRef.current.stop();
+    }
+    cleanupRecording();
+    audioChunksRef.current = [];
   };
 
   const handleVoiceMessage = async () => {
     if (!user) return;
+
     if (isRecording) {
-      stopRecording(true);
+      stopRecording();
       return;
     }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setHasMicPermission(true);
+      mediaStreamRef.current = stream;
+      audioChunksRef.current = [];
+      shouldSendRef.current = false;
 
-      const mediaRecorder = new MediaRecorder(stream);
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
       mediaRecorderRef.current = mediaRecorder;
-      const audioChunks: Blob[] = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
 
       mediaRecorder.onstart = () => {
         setIsRecording(true);
@@ -455,7 +481,7 @@ export default function ChatPage() {
         }, 1000);
 
         recordingTimeoutRef.current = setTimeout(() => {
-          stopRecording(true);
+          stopRecording();
           toast({
             title: "Recording limit reached",
             description: "Voice notes are limited to 60 seconds.",
@@ -463,64 +489,75 @@ export default function ChatPage() {
         }, 60000);
       };
 
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-      };
-
       mediaRecorder.onstop = async () => {
-        if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
-        if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
-        setIsRecording(false);
-        setRecordingTime(0);
+        cleanupRecording();
 
-        if (audioChunks.length > 0) {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-
-          try {
-            const timestamp = Date.now();
-            const fileName = `voice_notes/${user.toLowerCase()}_${timestamp}.webm`;
-            const storageRef = ref(storage, fileName);
-
-            // 1. Upload to Storage
-            await uploadBytes(storageRef, audioBlob);
-
-            // 2. Get public download URL
-            const audioUrl = await getDownloadURL(storageRef);
-
-            // 3. Save Firestore message with Storage URL
-            await addDoc(collection(db, 'messages'), {
-              senderId: user.toLowerCase(),
-              sender: user,
-              audioUrl,
-              storagePath: fileName, // Store the path for easier deletion
-              timestamp: serverTimestamp(),
-              reactions: {},
-              replyTo: replyingTo
-                ? {
-                  id: replyingTo.id,
-                  sender: replyingTo.sender,
-                  text: replyingTo.text || 'Voice Note',
-                }
-                : null,
-            });
-
-            setReplyingTo(null);
-          } catch (error) {
-            console.error('Error sending voice message:', error);
-            toast({
-              variant: 'destructive',
-              title: 'Error',
-              description: 'Failed to send voice message.',
-            });
-          }
+        if (!shouldSendRef.current || audioChunksRef.current.length === 0) {
+          audioChunksRef.current = [];
+          return;
         }
 
-        stream.getTracks().forEach(track => track.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' });
+        audioChunksRef.current = [];
+
+        if (!audioBlob.size || audioBlob.size < 100) {
+          toast({
+            variant: 'destructive',
+            title: 'Recording failed',
+            description: 'No audio was captured. Please try again.',
+          });
+          return;
+        }
+
+        try {
+          const timestamp = Date.now();
+          const fileName = `voice_notes/${user.toLowerCase()}_${timestamp}.webm`;
+          const storageRef = ref(storage, fileName);
+
+          await uploadBytes(storageRef, audioBlob);
+          const audioUrl = await getDownloadURL(storageRef);
+
+          await addDoc(collection(db, 'messages'), {
+            senderId: user.toLowerCase(),
+            sender: user,
+            audioUrl,
+            storagePath: fileName,
+            timestamp: serverTimestamp(),
+            reactions: {},
+            replyTo: replyingTo ? {
+              id: replyingTo.id,
+              sender: replyingTo.sender,
+              text: replyingTo.text || 'Voice Note',
+            } : null,
+          });
+
+          setReplyingTo(null);
+          toast({
+            title: 'Voice note sent',
+            description: 'Your voice message has been sent successfully.',
+          });
+        } catch (error) {
+          console.error('Error sending voice message:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to send voice message. Please try again.',
+          });
+        }
       };
 
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder error:', event);
+        cleanupRecording();
+        audioChunksRef.current = [];
+        toast({
+          variant: 'destructive',
+          title: 'Recording error',
+          description: 'An error occurred while recording. Please try again.',
+        });
+      };
 
-      mediaRecorder.start();
-
+      mediaRecorder.start(100);
     } catch (err) {
       setHasMicPermission(false);
       console.error("Mic permission denied", err);
@@ -586,27 +623,12 @@ export default function ChatPage() {
         </DialogContent>
       </Dialog>
       <div
-  className="
-    flex flex-col
-    flex-1
-    w-full
-    max-w-none md:max-w-4xl
-    mx-0 md:mx-auto
-    rounded-none md:rounded-lg
-    shadow-none md:shadow-md
-    overflow-hidden
-    bg-cover bg-center
-  "
-  style={{ backgroundImage: "url('/cherry-wallpaper.jpg')" }}
->
-
-
-
-
-
+        className="flex flex-col flex-1 w-full max-w-none md:max-w-4xl mx-0 md:mx-auto rounded-none md:rounded-lg shadow-none md:shadow-md overflow-hidden bg-cover bg-center"
+        style={{ backgroundImage: "url('/cherry-wallpaper.jpg')" }}
+      >
         <MoodDisplay user={user} otherUser={otherUser} />
         <div ref={scrollAreaRef} className="chat-messages flex-1 min-h-0 p-4 sm:p-6 space-y-4"
- style={{ scrollBehavior: 'smooth' }}>
+          style={{ scrollBehavior: 'smooth' }}>
           {messages && messages.map((msg) => {
             const isSender = msg.sender === user;
             const messageReactions = msg.reactions ? Object.entries(msg.reactions) : [];
@@ -626,9 +648,7 @@ export default function ChatPage() {
                       <button
                         className={cn(
                           'max-w-xs md:max-w-md rounded-2xl p-0.5 shadow-sm cursor-pointer border-0 focus:outline-none focus-visible:ring-0',
-                          isSender
-                            ? 'bg-card'
-                            : 'bg-accent'
+                          isSender ? 'bg-card' : 'bg-accent'
                         )}
                       >
                         {msg.replyTo && (
@@ -658,9 +678,7 @@ export default function ChatPage() {
                             {msg.isEdited && <p className="text-xs text-muted-foreground">Edited</p>}
                             <p className={cn(
                               'text-xs',
-                              isSender
-                                ? 'text-primary/70'
-                                : 'text-accent-foreground/70',
+                              isSender ? 'text-primary/70' : 'text-accent-foreground/70',
                               'text-right'
                             )}>
                               {formatTimestamp(msg.timestamp)}
@@ -705,7 +723,6 @@ export default function ChatPage() {
           })}
         </div>
         <div className="p-4 border-t bg-card rounded-b-lg flex-shrink-0">
-
           {replyingTo && (
             <div className="p-2 mb-2 bg-input rounded-md relative text-sm">
               <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => setReplyingTo(null)}>
@@ -722,7 +739,7 @@ export default function ChatPage() {
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
                   <p className="text-sm font-mono text-muted-foreground">{formatTime(recordingTime)}</p>
                 </div>
-                <Button type="button" size="icon" className="rounded-full w-9 h-9" onClick={() => stopRecording(true)}>
+                <Button type="button" size="icon" className="rounded-full w-9 h-9" onClick={() => stopRecording()}>
                   <Send className="h-5 w-5" />
                 </Button>
               </div>
