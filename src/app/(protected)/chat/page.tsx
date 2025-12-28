@@ -144,6 +144,7 @@ export default function ChatPage() {
 
   const handleUnsend = async (messageId: string) => {
     await deleteDoc(doc(db, 'messages', messageId));
+    // Removed toast notification for delete
   };
 
   const handleEdit = (message: Message) => setEditingMessage(message);

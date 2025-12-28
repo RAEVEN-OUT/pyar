@@ -1,4 +1,4 @@
-
+// src/app/(protected)/discipline/page.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -11,7 +11,6 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
 
 type UserColumnProps = {
   displayedUser: User;
@@ -129,45 +128,13 @@ const UserColumn = ({
 function DisciplinePageContent() {
   const { user: currentUserRole } = useAuth();
   const { activities, addActivity, toggleActivity, deleteActivity } = useDiscipline();
-  const { toast } = useToast();
   const [newActivity, setNewActivity] = useState('');
   
-  const prevActivitiesRef = useRef<Activity[]>();
-  
+  // Removed toast notifications for activity completion
   const otherUser = currentUserRole === 'Raveen' ? 'Priya' : 'Raveen';
 
-  useEffect(() => {
-    if (!activities || !prevActivitiesRef.current || !currentUserRole) {
-      prevActivitiesRef.current = activities;
-      return;
-    }
-
-    const prevOtherUserScore = prevActivitiesRef.current
-        .filter(a => a.checks[otherUser])
-        .length;
-    
-    const currentOtherUserScore = activities
-        .filter(a => a.checks[otherUser])
-        .length;
-
-    if (currentOtherUserScore > prevOtherUserScore) {
-      const completedActivity = activities.find(act => {
-        const prevAct = prevActivitiesRef.current?.find(p => p.id === act.id);
-        return act.checks[otherUser] && !prevAct?.checks[otherUser];
-      });
-      if (completedActivity) {
-        toast({
-          title: `${otherUser} completed a task! 🎉`,
-          description: `${otherUser === 'Priya' ? 'She' : 'He'} finished '${completedActivity.label}'. Way to go!`,
-        });
-      }
-    }
-    prevActivitiesRef.current = activities;
-  }, [activities, currentUserRole, otherUser, toast]);
-
-
   if (!currentUserRole) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   const handleCheckChange = (checkedUser: User, activityId: string) => {
@@ -185,7 +152,6 @@ function DisciplinePageContent() {
   const userScore = activities.filter(a => a.checks[currentUserRole]).length;
   const otherUserScore = activities.filter(a => a.checks[otherUser]).length;
 
-  // Determine which user is displayed on the left and which is on the right
   const leftUser = currentUserRole === 'Raveen' ? 'Raveen' : 'Priya';
   const rightUser = currentUserRole === 'Raveen' ? 'Priya' : 'Raveen';
   
@@ -213,11 +179,11 @@ function DisciplinePageContent() {
               currentUser={currentUserRole}
               activities={activities}
               score={rightUser === currentUserRole ? userScore : otherUserScore}
-              newActivity={''} // Not used for other user
-              onCheckChange={() => {}} // Not used
-              onDeleteActivity={() => {}} // Not used
-              onAddActivity={() => {}} // Not used
-              onNewActivityChange={() => {}} // Not used
+              newActivity={''}
+              onCheckChange={() => {}}
+              onDeleteActivity={() => {}}
+              onAddActivity={() => {}}
+              onNewActivityChange={() => {}}
             />
           </div>
         </div>

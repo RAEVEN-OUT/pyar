@@ -1,4 +1,4 @@
-
+// src/app/(protected)/notes/page.tsx
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -149,7 +149,22 @@ const NotesCalendar = ({
 
   const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-  const noteDates = useMemo(() => notes.map(note => new Date(note.id.replace(/-/g, '/'))), [notes]);
+  const notesByDate = useMemo(() => {
+    const map = new Map<string, { hasRaveen: boolean; hasPriya: boolean }>();
+    notes.forEach(note => {
+      // Only count notes that have actual content (non-empty text)
+      if (note.text && note.text.trim()) {
+        const existing = map.get(note.id) || { hasRaveen: false, hasPriya: false };
+        if (note.author === 'Raveen') {
+          existing.hasRaveen = true;
+        } else if (note.author === 'Priya') {
+          existing.hasPriya = true;
+        }
+        map.set(note.id, existing);
+      }
+    });
+    return map;
+  }, [notes]);
 
   return (
     <Card className="w-full">
@@ -174,7 +189,11 @@ const NotesCalendar = ({
             </div>
           ))}
           {days.map(day => {
-            const hasNote = noteDates.some(noteDate => isSameDay(noteDate, day));
+            const dateKey = format(day, 'yyyy-MM-dd');
+            const noteInfo = notesByDate.get(dateKey);
+            const hasRaveenNote = noteInfo?.hasRaveen || false;
+            const hasPriyaNote = noteInfo?.hasPriya || false;
+            
             return (
               <div
                 key={day.toString()}
@@ -189,7 +208,16 @@ const NotesCalendar = ({
                 )}
               >
                 <span className="text-sm">{format(day, 'd')}</span>
-                {hasNote && <div className="absolute bottom-1.5 h-1 w-1 rounded-full bg-primary" />}
+                {!isToday(day) && (hasRaveenNote || hasPriyaNote) && (
+                  <div className="absolute bottom-1 flex gap-0.5">
+                    {hasRaveenNote && (
+                      <div className="h-1 w-1 rounded-full" style={{ backgroundColor: '#850E33' }} />
+                    )}
+                    {hasPriyaNote && (
+                      <div className="h-1 w-1 rounded-full" style={{ backgroundColor: '#EE6983' }} />
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
