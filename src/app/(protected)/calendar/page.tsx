@@ -189,6 +189,18 @@ export default function CalendarPage() {
     }
   };
 
+  const handleRemoveSticker = async () => {
+    if (selectedDate) {
+      const dateKey = format(selectedDate, 'yyyy-MM-dd');
+      try {
+        const stickerRef = doc(db, 'calendar_stickers', dateKey);
+        await deleteDoc(stickerRef);
+      } catch (error) {
+        console.error('Error removing sticker:', error);
+      }
+    }
+  };
+
   const dayEvents = useMemo(() => {
     if (!selectedDate || !events) return [];
     return events.filter((e) => isSameDay(new Date(e.date), selectedDate))
@@ -259,25 +271,37 @@ export default function CalendarPage() {
       <div className="grid gap-4">
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <h4 className="font-medium leading-none">Add details</h4>
-            <Popover>
-              <PopoverTrigger asChild>
+            <h4 className="font-medium leading-none">Event Details</h4>
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10"
+                  >
+                    {selectedSticker ? (
+                      <span>{selectedSticker}</span>
+                    ) : (
+                      <Smile className="h-5 w-5" />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <EmojiPicker onEmojiClick={onEmojiClick} />
+                </PopoverContent>
+              </Popover>
+              {selectedSticker && (
                 <Button
                   variant="outline"
                   size="icon"
                   className="h-10 w-10"
+                  onClick={handleRemoveSticker}
                 >
-                  {selectedSticker ? (
-                    <span>{selectedSticker}</span>
-                  ) : (
-                    <Smile className="h-5 w-5" />
-                  )}
+                  <Trash2 className="h-5 w-5" />
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <EmojiPicker onEmojiClick={onEmojiClick} />
-              </PopoverContent>
-            </Popover>
+              )}
+            </div>
           </div>
           <p className="text-sm text-muted-foreground">
             Add an event or a sticker for{' '}
