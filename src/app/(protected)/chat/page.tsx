@@ -117,7 +117,8 @@ function MoodDisplay({
 
 
   return (
-    <div className="flex justify-between items-center p-4 border-b bg-card rounded-t-lg">
+    <div className="flex justify-between items-center p-4 border-b bg-card rounded-t-lg flex-shrink-0">
+
       <div className="flex items-center gap-3">
         <span className="text-4xl">{otherUserMood.emoji}</span>
         <div>
@@ -566,7 +567,7 @@ export default function ChatPage() {
   const showSendButton = newMessage.trim() !== '';
 
   return (
-    <div className="flex h-screen flex-col pt-16 md:pt-4 pb-4 px-4">
+    <div className="chat-root flex flex-col md:pt-4 md:pb-4 md:px-4">
       <Dialog open={!!editingMessage} onOpenChange={() => setEditingMessage(null)}>
         <DialogContent>
           <DialogHeader>
@@ -584,9 +585,28 @@ export default function ChatPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-transparent rounded-lg shadow-md border-0">
+      <div
+  className="
+    flex flex-col
+    flex-1
+    w-full
+    max-w-none md:max-w-4xl
+    mx-0 md:mx-auto
+    rounded-none md:rounded-lg
+    shadow-none md:shadow-md
+    overflow-hidden
+    bg-cover bg-center
+  "
+  style={{ backgroundImage: "url('/cherry-wallpaper.jpg')" }}
+>
+
+
+
+
+
         <MoodDisplay user={user} otherUser={otherUser} />
-        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 no-scrollbar" style={{ scrollBehavior: 'smooth' }}>
+        <div ref={scrollAreaRef} className="chat-messages flex-1 min-h-0 p-4 sm:p-6 space-y-4"
+ style={{ scrollBehavior: 'smooth' }}>
           {messages && messages.map((msg) => {
             const isSender = msg.sender === user;
             const messageReactions = msg.reactions ? Object.entries(msg.reactions) : [];
@@ -684,7 +704,8 @@ export default function ChatPage() {
             );
           })}
         </div>
-        <div className="p-4 border-t bg-card rounded-b-lg">
+        <div className="p-4 border-t bg-card rounded-b-lg flex-shrink-0">
+
           {replyingTo && (
             <div className="p-2 mb-2 bg-input rounded-md relative text-sm">
               <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => setReplyingTo(null)}>

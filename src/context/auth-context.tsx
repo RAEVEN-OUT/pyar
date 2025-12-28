@@ -6,14 +6,14 @@ import {
   useState,
   useEffect,
   type ReactNode,
-  useCallback
+  useCallback,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  signInWithEmailAndPassword, 
-  signOut, 
+import {
+  signInWithEmailAndPassword,
+  signOut,
   onAuthStateChanged,
-  User as FirebaseUser 
+  User as FirebaseUser,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
@@ -34,57 +34,113 @@ const USER_CREDENTIALS: Record<User, { email: string; password: string }> = {
   Priya: { email: 'jayapriyakalidas@gmail.com', password: '210406' },
 };
 
+const TAB_KEY = 'tab_alive';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+
   const router = useRouter();
 
+  /* --------------------------------
+     Firebase auth state listener
+  ----------------------------------*/
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        // Map Firebase email to User type
-        const email = firebaseUser.email;
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+      if (fbUser) {
+        const email = fbUser.email;
+
         if (email === USER_CREDENTIALS.Raveen.email) {
           setUser('Raveen');
         } else if (email === USER_CREDENTIALS.Priya.email) {
           setUser('Priya');
         }
-        setFirebaseUser(firebaseUser);
+
+        setFirebaseUser(fbUser);
       } else {
         setUser(null);
         setFirebaseUser(null);
       }
+
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const login = useCallback(async (selectedUser: User, password: string) => {
-    setLoading(true);
-    const credentials = USER_CREDENTIALS[selectedUser];
-    
-    if (credentials.password !== password) {
-      setLoading(false);
-      throw new Error("That's not the right magic word. Please try again.");
-    }
+  /* --------------------------------
+     Tab close / browser close logout
+  ----------------------------------*/
+  useEffect(() => {
+    // Mark this tab as alive
+    sessionStorage.setItem(TAB_KEY, 'true');
 
-    try {
-      await signInWithEmailAndPassword(auth, credentials.email, password);
-      router.push('/chat');
-    } catch (error: any) {
-      setLoading(false);
-      if (error.code === 'auth/user-not-found') {
-        throw new Error("User account doesn't exist. Please contact support.");
-      } else if (error.code === 'auth/wrong-password') {
-        throw new Error("That's not the right magic word. Please try again.");
-      } else {
-        throw new Error("Login failed. Please try again.");
+    const handleBeforeUnload = () => {
+      // Remove marker — survives reload, dies on tab close
+      sessionStorage.removeItem(TAB_KEY);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // Delay to allow unload lifecycle to complete
+        setTimeout(() => {
+          if (!sessionStorage.getItem(TAB_KEY)) {
+            // Best-effort logout (no await in unload lifecycle)
+            signOut(auth);
+          }
+        }, 0);
       }
-    }
-  }, [router]);
+    };
 
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  /* --------------------------------
+     Login
+  ----------------------------------*/
+  const login = useCallback(
+    async (selectedUser: User, password: string) => {
+      setLoading(true);
+
+      const credentials = USER_CREDENTIALS[selectedUser];
+
+      if (credentials.password !== password) {
+        setLoading(false);
+        throw new Error("That's not the right magic word. Please try again.");
+      }
+
+      try {
+        await signInWithEmailAndPassword(
+          auth,
+          credentials.email,
+          password
+        );
+        router.push('/chat');
+      } catch (error: any) {
+        setLoading(false);
+
+        if (error.code === 'auth/user-not-found') {
+          throw new Error("User account doesn't exist.");
+        } else if (error.code === 'auth/wrong-password') {
+          throw new Error("That's not the right magic word.");
+        } else {
+          throw new Error('Login failed. Please try again.');
+        }
+      }
+    },
+    [router]
+  );
+
+  /* --------------------------------
+     Manual logout
+  ----------------------------------*/
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
@@ -95,15 +151,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Logout error:', error);
     }
   }, [router]);
-  
-  const value = { user, loading, login, logout, firebaseUser };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const value = {
+    user,
+    loading,
+    login,
+    logout,
+    firebaseUser,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

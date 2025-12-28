@@ -77,6 +77,23 @@
   }
 }
 
+@layer utilities {
+  .chat-root {
+    height: 100svh;
+    overflow: hidden;          /* ⛔ page scroll blocked */
+    overscroll-behavior: none; /* ⛔ pull-to-refresh */
+  }
+
+  .chat-messages {
+    overflow-y: auto;          /* ✅ only this scrolls */
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chat-messages::-webkit-scrollbar {
+    display: none;             /* ⛔ hide scrollbar ONLY here */
+  }
+}
+
 @layer base {
   * {
     @apply border-border;
