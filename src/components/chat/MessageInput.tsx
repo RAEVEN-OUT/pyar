@@ -15,14 +15,14 @@ interface MessageInputProps {
   onSend: () => void;
   onKeyPress: (e: React.KeyboardEvent) => void;
   onEmojiClick: (emojiData: EmojiClickData) => void;
-  
+
   // Voice recording props
   isRecording: boolean;
   recordingTime: number;
   onStartRecording: () => void;
-  onStopAndSend: () => void;
+  onStopAndSend: () => Promise<void>; // 🔥 FIX 2: async
   onCancelRecording: () => void;
-  
+
   // Reply props
   replyingTo: Message | null;
   onCancelReply: () => void;
@@ -43,6 +43,8 @@ export function MessageInput({
   onCancelReply,
 }: MessageInputProps) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isSendingVoice, setIsSendingVoice] = useState(false); // 🔥 FIX 2
+
   const showSendButton = message.trim() !== '';
 
   const formatTime = (seconds: number) => {
@@ -51,45 +53,66 @@ export function MessageInput({
     return `${minutes}:${secs}`;
   };
 
+  const handleStopAndSend = async () => {
+    if (isSendingVoice) return; // prevent double send
+    setIsSendingVoice(true);
+
+    try {
+      await onStopAndSend(); // 🔥 wait for upload + firestore
+    } finally {
+      setIsSendingVoice(false);
+    }
+  };
+
   return (
     <div className="p-4 border-t bg-card rounded-b-lg flex-shrink-0">
       {replyingTo && (
         <div className="p-2 mb-2 bg-input rounded-md relative text-sm">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="absolute top-1 right-1 h-6 w-6" 
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-1 right-1 h-6 w-6"
             onClick={onCancelReply}
           >
             <X className="h-4 w-4" />
           </Button>
-          <p className="font-semibold text-primary">Replying to {replyingTo.sender}</p>
-          <p className="text-muted-foreground truncate">{replyingTo.text || 'Voice Note'}</p>
+          <p className="font-semibold text-primary">
+            Replying to {replyingTo.sender}
+          </p>
+          <p className="text-muted-foreground truncate">
+            {replyingTo.text || 'Voice Note'}
+          </p>
         </div>
       )}
-      
+
       <div className="relative flex items-center h-12">
         {isRecording ? (
           <div className="flex items-center justify-between w-full h-full rounded-full bg-input px-4">
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-              <p className="text-sm font-mono text-muted-foreground">{formatTime(recordingTime)}</p>
+              <p className="text-sm font-mono text-muted-foreground">
+                {formatTime(recordingTime)}
+              </p>
             </div>
+
             <div className="flex items-center gap-2">
-              <Button 
-                type="button" 
-                size="icon" 
+              <Button
+                type="button"
+                size="icon"
                 variant="ghost"
-                className="rounded-full w-9 h-9" 
+                className="rounded-full w-9 h-9"
                 onClick={onCancelRecording}
+                disabled={isSendingVoice}
               >
                 <Trash2 className="h-5 w-5" />
               </Button>
-              <Button 
-                type="button" 
-                size="icon" 
-                className="rounded-full w-9 h-9" 
-                onClick={onStopAndSend}
+
+              <Button
+                type="button"
+                size="icon"
+                className="rounded-full w-9 h-9"
+                onClick={handleStopAndSend} // 🔥 FIX 2
+                disabled={isSendingVoice}
               >
                 <Send className="h-5 w-5" />
               </Button>
@@ -104,10 +127,16 @@ export function MessageInput({
               onChange={(e) => onMessageChange(e.target.value)}
               onKeyPress={onKeyPress}
             />
+
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
               <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                 <PopoverTrigger asChild>
-                  <Button type="button" variant="ghost" size="icon" className="rounded-full">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
+                  >
                     <Smile className="h-5 w-5 text-muted-foreground" />
                   </Button>
                 </PopoverTrigger>
@@ -117,20 +146,20 @@ export function MessageInput({
               </Popover>
 
               {showSendButton ? (
-                <Button 
+                <Button
                   type="button"
-                  size="icon" 
+                  size="icon"
                   className="rounded-full w-9 h-9 ml-1"
                   onClick={onSend}
                 >
                   <Send className="h-5 w-5" />
                 </Button>
               ) : (
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="icon" 
-                  className="rounded-full ml-1" 
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full ml-1"
                   onClick={onStartRecording}
                 >
                   <Mic className="h-5 w-5 text-muted-foreground" />
