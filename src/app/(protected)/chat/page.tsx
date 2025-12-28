@@ -4,9 +4,7 @@
 import { useAuth, type User } from '@/context/auth-context';
 import { useRef, useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
-import { db, storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db } from '@/lib/firebase';
 import {
   collection,
   addDoc,
@@ -29,10 +27,8 @@ export type Message = {
   id: string;
   senderId: string;
   sender: User;
-  type: 'text' | 'voice'; // ✅ FIX 1
-  text?: string;
-  audioUrl?: string;
-  storagePath?: string;
+  type: 'text';
+  text: string;
   timestamp: Timestamp;
   reactions?: { [emoji: string]: string[] };
   isEdited?: boolean;
@@ -46,13 +42,6 @@ export type Message = {
 export default function ChatPage() {
   const { user, loading } = useAuth();
   const { toast } = useToast();
-  const {
-    isRecording,
-    recordingTime,
-    startRecording,
-    stopRecording,
-    cancelRecording,
-  } = useVoiceRecorder();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -97,7 +86,7 @@ export default function ChatPage() {
 
     try {
       await addDoc(collection(db, 'messages'), {
-        type: 'text', // ✅ FIX 1
+        type: 'text',
         senderId: user.toLowerCase(),
         sender: user,
         text: newMessage.trim(),
@@ -108,7 +97,7 @@ export default function ChatPage() {
           ? {
               id: replyingTo.id,
               sender: replyingTo.sender,
-              text: replyingTo.text || 'Voice Note',
+              text: replyingTo.text || '',
             }
           : null,
       });
@@ -131,59 +120,7 @@ export default function ChatPage() {
     }
   };
 
-  /* ---------- VOICE MESSAGE ---------- */
-  const handleStopAndSendVoiceNote = async () => {
-    if (!user) return;
-
-    const audioBlob = await stopRecording();
-
-    if (!audioBlob || audioBlob.size < 100) {
-      toast({
-        variant: 'destructive',
-        title: 'Recording failed',
-        description: 'No valid audio captured.',
-      });
-      return;
-    }
-
-    try {
-      const timestamp = Date.now();
-      const storagePath = `voice_notes/${user.toLowerCase()}_${timestamp}.webm`;
-      const storageRef = ref(storage, storagePath);
-
-      await uploadBytes(storageRef, audioBlob);
-      const audioUrl = await getDownloadURL(storageRef);
-
-      await addDoc(collection(db, 'messages'), {
-        type: 'voice', // ✅ FIX 1
-        senderId: user.toLowerCase(),
-        sender: user,
-        audioUrl,
-        storagePath,
-        timestamp: serverTimestamp(),
-        reactions: {},
-        isEdited: false, // ✅ FIX 3
-        replyTo: replyingTo
-          ? {
-              id: replyingTo.id,
-              sender: replyingTo.sender,
-              text: replyingTo.text || 'Voice Note',
-            }
-          : null,
-      });
-
-      setReplyingTo(null);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to send voice message.',
-      });
-    }
-  };
-
-  /* ---------- OTHER HANDLERS (UNCHANGED) ---------- */
-
+  /* ---------- OTHER HANDLERS ---------- */
   const handleReaction = async (messageId: string, emoji: string) => {
     if (!user) return;
 
@@ -206,15 +143,6 @@ export default function ChatPage() {
   };
 
   const handleUnsend = async (messageId: string) => {
-    const message = messages.find((m) => m.id === messageId);
-    if (!message) return;
-
-    if (message.audioUrl && message.storagePath) {
-      try {
-        await deleteObject(ref(storage, message.storagePath));
-      } catch {}
-    }
-
     await deleteDoc(doc(db, 'messages', messageId));
   };
 
@@ -280,11 +208,6 @@ export default function ChatPage() {
           onSend={handleSendMessage}
           onKeyPress={handleKeyPress}
           onEmojiClick={onEmojiClick}
-          isRecording={isRecording}
-          recordingTime={recordingTime}
-          onStartRecording={startRecording}
-          onStopAndSend={handleStopAndSendVoiceNote}
-          onCancelRecording={cancelRecording}
           replyingTo={replyingTo}
           onCancelReply={() => setReplyingTo(null)}
         />

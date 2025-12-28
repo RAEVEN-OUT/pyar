@@ -6,7 +6,6 @@ import { type User } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { WaveformPlayer } from './WaveformPlayer';
 
 const reactionEmojis = ['❤️', '😂', '🥰', '😍', '😢', '😮'];
 
@@ -42,8 +41,6 @@ export function MessageBubble({
       minute: '2-digit',
     });
   };
-
-  const isVoiceMessage = Boolean(message.audioUrl || message.type === 'voice');
 
   return (
     <div
@@ -90,7 +87,7 @@ export function MessageBubble({
                           : 'text-accent-foreground/80'
                       )}
                     >
-                      {message.replyTo.text || 'Voice Note'}
+                      {message.replyTo.text}
                     </p>
                   </div>
                 </div>
@@ -98,34 +95,16 @@ export function MessageBubble({
 
               <div className="p-3">
                 {/* Text message */}
-                {message.text && (
-                  <p
-                    className={cn(
-                      'text-sm',
-                      isSender
-                        ? 'text-card-foreground'
-                        : 'text-accent-foreground'
-                    )}
-                  >
-                    {message.text}
-                  </p>
-                )}
-
-                {/* Voice message */}
-                {isVoiceMessage && (
-                  <>
-                    {message.audioUrl ? (
-                      <WaveformPlayer
-                        src={message.audioUrl}
-                        isSender={isSender}
-                      />
-                    ) : (
-                      <p className="text-xs italic text-muted-foreground">
-                        Voice note unavailable
-                      </p>
-                    )}
-                  </>
-                )}
+                <p
+                  className={cn(
+                    'text-sm',
+                    isSender
+                      ? 'text-card-foreground'
+                      : 'text-accent-foreground'
+                  )}
+                >
+                  {message.text}
+                </p>
 
                 {/* Timestamp */}
                 <div className="flex items-center justify-end gap-1.5 mt-1">
@@ -167,15 +146,13 @@ export function MessageBubble({
               </Button>
               {isSender && (
                 <>
-                  {message.text && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEdit(message)}
-                    >
-                      Edit
-                    </Button>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onEdit(message)}
+                  >
+                    Edit
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
