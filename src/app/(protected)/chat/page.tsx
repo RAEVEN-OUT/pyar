@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Send, Smile, Mic, Play, Pause, X } from 'lucide-react';
+import { Send, Smile, Mic, Play, Pause, X, Trash2 } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import {
@@ -59,7 +59,11 @@ export type Message = {
   timestamp: Timestamp;
   reactions?: { [emoji: string]: string[] };
   isEdited?: boolean;
-  replyTo?: Message;
+  replyTo?: {
+    id: string;
+    sender: User;
+    text: string;
+  };
 };
 
 const reactionEmojis = ['❤️', '😂', '🥰', '😍', '😢', '😮'];
@@ -98,7 +102,6 @@ function MoodDisplay({
     setCurrentUserMood(newMood);
     try {
       const moodRef = doc(db, 'moods', user.toLowerCase());
-
       await setDoc(
         moodRef,
         {
@@ -146,37 +149,45 @@ function MoodDisplay({
   );
 }
 
-const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) => {
+const WaveformPlayer = ({ src, isSender }: { src: string; isSender: boolean }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const waveformRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
 
-  const togglePlay = () => {
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const audio = audioRef.current;
     if (!audio) return;
+
     if (isPlaying) {
       audio.pause();
     } else {
-      audio.play();
+      audio.play().catch(err => console.error('Playback error:', err));
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handleWaveformClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     const audio = audioRef.current;
-    const waveform = waveformRef.current;
-    if (!audio || !waveform || !duration) return;
+    if (!audio || !duration) return;
 
-    const rect = waveform.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
     const clickPosition = e.clientX - rect.left;
     const clickRatio = clickPosition / rect.width;
     const newTime = clickRatio * duration;
 
     audio.currentTime = newTime;
     setProgress(newTime);
+  };
+
+  const togglePlaybackRate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rates = [1, 1.5, 2, 0.5];
+    const currentIndex = rates.indexOf(playbackRate);
+    const nextRate = rates[(currentIndex + 1) % rates.length];
+    setPlaybackRate(nextRate);
   };
 
   useEffect(() => {
@@ -190,16 +201,22 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
       setProgress(0);
       audio.currentTime = 0;
     };
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('durationchange', handleDurationChange);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
     audio.playbackRate = playbackRate;
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('durationchange', handleDurationChange);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
     };
   }, [playbackRate]);
 
@@ -211,34 +228,52 @@ const WaveformPlayer = ({ src, isSender }: { src: string, isSender: boolean }) =
     return `${min}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const togglePlaybackRate = () => {
-    const rates = [1, 1.5, 2, 0.5];
-    const currentIndex = rates.indexOf(playbackRate);
-    const nextRate = rates[(currentIndex + 1) % rates.length];
-    setPlaybackRate(nextRate);
-  };
-
   const progressPercentage = duration ? (progress / duration) * 100 : 0;
 
-  const waveColor = isSender ? 'hsl(var(--primary))' : 'hsl(var(--accent-foreground))';
-  const waveInactiveColor = isSender ? 'hsl(var(--primary) / 0.3)' : 'hsl(var(--accent-foreground) / 0.3)';
-
   return (
-    <div className="flex items-center gap-2 w-56">
+    <div className="flex items-center gap-2 w-56" onClick={(e) => e.stopPropagation()}>
       <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
-      <Button onClick={togglePlay} variant="ghost" size="icon" className={cn("h-8 w-8 rounded-full flex-shrink-0", isSender ? "text-primary hover:text-primary" : "text-accent-foreground hover:text-accent-foreground")}>
+      <div
+        onClick={togglePlay}
+        className={cn(
+          "h-8 w-8 rounded-full flex-shrink-0 flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors",
+          isSender ? "text-primary" : "text-accent-foreground"
+        )}
+      >
         {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
-      </Button>
-      <div ref={waveformRef} onClick={handleWaveformClick} className="flex-1 h-8 flex items-center cursor-pointer" style={{ '--wave-color': waveColor, '--wave-inactive-color': waveInactiveColor, '--progress': `${progressPercentage}%` } as React.CSSProperties}>
-        <div className="w-full h-full relative bg-gradient-to-r from-[var(--wave-color)] to-[var(--wave-color)] bg-no-repeat bg-left" style={{ 'backgroundSize': 'var(--progress) 100%' }}>
-          <div className="w-full h-full absolute top-0 left-0 bg-gradient-to-r from-[var(--wave-inactive-color)] to-[var(--wave-inactive-color)] bg-no-repeat bg-left" style={{ 'mask': `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M2 9.5C2 9.5 2.5 4 4 4C5.5 4 6.5 15 8 15C9.5 15 10.5 4 12 4C13.5 4 14.5 15 16 15C17.5 15 18.5 4 20 4C21.5 4 22.5 15 24 15C25.5 15 26.5 4 28 4C29.5 4 30.5 15 32 15C33.5 15 34.5 4 36 4C37.5 4 38.5 15 40 15C41.5 15 42.5 4 44 4C45.5 4 46.5 15 48 15C49.5 15 50.5 4 52 4C53.5 4 54.5 15 56 15C57.5 15 58.5 4 60 4C61.5 4 62.5 15 64 15C65.5 15 66.5 4 68 4C69.5 4 70.5 15 72 15C73.5 15 74.5 4 76 4C77.5 4 78.5 15 80 15C81.5 15 82.5 4 84 4C85.5 4 86.5 15 88 15C89.5 15 90.5 4 92 4C93.5 4 94.5 15 96 15C97.5 15 98.5 4 100 4' fill='none' stroke='black' stroke-width='2'/%3e%3c/svg%3e")`, 'maskSize': '100% 100%' }}></div>
+      </div>
+
+      <div
+        onClick={handleWaveformClick}
+        className="flex-1 h-8 flex items-center cursor-pointer relative"
+      >
+        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+          <div
+            className={cn(
+              "h-full rounded-full transition-all",
+              isSender ? "bg-primary" : "bg-accent-foreground"
+            )}
+            style={{ width: `${progressPercentage}%` }}
+          />
         </div>
       </div>
+
       <div className="flex flex-col items-center justify-center w-12 flex-shrink-0">
-        <Button variant="link" size="sm" onClick={togglePlaybackRate} className={cn("h-auto p-0 text-xs", isSender ? "text-primary/80" : "text-accent-foreground/80")}>
+        <div
+          onClick={togglePlaybackRate}
+          className={cn(
+            "cursor-pointer text-xs hover:underline",
+            isSender ? "text-primary/80" : "text-accent-foreground/80"
+          )}
+        >
           {playbackRate}x
-        </Button>
-        <span className={cn("text-xs", isSender ? "text-primary/70" : "text-accent-foreground/70")}>{formatTime(duration - progress)}</span>
+        </div>
+        <span className={cn(
+          "text-xs",
+          isSender ? "text-primary/70" : "text-accent-foreground/70"
+        )}>
+          {formatTime(duration - progress)}
+        </span>
       </div>
     </div>
   );
@@ -255,20 +290,20 @@ export default function ChatPage() {
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const recordingIntervalRef = useRef<NodeJS.Timer | null>(null);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const shouldSendRef = useRef<boolean>(false);
 
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [editedText, setEditedText] = useState('');
-
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
+  // Listen to messages from Firestore
   useEffect(() => {
+    if (!user) return;
+
     const messagesRef = collection(db, 'messages');
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
 
@@ -281,13 +316,7 @@ export default function ChatPage() {
     });
 
     return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    navigator.permissions.query({ name: 'microphone' as PermissionName }).then((result) => {
-      setHasMicPermission(result.state === 'granted');
-    });
-  }, []);
+  }, [user]);
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
@@ -299,8 +328,7 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendMessage = async () => {
     if (newMessage.trim() === '' || !user) return;
 
     try {
@@ -328,6 +356,13 @@ export default function ChatPage() {
         title: 'Error',
         description: 'Failed to send message. Please try again.',
       });
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
   };
 
@@ -430,40 +465,45 @@ export default function ChatPage() {
     setRecordingTime(0);
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      shouldSendRef.current = true;
-      mediaRecorderRef.current.stop();
-    }
-  };
-
-  const cancelRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      shouldSendRef.current = false;
-      mediaRecorderRef.current.stop();
-    }
-    cleanupRecording();
-    audioChunksRef.current = [];
-  };
-
   const handleVoiceMessage = async () => {
     if (!user) return;
 
     if (isRecording) {
-      stopRecording();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
       return;
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setHasMicPermission(true);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }
+      });
+
       mediaStreamRef.current = stream;
       audioChunksRef.current = [];
-      shouldSendRef.current = false;
+
+      const mimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/mp4',
+      ];
+
+      const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
+
+      if (!supportedMimeType) {
+        throw new Error('No supported audio format found');
+      }
 
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
+        mimeType: supportedMimeType,
       });
+
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
@@ -481,7 +521,9 @@ export default function ChatPage() {
         }, 1000);
 
         recordingTimeoutRef.current = setTimeout(() => {
-          stopRecording();
+          if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+          }
           toast({
             title: "Recording limit reached",
             description: "Voice notes are limited to 60 seconds.",
@@ -492,12 +534,16 @@ export default function ChatPage() {
       mediaRecorder.onstop = async () => {
         cleanupRecording();
 
-        if (!shouldSendRef.current || audioChunksRef.current.length === 0) {
-          audioChunksRef.current = [];
+        if (audioChunksRef.current.length === 0) {
+          toast({
+            variant: 'destructive',
+            title: 'Recording failed',
+            description: 'No audio was captured. Please try again.',
+          });
           return;
         }
 
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm;codecs=opus' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: supportedMimeType });
         audioChunksRef.current = [];
 
         if (!audioBlob.size || audioBlob.size < 100) {
@@ -559,8 +605,7 @@ export default function ChatPage() {
 
       mediaRecorder.start(100);
     } catch (err) {
-      setHasMicPermission(false);
-      console.error("Mic permission denied", err);
+      console.error("Microphone permission denied or error:", err);
       toast({
         variant: 'destructive',
         title: 'Microphone Access Denied',
@@ -569,7 +614,15 @@ export default function ChatPage() {
     }
   };
 
-  const onEmojiClick = (emojiData: EmojiClickData, event: MouseEvent) => {
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    cleanupRecording();
+    audioChunksRef.current = [];
+  };
+
+  const onEmojiClick = (emojiData: EmojiClickData) => {
     setNewMessage((prevMessage) => prevMessage + emojiData.emoji);
   };
 
@@ -622,13 +675,18 @@ export default function ChatPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       <div
         className="flex flex-col flex-1 w-full max-w-none md:max-w-4xl mx-0 md:mx-auto rounded-none md:rounded-lg shadow-none md:shadow-md overflow-hidden bg-cover bg-center"
         style={{ backgroundImage: "url('/cherry-wallpaper.jpg')" }}
       >
         <MoodDisplay user={user} otherUser={otherUser} />
-        <div ref={scrollAreaRef} className="chat-messages flex-1 min-h-0 p-4 sm:p-6 space-y-4"
-          style={{ scrollBehavior: 'smooth' }}>
+
+        <div
+          ref={scrollAreaRef}
+          className="chat-messages flex-1 min-h-0 p-4 sm:p-6 space-y-4"
+          style={{ scrollBehavior: 'smooth' }}
+        >
           {messages && messages.map((msg) => {
             const isSender = msg.sender === user;
             const messageReactions = msg.reactions ? Object.entries(msg.reactions) : [];
@@ -645,9 +703,9 @@ export default function ChatPage() {
                 <div className="relative">
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button
+                      <div
                         className={cn(
-                          'max-w-xs md:max-w-md rounded-2xl p-0.5 shadow-sm cursor-pointer border-0 focus:outline-none focus-visible:ring-0',
+                          'max-w-xs md:max-w-md rounded-2xl p-0.5 shadow-sm cursor-pointer',
                           isSender ? 'bg-card' : 'bg-accent'
                         )}
                       >
@@ -685,7 +743,7 @@ export default function ChatPage() {
                             </p>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     </PopoverTrigger>
                     <PopoverContent className="p-1 w-auto">
                       <div className="flex items-center gap-1">
@@ -722,6 +780,7 @@ export default function ChatPage() {
             );
           })}
         </div>
+
         <div className="p-4 border-t bg-card rounded-b-lg flex-shrink-0">
           {replyingTo && (
             <div className="p-2 mb-2 bg-input rounded-md relative text-sm">
@@ -732,16 +791,32 @@ export default function ChatPage() {
               <p className="text-muted-foreground truncate">{replyingTo.text || 'Voice Note'}</p>
             </div>
           )}
-          <form onSubmit={handleSendMessage} className="relative flex items-center h-12">
+          <div className="relative flex items-center h-12">
             {isRecording ? (
               <div className="flex items-center justify-between w-full h-full rounded-full bg-input px-4">
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
                   <p className="text-sm font-mono text-muted-foreground">{formatTime(recordingTime)}</p>
                 </div>
-                <Button type="button" size="icon" className="rounded-full w-9 h-9" onClick={() => stopRecording()}>
-                  <Send className="h-5 w-5" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    type="button" 
+                    size="icon" 
+                    variant="ghost"
+                    className="rounded-full w-9 h-9" 
+                    onClick={cancelRecording}
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </Button>
+                  <Button 
+                    type="button" 
+                    size="icon" 
+                    className="rounded-full w-9 h-9" 
+                    onClick={handleVoiceMessage}
+                  >
+                    <Send className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
             ) : (
               <>
@@ -750,6 +825,7 @@ export default function ChatPage() {
                   className="pr-24 h-12 rounded-full bg-input focus-visible:ring-offset-0 focus-visible:ring-1"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
                   <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
@@ -764,18 +840,29 @@ export default function ChatPage() {
                   </Popover>
 
                   {showSendButton ? (
-                    <Button type="submit" size="icon" className="rounded-full w-9 h-9">
+                    <Button 
+                      type="button"
+                      size="icon" 
+                      className="rounded-full w-9 h-9 ml-1"
+                      onClick={handleSendMessage}
+                    >
                       <Send className="h-5 w-5" />
                     </Button>
                   ) : (
-                    <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={handleVoiceMessage}>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      className="rounded-full ml-1" 
+                      onClick={handleVoiceMessage}
+                    >
                       <Mic className="h-5 w-5 text-muted-foreground" />
                     </Button>
                   )}
                 </div>
               </>
             )}
-          </form>
+          </div>
         </div>
       </div>
     </div>
