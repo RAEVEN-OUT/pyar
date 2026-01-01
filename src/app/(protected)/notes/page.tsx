@@ -6,11 +6,13 @@ import { useAuth, type User } from '@/context/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { NotebookText, Edit, Save, ChevronLeft, ChevronRight } from 'lucide-react';
-import { isFuture, isSameMonth, isToday, format, add, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns';
+import { isFuture, isSameMonth, isToday, format, add, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isBefore } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { NotesProvider, useNotes, type Note } from '@/context/notes-context';
 
+// Define the minimum allowed date: January 1, 2026
+const MIN_DATE = new Date(2026, 0, 1); // Month is 0-indexed, so 0 = January
 
 const NoteEditor = ({
   noteUser,
@@ -166,6 +168,12 @@ const NotesCalendar = ({
     return map;
   }, [notes]);
 
+  // Check if we can go back (current month is after January 2026)
+  const canGoBack = !isBefore(startOfMonth(add(currentDate, { months: -1 })), MIN_DATE);
+  
+  // Check if we can go forward (current month is before the current month in real life)
+  const canGoForward = !isSameMonth(new Date(), currentDate);
+
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between p-3 border-b">
@@ -173,12 +181,26 @@ const NotesCalendar = ({
           {format(currentDate, 'MMMM yyyy')}
         </h2>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="h-7 w-7" onClick={prevMonth}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" className="h-7 w-7" onClick={nextMonth} disabled={isSameMonth(new Date(), currentDate)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          {canGoBack && (
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-7 w-7" 
+              onClick={prevMonth}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          )}
+          {canGoForward && (
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-7 w-7" 
+              onClick={nextMonth}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="p-3">
@@ -193,22 +215,23 @@ const NotesCalendar = ({
             const noteInfo = notesByDate.get(dateKey);
             const hasRaveenNote = noteInfo?.hasRaveen || false;
             const hasPriyaNote = noteInfo?.hasPriya || false;
+            const isBeforeMinDate = isBefore(day, MIN_DATE);
             
             return (
               <div
                 key={day.toString()}
-                onClick={() => onDateSelect(day)}
+                onClick={() => !isBeforeMinDate && onDateSelect(day)}
                 className={cn(
-                  'relative flex items-center justify-center h-9 w-full rounded-full cursor-pointer transition-colors',
+                  'relative flex items-center justify-center h-9 w-full rounded-full transition-colors',
                   !isSameMonth(day, currentDate) && 'text-muted-foreground/50',
-                  isSameDay(day, selectedDate) && !isToday(day) && 'bg-accent/50 text-accent-foreground',
+                  isSameDay(day, selectedDate) && !isToday(day) && !isBeforeMinDate && 'bg-accent/50 text-accent-foreground',
                   isToday(day) && 'bg-primary text-primary-foreground',
-                  !isSameDay(day, selectedDate) && !isToday(day) && '[&:not([aria-disabled])]:hover:bg-accent/30',
-                  isFuture(day) && 'text-muted-foreground/30 cursor-default pointer-events-none'
+                  !isSameDay(day, selectedDate) && !isToday(day) && !isBeforeMinDate && '[&:not([aria-disabled])]:hover:bg-accent/30 cursor-pointer',
+                  (isFuture(day) || isBeforeMinDate) && 'text-muted-foreground/30 cursor-default pointer-events-none'
                 )}
               >
                 <span className="text-sm">{format(day, 'd')}</span>
-                {!isToday(day) && (hasRaveenNote || hasPriyaNote) && (
+                {!isToday(day) && !isBeforeMinDate && (hasRaveenNote || hasPriyaNote) && (
                   <div className="absolute bottom-1 flex gap-0.5">
                     {hasRaveenNote && (
                       <div className="h-1 w-1 rounded-full" style={{ backgroundColor: '#850E33' }} />

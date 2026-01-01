@@ -1,4 +1,4 @@
-
+// src/app/(protected)/todo/page.tsx
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -30,13 +30,6 @@ const TaskItem = ({ task, currentUser, onToggle }: { task: Task, currentUser: Us
         ? 'border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
         : 'border-accent-foreground data-[state=checked]:bg-accent-foreground data-[state=checked]:text-accent'
   );
-  
-   const staticIndicatorClasses = cn(
-      "h-5 w-5 flex-shrink-0 border-2 rounded-sm flex items-center justify-center",
-       isCreatorRaveen
-        ? (task.completedAt ? 'bg-primary border-primary' : 'border-muted-foreground/50')
-        : (task.completedAt ? 'bg-accent-foreground border-accent-foreground' : 'border-muted-foreground/50')
-    );
 
   return (
     <div className={cardClasses}>
@@ -48,9 +41,7 @@ const TaskItem = ({ task, currentUser, onToggle }: { task: Task, currentUser: Us
           className={checkboxClasses}
         />
       ) : (
-        <div className={staticIndicatorClasses}>
-          {task.completedAt && <div className={cn("h-2.5 w-2.5 rounded-sm", isCreatorRaveen ? "bg-card" : "bg-accent")} />}
-        </div>
+        <div className="h-5 w-5" />
       )}
       <div className="flex-1">
         <label
