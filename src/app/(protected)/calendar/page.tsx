@@ -1,3 +1,4 @@
+// src/app/(protected)/calendar/page.tsx
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -241,20 +242,21 @@ export default function CalendarPage() {
           </div>
           <Accordion type="single" collapsible className="w-full">
             {dayEvents.map(event => (
-              <AccordionItem key={event.id} value={event.id}>
-                <div className="flex items-center w-full group">
-                    <AccordionTrigger className="flex-1 truncate text-left">
-                        {event.title}
-                    </AccordionTrigger>
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 mr-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleDeleteEvent(event.id)}
-                    >
-                        <Trash2 className="h-4 w-4 text-muted-foreground"/>
-                    </Button>
-                </div>
+              <AccordionItem key={event.id} value={event.id} className="relative">
+                <AccordionTrigger className="pr-12 text-left hover:no-underline">
+                    {event.title}
+                </AccordionTrigger>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 absolute right-2 top-3 z-10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteEvent(event.id);
+                    }}
+                >
+                    <Trash2 className="h-4 w-4 text-muted-foreground"/>
+                </Button>
                 <AccordionContent>
                   <ScrollArea className="h-24 pr-4">
                     {event.description || <p className="text-sm text-muted-foreground italic">No description provided.</p>}
