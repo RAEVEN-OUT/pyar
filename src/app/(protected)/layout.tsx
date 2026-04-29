@@ -104,6 +104,7 @@ function NavMenuItems() {
 function AppWithSidebar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const { toggleSidebar, isMobile, setOpenMobile, openMobile } = useSidebar();
+  const pathname = usePathname();
   const [touchStart, setTouchStart] = React.useState<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -117,6 +118,7 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
 
     // If swipe from left to right > 50px and not already open
     if (distance > 50 && touchStart < 50 && !openMobile) {
+      e.preventDefault(); // Prevent ghost click on sidebar items
       setOpenMobile(true);
     }
     setTouchStart(null);
@@ -165,6 +167,17 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
           </SidebarContent>
         </Sidebar>
       <SidebarInset className="overflow-hidden">
+        {isMobile && pathname !== '/chat' && (
+           <div className="p-2 md:hidden flex items-center">
+            <Button
+              variant="ghost"
+              className="p-0 h-auto hover:bg-transparent"
+              onClick={toggleSidebar}
+            >
+              <Logo className="text-3xl" text="Pyar" />
+            </Button>
+          </div>
+        )}
         {children}
       </SidebarInset>
     </div>
