@@ -103,10 +103,31 @@ function NavMenuItems() {
 
 function AppWithSidebar({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
-  const { toggleSidebar, isMobile } = useSidebar();
+  const { toggleSidebar, isMobile, setOpenMobile, openMobile } = useSidebar();
+  const [touchStart, setTouchStart] = React.useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    const touchEnd = e.changedTouches[0].clientX;
+    const distance = touchEnd - touchStart;
+
+    // If swipe from left to right > 50px and not already open
+    if (distance > 50 && touchStart < 50 && !openMobile) {
+      setOpenMobile(true);
+    }
+    setTouchStart(null);
+  };
   
   return (
-    <div className="flex h-full">
+    <div 
+      className="flex h-full overflow-hidden"
+      onTouchStart={isMobile ? handleTouchStart : undefined}
+      onTouchEnd={isMobile ? handleTouchEnd : undefined}
+    >
         <Sidebar>
           <SidebarContent>
             <SidebarHeader>
@@ -143,18 +164,7 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
             </SidebarFooter>
           </SidebarContent>
         </Sidebar>
-      <SidebarInset>
-        {isMobile && (
-           <div className="p-2 md:hidden flex items-center">
-            <Button
-              variant="ghost"
-              className="p-0 h-auto hover:bg-transparent"
-              onClick={toggleSidebar}
-            >
-              <Logo className="text-3xl" text="Pyar" />
-            </Button>
-          </div>
-        )}
+      <SidebarInset className="overflow-hidden">
         {children}
       </SidebarInset>
     </div>
