@@ -31,6 +31,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 import { NotesProvider, useNotes } from '@/context/notes-context';
 import { TasksProvider, useTasks } from '@/context/todo-context';
 import { DisciplineProvider, useDiscipline } from '@/context/discipline-context';
@@ -182,7 +183,7 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
           </SidebarContent>
           </div>
         </Sidebar>
-      <SidebarInset className="overflow-hidden">
+      <SidebarInset className={cn("flex flex-col min-h-0 flex-1", pathname === '/chat' ? "overflow-hidden" : "overflow-y-auto")}>
         {isMobile && pathname !== '/chat' && (
            <div className="p-2 md:hidden flex items-center">
             <Button

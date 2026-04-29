@@ -70,7 +70,9 @@ const NoteEditor = ({
       textareaRef.current?.focus();
       textareaRef.current?.setSelectionRange(text.length, text.length);
       autoResizeTextarea();
-    }, 0);
+      // Ensure it scrolls into view on mobile
+      textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100); // Small delay to let keyboard appear
   }
 
   const showEditButton = canEdit && noteUser === currentUser;
