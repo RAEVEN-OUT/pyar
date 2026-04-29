@@ -22,6 +22,7 @@ import { MessageBubble } from '@/components/chat/MessageBubble';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { EditMessageDialog } from '@/components/chat/EditMessageDialog';
 import { type EmojiClickData } from 'emoji-picker-react';
+import { format, isToday, isYesterday, isSameYear } from 'date-fns';
 
 export type Message = {
   id: string;
@@ -171,6 +172,20 @@ export default function ChatPage() {
 
   const otherUser = user === 'Raveen' ? 'Priya' : 'Raveen';
 
+  const getDateHeader = (msg: Message, prevMsg?: Message) => {
+    if (!msg.timestamp) return null;
+    const date = msg.timestamp.toDate();
+    const prevDate = prevMsg?.timestamp?.toDate();
+
+    if (!prevDate || date.toDateString() !== prevDate.toDateString()) {
+      if (isToday(date)) return 'Today';
+      if (isYesterday(date)) return 'Yesterday';
+      if (isSameYear(date, new Date())) return format(date, 'MMMM d');
+      return format(date, 'MMMM d, yyyy');
+    }
+    return null;
+  };
+
   return (
     <div className="chat-root flex flex-col md:pt-4 md:pb-4 md:px-4">
       <EditMessageDialog
@@ -189,18 +204,29 @@ export default function ChatPage() {
           ref={scrollAreaRef}
           className="chat-messages flex-1 min-h-0 p-4 sm:p-6 space-y-4"
         >
-          {messages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              currentUser={user}
-              onReaction={handleReaction}
-              onReply={handleReply}
-              onEdit={handleEdit}
-              onUnsend={handleUnsend}
-              onScrollToMessage={handleScrollToMessage}
-            />
-          ))}
+          {messages.map((msg, index) => {
+            const dateHeader = getDateHeader(msg, messages[index - 1]);
+            return (
+              <div key={msg.id} className="space-y-4">
+                {dateHeader && (
+                  <div className="flex justify-center my-6">
+                    <span className="px-3 py-1 text-xs font-medium bg-black/10 text-black/60 rounded-full backdrop-blur-sm">
+                      {dateHeader}
+                    </span>
+                  </div>
+                )}
+                <MessageBubble
+                  message={msg}
+                  currentUser={user}
+                  onReaction={handleReaction}
+                  onReply={handleReply}
+                  onEdit={handleEdit}
+                  onUnsend={handleUnsend}
+                  onScrollToMessage={handleScrollToMessage}
+                />
+              </div>
+            );
+          })}
         </div>
 
         <MessageInput
