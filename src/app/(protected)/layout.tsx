@@ -119,7 +119,10 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
     // Swipe Right (Open)
     if (distance > 50 && touchStart < 50 && !openMobile) {
       e.preventDefault();
-      setOpenMobile(true);
+      // Use setTimeout to prevent ghost click on the newly opened sidebar
+      setTimeout(() => {
+        setOpenMobile(true);
+      }, 0);
     }
     
     // Swipe Left (Close)
