@@ -50,6 +50,7 @@ function NavMenuItems() {
   const { notes } = useNotes();
   const { tasks } = useTasks();
   const { activities } = useDiscipline();
+  const { isMobile, setOpenMobile } = useSidebar();
   const pathname = usePathname();
 
   const otherUser = user === 'Raveen' ? 'Priya' : 'Raveen';
@@ -81,6 +82,7 @@ function NavMenuItems() {
               href={item.href}
               isActive={pathname.startsWith(item.href)}
               tooltip={{ children: item.label }}
+              onClick={() => isMobile && setOpenMobile(false)}
             >
               <item.icon />
               <span>{item.label}</span>
