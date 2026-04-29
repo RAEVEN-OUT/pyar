@@ -116,11 +116,18 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
     const touchEnd = e.changedTouches[0].clientX;
     const distance = touchEnd - touchStart;
 
-    // If swipe from left to right > 50px and not already open
+    // Swipe Right (Open)
     if (distance > 50 && touchStart < 50 && !openMobile) {
-      e.preventDefault(); // Prevent ghost click on sidebar items
+      e.preventDefault();
       setOpenMobile(true);
     }
+    
+    // Swipe Left (Close)
+    if (distance < -50 && openMobile) {
+      e.preventDefault();
+      setOpenMobile(false);
+    }
+    
     setTouchStart(null);
   };
   
@@ -131,7 +138,12 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
       onTouchEnd={isMobile ? handleTouchEnd : undefined}
     >
         <Sidebar>
-          <SidebarContent>
+          <div
+            className="flex h-full flex-col"
+            onTouchStart={isMobile ? handleTouchStart : undefined}
+            onTouchEnd={isMobile ? handleTouchEnd : undefined}
+          >
+            <SidebarContent>
             <SidebarHeader>
               <Logo className="text-3xl" />
             </SidebarHeader>
@@ -165,6 +177,7 @@ function AppWithSidebar({ children }: { children: React.ReactNode }) {
               </div>
             </SidebarFooter>
           </SidebarContent>
+          </div>
         </Sidebar>
       <SidebarInset className="overflow-hidden">
         {isMobile && pathname !== '/chat' && (
